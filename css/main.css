@@ -433,6 +433,149 @@
   .filter-pill.active .count { background: rgba(255, 255, 255, 0.2); color: white; }
   .count { font-size: 11px; padding: 2px 7px; background: var(--paper-3); border-radius: 100px; font-weight: 600; color: var(--ink-2); }
 
+  /* ============ LISTINGS PAGE — unified marketplace layout (same search/card design
+     system as the home page: compact search bar, category shortcuts styling reused,
+     compact cards) ============ */
+  .listings-page-head { margin-bottom: 14px; }
+  .listings-breadcrumb { font-size: 12.5px; color: var(--ink-3); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .listings-breadcrumb a { color: var(--ink-3); cursor: pointer; }
+  .listings-breadcrumb a:hover { color: var(--primary); }
+  .listings-page-title { font-size: clamp(20px, 2.2vw, 26px); font-weight: 700; }
+  .listings-page-title em { font-style: italic; color: var(--primary); }
+
+  .listings-search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+  .listings-search-bar .hs-keyword-wrap { flex: 1 1 260px; }
+  .lsb-mobile-filter-btn { display: none; }
+
+  .filter-bar { margin-bottom: 16px; }
+
+  .listings-layout { display: flex; align-items: flex-start; gap: 24px; }
+
+  .listings-sidebar {
+    flex: 0 0 260px; width: 260px; background: white; border: 1px solid var(--line);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    position: sticky; top: 16px; max-height: calc(100vh - 32px);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .ls-sidebar-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .ls-sidebar-close { display: none; background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--ink-3); padding: 2px 4px; }
+  .ls-sidebar-scroll { overflow-y: auto; flex: 1; padding: 4px 16px; min-height: 0; }
+  .ls-sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+  .ls-apply-btn { flex: 1 1 100%; justify-content: center; order: -1; }
+
+  .filter-section { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .filter-section:last-child { border-bottom: none; }
+  .filter-section summary {
+    cursor: pointer; font-size: 13px; font-weight: 700; color: var(--ink);
+    list-style: none; display: flex; align-items: center; justify-content: space-between; padding: 2px 0;
+  }
+  .filter-section summary::-webkit-details-marker { display: none; }
+  .filter-section summary::after {
+    content: ''; width: 7px; height: 7px; flex-shrink: 0;
+    border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3);
+    transform: rotate(45deg); transition: transform 0.2s;
+  }
+  .filter-section[open] summary::after { transform: rotate(-135deg); }
+  .filter-section-body { padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .fs-cat-list { flex-direction: column; gap: 4px; }
+  .fs-cat-list .filter-pill { justify-content: flex-start; width: 100%; border-radius: 8px; padding: 8px 10px; }
+  .fs-cat-list .filter-pill.active { background: var(--primary-soft); color: var(--primary-deep); }
+
+  .listings-main { flex: 1; min-width: 0; }
+  .listings-results-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .lrh-count { font-size: 13.5px; color: var(--ink-3); }
+  .lrh-count strong { color: var(--ink); font-weight: 700; font-size: 15px; }
+  .lrh-actions { display: flex; align-items: center; gap: 8px; }
+  .lrh-actions select#sortSelect {
+    border: 1.5px solid var(--line-2); border-radius: 8px; padding: 8px 12px;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink);
+    background: var(--paper); cursor: pointer; outline: none; height: 40px;
+  }
+  .lrh-view-toggle { display: flex; border: 1.5px solid var(--line-2); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+  .lrh-view-btn {
+    width: 40px; height: 40px; display: grid; place-items: center; background: white;
+    border: none; border-left: 1px solid var(--line-2); cursor: pointer; color: var(--ink-3);
+  }
+  .lrh-view-btn:first-child { border-left: none; }
+  .lrh-view-btn.active { background: var(--primary-soft); color: var(--primary); }
+
+  .active-filter-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--primary-soft); color: var(--primary-deep);
+    border-radius: 100px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .active-filter-clear-all {
+    font-size: 12px; font-weight: 700; color: var(--ink-3); background: none; border: none;
+    cursor: pointer; font-family: inherit; text-decoration: underline; padding: 5px 4px;
+  }
+
+  .listings-sidebar-overlay { display: none; }
+
+  /* Browse grid — the Listings page's own card grid. A distinct class from .listings-grid
+     (which .ld-similar-grid on the Listing Detail modal also uses) so these overrides
+     can't leak into that unrelated section. */
+  .listings-browse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .listings-browse-grid .listing-img { aspect-ratio: 4/3; }
+  .listings-browse-grid .listing-body { padding: 14px; }
+  .listings-browse-grid .listing-price { font-size: 18px; }
+  .listings-browse-grid .listing-price-sub { font-size: 11px; }
+  .listings-browse-grid .listing-title {
+    font-size: 13.5px; margin-bottom: 5px; -webkit-line-clamp: 2; display: -webkit-box;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .listings-browse-grid .listing-loc { font-size: 12px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .listings-browse-grid .listing-meta { display: flex; padding-top: 10px; gap: 6px 10px; font-size: 11.5px; flex-wrap: wrap; }
+  .listings-browse-grid .badge { padding: 3px 8px; font-size: 9.5px; }
+  .listings-browse-grid .listing-fav { width: 40px; height: 40px; }
+  .listings-browse-grid .price-tag { display: inline-block; font-size: 10px; padding: 3px 8px; }
+  .listings-browse-grid .listing-compare { display: flex; font-size: 10.5px; padding: 5px 10px; }
+  .listings-browse-grid .listing-img-count { display: flex; font-size: 10px; padding: 3px 8px; }
+  .listings-browse-grid .listing-loan-strip { display: flex; margin-top: 10px; padding: 8px 10px; }
+  .listings-browse-grid .loan-strip-label { font-size: 9.5px; }
+  .listings-browse-grid .loan-strip-amt { font-size: 13px; }
+  .listings-browse-grid .listing-card:active { transform: scale(0.98); }
+
+  /* List view — same card DOM, just laid out as a horizontal row instead of restyling
+     the grid into a separate component. */
+  .listings-browse-grid.view-list { grid-template-columns: 1fr; gap: 10px; }
+  .listings-browse-grid.view-list .listing-card { display: flex; flex-direction: row; align-items: stretch; }
+  .listings-browse-grid.view-list .listing-img { width: 220px; flex-shrink: 0; aspect-ratio: auto; }
+  .listings-browse-grid.view-list .listing-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .listings-browse-grid.view-list .listing-card:hover { transform: none; }
+
+  @media (max-width: 1280px) {
+    .listings-browse-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  }
+  /* Sidebar stays visible (not the mobile sheet) down through 1024px — at that width
+     260px sidebar + gap still leaves ~740px for a comfortable 3-column grid. */
+  @media (max-width: 900px) {
+    .listings-layout { display: block; }
+    .listings-sidebar {
+      position: fixed; top: 0; right: 0; bottom: 0; left: auto; width: min(360px, 100vw);
+      max-height: none; border-radius: 0; z-index: 1001; transform: translateX(100%);
+      transition: transform 0.25s ease; box-shadow: var(--shadow-lg);
+    }
+    .listings-sidebar.open { transform: translateX(0); }
+    .ls-sidebar-close { display: block; }
+    .lsb-mobile-filter-btn { display: flex; }
+    .listings-sidebar-overlay.open {
+      display: block; position: fixed; inset: 0; background: rgba(10, 22, 40, 0.45); z-index: 1000;
+    }
+  }
+  @media (max-width: 640px) {
+    .listings-sidebar { width: 100%; }
+    .listings-search-bar { flex-wrap: wrap; }
+    .listings-results-header { gap: 8px 12px; }
+    .listings-browse-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .listings-browse-grid.view-list .listing-img { width: 110px; }
+    .listings-browse-grid.view-list .listing-body { padding: 10px 12px; }
+  }
+
   .listings-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
   }
@@ -1495,41 +1638,13 @@
   }
 
   /* ============ ADVANCED FILTER ============ */
-  .filter-panel {
-    background: white; border: 1px solid var(--line); border-radius: 16px;
-    padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm);
-  }
-  .filter-panel-head {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px;
-  }
-  .filter-panel-title {
-    font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px;
-  }
+  /* .filter-panel and its old always-visible/collapsible-advanced split were replaced by
+     the sidebar's per-field <details> sections (.filter-section, above) — .filter-reset,
+     .filter-field, .filter-range, .filter-toggles/.filter-toggle below are still reused
+     as-is inside those sections. */
   .filter-reset {
     font-size: 13px; color: var(--primary); cursor: pointer; font-weight: 600;
     background: none; border: none; font-family: inherit;
-  }
-  .filter-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
-  }
-  .filter-grid-basic {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
-  }
-  /* Only Дүүрэг/үнэ/өрөө show by default — the rest (хороо, хотхон, талбай, он,
-     давхар, газрын зураг, quick-filter chips) live behind this toggle so the panel
-     reads as a quick search first, not a wall of fields to fill in. */
-  .filter-advanced-toggle {
-    display: flex; align-items: center; gap: 6px; margin: 14px 0 0; padding: 0;
-    background: none; border: none; cursor: pointer; font-family: inherit;
-    font-size: 13px; font-weight: 700; color: var(--primary);
-  }
-  .filter-advanced-toggle:hover { color: var(--primary-deep); }
-  .filter-advanced-toggle.open .filter-advanced-chevron,
-  .filter-advanced-toggle.open svg { transform: rotate(180deg); }
-  .filter-advanced {
-    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
-    display: flex; flex-direction: column; gap: 16px;
   }
   .filter-field label {
     display: block; font-size: 11px; font-weight: 700; color: var(--ink-3);
@@ -1556,15 +1671,6 @@
   }
   .filter-toggle:hover { background: var(--primary-soft); }
   .filter-toggle.active { background: var(--primary); color: white; }
-  .filter-actions {
-    display: flex; gap: 10px; margin-top: 16px; padding-top: 16px;
-    border-top: 1px solid var(--line); align-items: center;
-  }
-  .filter-result-count {
-    font-size: 13px; color: var(--ink-3); margin-right: auto;
-  }
-  .filter-result-count strong { color: var(--ink); font-weight: 700; }
-
   /* Compare bar (floating) */
   .compare-bar {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
@@ -1805,13 +1911,7 @@
     display: grid; place-items: center; box-shadow: var(--shadow-sm);
   }
 
-  @media (max-width: 1024px) {
-    .filter-grid { grid-template-columns: repeat(2, 1fr); }
-    .filter-grid-basic { grid-template-columns: repeat(2, 1fr); }
-  }
   @media (max-width: 640px) {
-    .filter-grid { grid-template-columns: 1fr; }
-    .filter-grid-basic { grid-template-columns: 1fr; }
     .chat-list { width: 100%; position: absolute; inset: 0; z-index: 5; background: white; }
     .chat-list.hidden-mobile { display: none; }
     .chat-back-mobile { display: grid; }
@@ -3160,27 +3260,16 @@
     .listing-loc { font-size: 11px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .listing-time { display: block; margin: 0; }
 
-    /* ---- Compact search + filter header ----
-       District/price/rooms keep their real <select>/<input> elements and ids (filtering
-       logic untouched) — just laid out two-per-row instead of stacked full-width, with
-       the quick-filter chips and category/sort row each scrolling horizontally as one
-       tidy line instead of wrapping across several. */
-    .filter-panel { padding: 14px; }
-    .filter-grid-basic { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .filter-toggles {
-      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-      padding-bottom: 4px; scrollbar-width: none;
-    }
-    .filter-toggles::-webkit-scrollbar { display: none; }
-    .filter-toggle { white-space: nowrap; flex-shrink: 0; }
-    .filter-actions { flex-wrap: wrap; row-gap: 10px; }
+    /* ---- Compact category tabs ----
+       The top category-tab row scrolls horizontally as one tidy line instead of
+       wrapping across several; the sidebar's own filter fields/toggles keep their real
+       ids (filtering logic untouched) and just wrap normally inside the narrower panel. */
     .filter-bar {
       flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
     .filter-bar::-webkit-scrollbar { display: none; }
     .filter-pill { flex-shrink: 0; }
-    #sortSelect { flex-shrink: 0; }
   }
 
   /* ============ MOBILE BOTTOM NAV ============ */

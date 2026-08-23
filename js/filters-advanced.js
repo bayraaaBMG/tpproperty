@@ -1,29 +1,53 @@
 ﻿  // ===== ADVANCED FILTER =====
   let activeFilterToggles = [];
 
-  // Дүүрэг/үнэ/өрөө show by default; хороо, хотхон, талбай, он, давхар, газрын
-  // зураг, quick-filter chips stay behind this toggle so the panel reads as a
-  // quick search first rather than a wall of fields (unegui.mn-style progressive
-  // disclosure, not a copy of its layout).
-  function toggleAdvancedFilters() {
-    const panel = document.getElementById('advancedFilterFields');
-    const btn = document.getElementById('advancedFilterToggleBtn');
-    if (!panel || !btn) return;
-    const opening = panel.style.display === 'none';
-    panel.style.display = opening ? 'flex' : 'none';
-    btn.classList.toggle('open', opening);
-    const label = btn.querySelector('span');
-    if (label) label.textContent = opening ? 'Нэмэлт шүүлтүүрийг хураах' : 'Нэмэлт шүүлтүүр';
+  // Called after any code path that can set a sidebar filter field programmatically
+  // (a synced home search, a saved search) so a filter someone set doesn't stay
+  // invisible behind a collapsed <details> section. Generic over the sidebar's actual
+  // .filter-section elements rather than a hardcoded field-id list, so it keeps working
+  // as sections are added/removed.
+  function expandAdvancedFiltersIfActive() {
+    document.querySelectorAll('#listingsSidebar .filter-section').forEach(section => {
+      const hasValue = Array.from(section.querySelectorAll('input, select')).some(el => el.value && el.value !== 'all')
+        || Array.from(section.querySelectorAll('.filter-toggle:not(.radius-toggle)')).some(el => el.classList.contains('active'));
+      if (hasValue) section.open = true;
+    });
+    if (areaFilter && areaFilter.lat) {
+      const locSection = document.getElementById('fDistrict')?.closest('.filter-section');
+      if (locSection) locSection.open = true;
+    }
   }
 
-  // Called after any code path that can set an advanced-only field programmatically
-  // (e.g. applying a saved search) so a filter someone set doesn't stay invisible
-  // behind the collapsed toggle.
-  function expandAdvancedFiltersIfActive() {
-    const ids = ['fKhoroo', 'fComplex', 'fAreaMin', 'fAreaMax', 'fYearMin', 'fYearMax', 'fFloorMin', 'fFloorMax'];
-    const hasActive = ids.some(id => document.getElementById(id)?.value) || activeFilterToggles.length > 0 || (areaFilter && areaFilter.lat);
-    const panel = document.getElementById('advancedFilterFields');
-    if (hasActive && panel && panel.style.display === 'none') toggleAdvancedFilters();
+  // Real filter fields with a non-default value + active toggle chips — drives the
+  // "Шүүлтүүр (3)" count shown on the mobile filter button.
+  function countActiveFilters() {
+    let n = 0;
+    if ((document.getElementById('fDistrict')?.value || 'all') !== 'all') n++;
+    if (document.getElementById('fKhoroo')?.value) n++;
+    if (document.getElementById('fComplex')?.value) n++;
+    if (document.getElementById('fPriceMin')?.value) n++;
+    if (document.getElementById('fPriceMax')?.value) n++;
+    if (document.getElementById('fAreaMin')?.value) n++;
+    if (document.getElementById('fAreaMax')?.value) n++;
+    if ((document.getElementById('fRooms')?.value || 'all') !== 'all') n++;
+    if (document.getElementById('fFloorMin')?.value) n++;
+    if (document.getElementById('fFloorMax')?.value) n++;
+    if (document.getElementById('fBuildingType')?.value) n++;
+    if (document.getElementById('fYearMin')?.value) n++;
+    if (document.getElementById('fYearMax')?.value) n++;
+    if (currentCat && currentCat !== 'all') n++;
+    if (areaFilter && areaFilter.lat && areaFilter.km) n++;
+    n += activeFilterToggles.length;
+    return n;
+  }
+
+  function openMobileFilterSheet() {
+    document.getElementById('listingsSidebar')?.classList.add('open');
+    document.getElementById('listingsSidebarOverlay')?.classList.add('open');
+  }
+  function closeMobileFilterSheet() {
+    document.getElementById('listingsSidebar')?.classList.remove('open');
+    document.getElementById('listingsSidebarOverlay')?.classList.remove('open');
   }
 
   // ===== RADIUS / AREA SEARCH (real Leaflet/OpenStreetMap, no API key) =====
@@ -145,12 +169,14 @@
       const r = parseInt(rooms);
       results = results.filter(l => typeof l.rooms === 'number' && (r === 4 ? l.rooms >= 4 : l.rooms === r));
     }
-    // Home hero's advanced panel — the field lives in the header, which stays in the
-    // DOM across every page in this single-page app, so it's safe to read here too.
+    // Two entry points feed this one filter: the home hero's advanced panel
+    // (hSearchBuildingType) and the Listings page's own sidebar (fBuildingType) — both
+    // elements stay in the DOM across every page in this single-page app, so whichever
+    // one the user actually set is picked up here regardless of which page they're on.
     // l.buildingType holds free-text labels ("Цутгамал төмөр бетон, газар хөдлөлтийн...",
     // "Хийц өрлөгийн (AAC блок)"), not the select's short codes, so match by keyword
     // the same way other free-text fields (condition, parking) are matched below.
-    const buildingType = document.getElementById('hSearchBuildingType')?.value || '';
+    const buildingType = document.getElementById('fBuildingType')?.value || document.getElementById('hSearchBuildingType')?.value || '';
     const buildingTypeKeywords = {
       'reinforced-concrete': 'цутгамал', 'brick': 'блок', 'panel': 'панель', 'frame': 'каркас', 'wooden': 'модон'
     };
@@ -241,6 +267,12 @@
     const totalListingCountEl = document.getElementById('totalListingCount');
     if (totalListingCountEl) totalListingCountEl.textContent = total;
     if (viewAllWrap) viewAllWrap.style.display = (count < total) ? 'block' : 'none';
+
+    const mfCount = document.getElementById('mobileFilterCount');
+    if (mfCount) {
+      const n = countActiveFilters();
+      mfCount.textContent = n > 0 ? ` (${n})` : '';
+    }
   }
 
   function updateCatPillCounts() {

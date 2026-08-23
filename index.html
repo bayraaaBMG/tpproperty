@@ -855,158 +855,32 @@
 <!-- ============ LISTINGS ============ -->
 <section class="listings-section" id="listings">
   <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">Идэвхтэй зар</span>
-        <h2 class="section-title display">Идэвхтэй <em>заруудаас</em> сонго</h2>
-      </div>
-      <p class="section-sub">Эзэмшигч, утас, зарын баталгаажилтын тэмдэгтэй, үнийг нь зах зээлийн харьцуулалтаар шалгасан зарууд. Жишээ зарууд «Жишээ зар» гэж тод тэмдэглэгдсэн байна.</p>
+
+    <!-- 1. Breadcrumb / page title -->
+    <div class="listings-page-head">
+      <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Зар хайх</span></div>
+      <h1 class="listings-page-title display">Идэвхтэй <em>зарууд</em></h1>
     </div>
 
-    <!-- Advanced filter panel -->
-    <div class="filter-panel">
-      <div class="filter-panel-head">
-        <div class="filter-panel-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          Нарийвчилсан хайлт
-        </div>
-        <button class="filter-reset" onclick="resetFilters()">Цэвэрлэх</button>
+    <!-- 2. Compact search bar (same component classes as the home search bar) -->
+    <div class="listings-search-bar">
+      <div class="hs-keyword-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="fSearch" aria-label="Хайлтын үг" placeholder="Хотхон, хороолол, гарчиг, өрөө…" oninput="searchText=this.value; applyListingFilter();" onkeydown="if(event.key==='Enter') applyFilters()" />
       </div>
-      <div class="filter-field" style="margin-bottom:16px;">
-        <label>Хайх (гарчиг, байршил, өрөө…)</label>
-        <div style="position:relative;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="fSearch" class="form-input" aria-label="Хайлтын үг" placeholder="Жнь: Зайсан 2 өрөө, шинэ барилга…" oninput="searchText=this.value; applyListingFilter();" style="padding-left:38px;" />
-        </div>
-      </div>
-      <div class="filter-grid-basic">
-        <div class="filter-field">
-          <label for="fDistrict">Дүүрэг</label>
-          <select id="fDistrict">
-            <option value="all">Бүх дүүрэг</option>
-            <option value="khan-uul">Хан-Уул</option>
-            <option value="sukhbaatar">Сүхбаатар</option>
-            <option value="chingeltei">Чингэлтэй</option>
-            <option value="bayanzurkh">Баянзүрх</option>
-            <option value="bayangol">Баянгол</option>
-            <option value="songinokhairkhan">Сонгинохайрхан</option>
-            <option value="nalaikh">Налайх</option>
-            <option value="bagakhangai">Багахангай</option>
-            <option value="baganuur">Багануур</option>
-          </select>
-        </div>
-        <div class="filter-field">
-          <label>Үнэ (сая ₮)</label>
-          <div class="filter-range">
-            <input type="number" id="fPriceMin" aria-label="Үнэ, доод (сая ₮)" placeholder="Доод" />
-            <span>—</span>
-            <input type="number" id="fPriceMax" aria-label="Үнэ, дээд (сая ₮)" placeholder="Дээд" />
-          </div>
-        </div>
-        <div class="filter-field">
-          <label for="fRooms">Өрөөний тоо</label>
-          <select id="fRooms">
-            <option value="all">Бүгд</option>
-            <option value="1">1 өрөө</option>
-            <option value="2">2 өрөө</option>
-            <option value="3">3 өрөө</option>
-            <option value="4">4+ өрөө</option>
-          </select>
-        </div>
-      </div>
-
-      <button type="button" class="filter-advanced-toggle" id="advancedFilterToggleBtn" onclick="toggleAdvancedFilters()">
-        <span>Нэмэлт шүүлтүүр</span>
-        <svg id="advancedFilterChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s;"><path d="m6 9 6 6 6-6"/></svg>
+      <button type="button" class="btn btn-blue hs-search-btn" onclick="applyFilters()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Хайх</span>
       </button>
-
-      <div class="filter-advanced" id="advancedFilterFields" style="display:none;">
-        <div class="filter-grid">
-          <div class="filter-field">
-            <label for="fKhoroo">Хороо</label>
-            <input type="number" id="fKhoroo" class="form-input" aria-label="Хороо" placeholder="Жнь: 11" min="1" />
-          </div>
-          <div class="filter-field">
-            <label for="fComplex">Хотхон</label>
-            <input type="text" id="fComplex" class="form-input" aria-label="Хотхон" placeholder="Жнь: Зайсан Тольт" />
-          </div>
-          <div class="filter-field">
-            <label>Талбай (м²)</label>
-            <div class="filter-range">
-              <input type="number" id="fAreaMin" aria-label="Талбай, доод (м²)" placeholder="Доод" />
-              <span>—</span>
-              <input type="number" id="fAreaMax" aria-label="Талбай, дээд (м²)" placeholder="Дээд" />
-            </div>
-          </div>
-          <div class="filter-field">
-            <label>Барилгын он</label>
-            <div class="filter-range">
-              <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="2000" min="1950" max="2030" />
-              <span>—</span>
-              <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2025" min="1950" max="2030" />
-            </div>
-          </div>
-          <div class="filter-field">
-            <label>Давхар</label>
-            <div class="filter-range">
-              <input type="number" id="fFloorMin" aria-label="Давхар, доод" placeholder="1" min="1" />
-              <span>—</span>
-              <input type="number" id="fFloorMax" aria-label="Давхар, дээд" placeholder="20" min="1" />
-            </div>
-          </div>
-        </div>
-
-        <div class="filter-field" style="margin-bottom:16px;">
-          <label>Газрын зураг дээрх бүс</label>
-          <div id="radiusMapWrap" style="display:none;">
-            <div id="radiusMap" style="height:180px; border-radius:10px; overflow:hidden; border:1px solid var(--line); margin-bottom:10px;"></div>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <button type="button" class="filter-toggle radius-toggle" data-radius="1">1 км дотор</button>
-              <button type="button" class="filter-toggle radius-toggle" data-radius="3">3 км дотор</button>
-              <button type="button" class="filter-toggle radius-toggle" data-radius="5">5 км дотор</button>
-              <button type="button" class="btn btn-ghost" style="font-size:12px;" onclick="clearAreaFilter()">Цэгийг арилгах</button>
-            </div>
-          </div>
-          <button type="button" class="btn btn-ghost" id="areaFilterToggleBtn" style="width:100%; justify-content:center; border:1.5px solid var(--line-2);" onclick="toggleAreaFilterMap()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Газрын зураг дээр цэг сонгож, бүсээр хайх
-          </button>
-        </div>
-
-        <div class="filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
-          <button class="filter-toggle" data-ftoggle="new">Шинэ барилга</button>
-          <button class="filter-toggle" data-ftoggle="verified">Баталгаажсан</button>
-          <button class="filter-toggle" data-ftoggle="loan">Зээлд хамрагдах</button>
-          <button class="filter-toggle" data-ftoggle="below">Зах зээлээс хямд</button>
-          <button class="filter-toggle" data-ftoggle="parking">Паркингтай</button>
-          <button class="filter-toggle" data-ftoggle="furnished">Тавилгатай</button>
-          <button class="filter-toggle" data-ftoggle="vip">⭐ VIP зар</button>
-          <button class="filter-toggle" data-ftoggle="withphoto">Зурагтай</button>
-        </div>
-      </div>
-
-      <div class="filter-actions">
-        <div class="filter-result-count"><strong id="filterCount">6</strong> / <span id="filterTotalCount">30</span> зар олдлоо</div>
-        <button class="btn btn-ghost" onclick="saveCurrentSearch()" title="Хайлтыг хадгалах" style="font-size:13px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          Хадгалах
-        </button>
-        <button class="btn btn-ghost" id="mapToggleBtn" onclick="toggleMapView()" style="font-size:13px;">
-          <svg id="mapToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-          <span id="mapToggleLabel">Газрын зураг</span>
-        </button>
-        <button class="btn btn-blue" onclick="applyFilters()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          Хайх
-        </button>
-      </div>
+      <!-- 4. Advanced filter button — sidebar is always visible on desktop, so this only
+           needs to show at tablet/mobile widths where the sidebar becomes a slide-in panel. -->
+      <button type="button" class="hs-adv-toggle lsb-mobile-filter-btn" id="mobileFilterBtn" onclick="openMobileFilterSheet()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <span>Шүүлтүүр<span id="mobileFilterCount"></span></span>
+      </button>
     </div>
 
-    <!-- Map view (hidden by default) -->
-    <div id="mapView" style="display:none; margin-bottom:24px;">
-      <div class="mini-map" id="miniMap" style="aspect-ratio:21/9;"></div>
-    </div>
-
+    <!-- 3. Category tabs -->
     <div class="filter-bar">
       <button class="filter-pill active" data-cat="all">Бүгд <span class="count" id="cnt-all"></span></button>
       <button class="filter-pill" data-cat="apartment">Орон сууц <span class="count" id="cnt-apartment"></span></button>
@@ -1014,38 +888,216 @@
       <button class="filter-pill" data-cat="land">Газар <span class="count" id="cnt-land"></span></button>
       <button class="filter-pill" data-cat="office">Оффис <span class="count" id="cnt-office"></span></button>
       <button class="filter-pill" data-cat="rent">Түрээс <span class="count" id="cnt-rent"></span></button>
-      <div style="flex:1"></div>
-      <select id="sortSelect" onchange="setSorting(this.value)" aria-label="Эрэмбэлэх" style="border:1px solid var(--line-2);border-radius:20px;padding:6px 12px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;color:var(--ink);background:var(--paper);cursor:pointer;outline:none;">
-        <option value="default">Шинэ эхлэх</option>
-        <option value="price-asc">Үнэ ↑ (хямд)</option>
-        <option value="price-desc">Үнэ ↓ (өндөр)</option>
-        <option value="area-desc">Талбай (том→жижиг)</option>
-        <option value="vip-first">⭐ VIP эхэндээ</option>
-        <option value="date-asc">Хуучин эхэлсэн</option>
-      </select>
     </div>
 
-    <div id="activeFilterTags" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+    <div class="listings-layout">
+      <!-- Filter sidebar — desktop: always visible, sticky. Tablet/mobile: hidden by
+           default, slides in as a full-height panel via .open (toggled by Шүүлтүүр). -->
+      <aside class="listings-sidebar" id="listingsSidebar">
+        <div class="ls-sidebar-head">
+          <span>Шүүлтүүр</span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="filter-reset" onclick="resetFilters()">Цэвэрлэх</button>
+            <button type="button" class="ls-sidebar-close" onclick="closeMobileFilterSheet()" aria-label="Хаах">×</button>
+          </div>
+        </div>
+        <div class="ls-sidebar-scroll">
+          <details class="filter-section" open>
+            <summary>Байршил</summary>
+            <div class="filter-section-body">
+              <select id="fDistrict">
+                <option value="all">Бүх дүүрэг</option>
+                <option value="khan-uul">Хан-Уул</option>
+                <option value="sukhbaatar">Сүхбаатар</option>
+                <option value="chingeltei">Чингэлтэй</option>
+                <option value="bayanzurkh">Баянзүрх</option>
+                <option value="bayangol">Баянгол</option>
+                <option value="songinokhairkhan">Сонгинохайрхан</option>
+                <option value="nalaikh">Налайх</option>
+                <option value="bagakhangai">Багахангай</option>
+                <option value="baganuur">Багануур</option>
+              </select>
+              <input type="text" id="fComplex" class="form-input" aria-label="Хотхон" placeholder="Хотхон (жнь: Зайсан Тольт)" />
+              <input type="number" id="fKhoroo" class="form-input" aria-label="Хороо" placeholder="Хороо (жнь: 11)" min="1" />
+              <div id="radiusMapWrap" style="display:none;">
+                <div id="radiusMap" style="height:160px; border-radius:10px; overflow:hidden; border:1px solid var(--line); margin-bottom:10px;"></div>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <button type="button" class="filter-toggle radius-toggle" data-radius="1">1 км</button>
+                  <button type="button" class="filter-toggle radius-toggle" data-radius="3">3 км</button>
+                  <button type="button" class="filter-toggle radius-toggle" data-radius="5">5 км</button>
+                  <button type="button" class="btn btn-ghost" style="font-size:11.5px; padding:6px 10px;" onclick="clearAreaFilter()">Цэгийг арилгах</button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-ghost" id="areaFilterToggleBtn" style="width:100%; justify-content:center; border:1.5px solid var(--line-2); font-size:12.5px;" onclick="toggleAreaFilterMap()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Газрын зураг дээр бүсээр хайх
+              </button>
+            </div>
+          </details>
 
-    <div class="listings-grid" id="listingsGrid">
-      <!-- Cards will be rendered here by JS -->
-    </div>
+          <details class="filter-section" open>
+            <summary>Үл хөдлөхийн төрөл</summary>
+            <div class="filter-section-body fs-cat-list">
+              <button class="filter-pill active" data-cat="all">Бүгд</button>
+              <button class="filter-pill" data-cat="apartment">Орон сууц</button>
+              <button class="filter-pill" data-cat="house">Хаус</button>
+              <button class="filter-pill" data-cat="land">Газар</button>
+              <button class="filter-pill" data-cat="office">Оффис</button>
+              <button class="filter-pill" data-cat="rent">Түрээс</button>
+            </div>
+          </details>
 
-    <!-- Only shown when a filter has narrowed the grid below the full active-listing count —
-         clicking it really clears the filters (resetFilters), not a fake "coming soon" toast. -->
-    <div style="text-align:center; margin-top:48px; display:none;" id="viewAllWrap">
-      <a class="btn btn-primary btn-lg" onclick="resetFilters()">
-        Бүх <span id="totalListingCount">30</span> зарыг үзэх (шүүлтүүр цэвэрлэх)
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-      </a>
-    </div>
+          <details class="filter-section" open>
+            <summary>Үнэ (сая ₮)</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="fPriceMin" aria-label="Үнэ, доод (сая ₮)" placeholder="Доод" />
+                <span>—</span>
+                <input type="number" id="fPriceMax" aria-label="Үнэ, дээд (сая ₮)" placeholder="Дээд" />
+              </div>
+            </div>
+          </details>
 
-    <!-- Fetches the next page of real (Firestore) active listings — demo listings are all
-         already loaded locally, so this only ever has more to fetch once real listings exist. -->
-    <div style="text-align:center; margin-top:20px; display:none;" id="loadMoreListingsWrap">
-      <button class="btn btn-ghost btn-lg" id="loadMoreListingsBtn" onclick="loadMorePublicListings()">
-        Цааш үзэх
-      </button>
+          <details class="filter-section">
+            <summary>Талбай (м²)</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="fAreaMin" aria-label="Талбай, доод (м²)" placeholder="Доод" />
+                <span>—</span>
+                <input type="number" id="fAreaMax" aria-label="Талбай, дээд (м²)" placeholder="Дээд" />
+              </div>
+            </div>
+          </details>
+
+          <details class="filter-section">
+            <summary>Өрөө</summary>
+            <div class="filter-section-body">
+              <select id="fRooms">
+                <option value="all">Бүгд</option>
+                <option value="1">1 өрөө</option>
+                <option value="2">2 өрөө</option>
+                <option value="3">3 өрөө</option>
+                <option value="4">4+ өрөө</option>
+              </select>
+            </div>
+          </details>
+
+          <details class="filter-section">
+            <summary>Давхар</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="fFloorMin" aria-label="Давхар, доод" placeholder="Доод" min="1" />
+                <span>—</span>
+                <input type="number" id="fFloorMax" aria-label="Давхар, дээд" placeholder="Дээд" min="1" />
+              </div>
+            </div>
+          </details>
+
+          <details class="filter-section">
+            <summary>Барилгын төрөл</summary>
+            <div class="filter-section-body">
+              <select id="fBuildingType">
+                <option value="">Бүгд</option>
+                <option value="reinforced-concrete">Цутгамал төмөр бетон</option>
+                <option value="brick">Хийц өрлөгийн (керамзитбетон)</option>
+                <option value="panel">Угсармал панель</option>
+                <option value="frame">Каркасан хийц</option>
+                <option value="wooden">Модон</option>
+              </select>
+            </div>
+          </details>
+
+          <details class="filter-section">
+            <summary>Ашиглалтад орсон он</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="2000" min="1950" max="2030" />
+                <span>—</span>
+                <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2025" min="1950" max="2030" />
+              </div>
+            </div>
+          </details>
+
+          <details class="filter-section" open>
+            <summary>Нэмэлт</summary>
+            <div class="filter-section-body filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
+              <button class="filter-toggle" data-ftoggle="furnished">Тавилгатай</button>
+              <button class="filter-toggle" data-ftoggle="new">Шинэ барилга</button>
+              <button class="filter-toggle" data-ftoggle="barter">Бартер</button>
+              <button class="filter-toggle" data-ftoggle="loan">Зээлд хамрагдана</button>
+              <button class="filter-toggle" data-ftoggle="verified">Баталгаажсан</button>
+              <button class="filter-toggle" data-ftoggle="below">Зах зээлээс хямд</button>
+              <button class="filter-toggle" data-ftoggle="parking">Паркингтай</button>
+              <button class="filter-toggle" data-ftoggle="vip">⭐ VIP зар</button>
+              <button class="filter-toggle" data-ftoggle="withphoto">Зурагтай</button>
+            </div>
+          </details>
+        </div>
+        <div class="ls-sidebar-footer">
+          <button class="btn btn-ghost" onclick="saveCurrentSearch()" title="Хайлтыг хадгалах" style="font-size:12px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Хадгалах
+          </button>
+          <button class="btn btn-ghost" id="mapToggleBtn" onclick="toggleMapView()" style="font-size:12px;">
+            <svg id="mapToggleIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            <span id="mapToggleLabel">Газрын зураг</span>
+          </button>
+          <button type="button" class="btn btn-blue ls-apply-btn" onclick="applyFilters(); closeMobileFilterSheet();">Хайх</button>
+        </div>
+      </aside>
+      <button type="button" class="listings-sidebar-overlay" id="listingsSidebarOverlay" onclick="closeMobileFilterSheet()" aria-label="Шүүлтүүр хаах" tabindex="-1"></button>
+
+      <div class="listings-main">
+        <!-- Map view (hidden by default) -->
+        <div id="mapView" style="display:none; margin-bottom:16px;">
+          <div class="mini-map" id="miniMap" style="aspect-ratio:21/9;"></div>
+        </div>
+
+        <div class="listings-results-header">
+          <div class="lrh-count"><strong id="filterCount">0</strong> зар олдлоо</div>
+          <div class="lrh-actions">
+            <select id="sortSelect" onchange="setSorting(this.value)" aria-label="Эрэмбэлэх">
+              <option value="default">Шинэ зар</option>
+              <option value="price-asc">Үнэ өсөх</option>
+              <option value="price-desc">Үнэ буурах</option>
+              <option value="area-desc">Талбай</option>
+              <option value="vip-first">⭐ VIP эхэндээ</option>
+              <option value="date-asc">Хуучин эхэлсэн</option>
+            </select>
+            <div class="lrh-view-toggle">
+              <button type="button" class="lrh-view-btn active" data-view="grid" onclick="setListingsView('grid')" title="Grid харагдац" aria-label="Grid харагдац">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </button>
+              <button type="button" class="lrh-view-btn" data-view="list" onclick="setListingsView('list')" title="List харагдац" aria-label="List харагдац">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="activeFilterTags" style="display:none; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px;"></div>
+
+        <div class="listings-browse-grid" id="listingsGrid">
+          <!-- Cards will be rendered here by JS -->
+        </div>
+
+        <!-- Only shown when a filter has narrowed the grid below the full active-listing count —
+             clicking it really clears the filters (resetFilters), not a fake "coming soon" toast. -->
+        <div style="text-align:center; margin-top:40px; display:none;" id="viewAllWrap">
+          <a class="btn btn-primary btn-lg" onclick="resetFilters()">
+            Бүх <span id="totalListingCount">30</span> зарыг үзэх (шүүлтүүр цэвэрлэх)
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Fetches the next page of real (Firestore) active listings — demo listings are all
+             already loaded locally, so this only ever has more to fetch once real listings exist. -->
+        <div style="text-align:center; margin-top:20px; display:none;" id="loadMoreListingsWrap">
+          <button class="btn btn-ghost btn-lg" id="loadMoreListingsBtn" onclick="loadMorePublicListings()">
+            Цааш үзэх
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </section>

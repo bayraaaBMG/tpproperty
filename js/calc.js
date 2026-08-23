@@ -350,11 +350,14 @@
     });
   });
 
+  // Two independent .filter-pill[data-cat] surfaces exist on the Listings page now (the
+  // top category tabs and the sidebar's "Үл хөдлөхийн төрөл" list) — sync every element
+  // sharing the clicked data-cat, not just the one actually clicked, the same pattern
+  // already used everywhere else this state is set (home.js, search.js, saved-searches.js).
   document.querySelectorAll('.filter-pill[data-cat]').forEach(t => {
     t.addEventListener('click', () => {
-      document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
       currentCat = t.dataset.cat;
+      document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === currentCat));
       applyListingFilter();
     });
   });
