@@ -309,8 +309,10 @@
     // closest price (ldFindSimilar above), max 8 for a clean 3-4-per-row desktop grid.
     const similar = ldFindSimilar(l, 8);
 
-    // Seller data from lookup table (deterministic, no Math.random)
-    const seller = sellerData[l.id] || { phone: '9911-2233', name: 'Хэрэглэгч', type: 'Агент' };
+    // Seller data from lookup table (deterministic, no Math.random). Falls back to a
+    // neutral "Хувь хүн" type rather than "Агент" — an unknown seller must never default
+    // to a fabricated professional credential.
+    const seller = sellerData[l.id] || { phone: '', name: 'Хэрэглэгч', type: 'Хувь хүн' };
     const sellerName = seller.name;
     const sellerLetter = sellerName[0] || 'А';
     const ownerOtherListings = l.userSubmitted && l.ownerId ? listings.filter(x => x.ownerId === l.ownerId && !x._inactive) : null;
@@ -869,7 +871,14 @@
     // attribute value before handing it to the JS parser, so &#39; becomes ' again and can
     // still break out of the quoted string). Looking it up here and wiring the copy button
     // via addEventListener below avoids ever building JS source out of user text.
-    const phone = (sellerData[listingId] && sellerData[listingId].phone) || '9911-2233';
+    const phone = sellerData[listingId] && sellerData[listingId].phone;
+    // A real listing should always have a phone (required at submission — my-listings.js),
+    // but if this record somehow lacks one, show that honestly rather than a placeholder
+    // number that would look like a working contact for a real seller.
+    if (!phone) {
+      box.innerHTML = `<div style="font-size:13px; color:var(--ink-3); padding:8px 0;">Холбогдох дугаар олдсонгүй.</div>`;
+      return;
+    }
     if (l) {
       l.contactCount = (l.contactCount || 0) + 1;
       if (l.firestoreId) {

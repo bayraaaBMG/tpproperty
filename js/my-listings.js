@@ -110,8 +110,13 @@
       videoUrl: l.videoUrl || '',
       tourUrl: l.tourUrl || '',
       floorPlan: l.floorPlan || null,
-      phone: '',
-      name: ''
+      // Contact info lives on the separate sellerData lookup (like on every other listing
+      // card), not on `l` itself — leaving these blank forced a full phone/name re-entry
+      // (and a blocked "8-digit phone required" validation) on every edit, even one that
+      // never touched the contact step.
+      phone: sellerData[l.id]?.phone || '',
+      name: sellerData[l.id]?.name || '',
+      role: sellerData[l.id]?.type === 'Агент' ? 'agent' : (sellerData[l.id]?.type === 'Компани' ? 'company' : 'owner')
     });
     document.getElementById('modalContent').innerHTML = renderAddListing();
     document.getElementById('modal').classList.add('open');
@@ -1644,11 +1649,19 @@
       showToast('Та яг ижил дүүрэг, талбай, үнэтэй зар оруулсан байна — давхардсан зар мэдээлэгдэж болно');
       return;
     }
+    // isDuplicateListing() only catches a second, separate submission after the first one
+    // has already landed in local state — a fast double-click on this same button fires
+    // twice before either request resolves, so neither sees the other yet. Lock the button
+    // for the duration of this call to close that gap; doSubmitListing() itself navigates
+    // away to the success step, so this only ever needs to unlock again on failure.
+    const btn = document.getElementById('alSubmitBtn');
+    if (btn) { if (btn.disabled) return; btn.disabled = true; }
     try {
       await doSubmitListing();
     } catch(e) {
       console.error('submitListing failed:', e);
       showToast('Зар нийтлэхэд алдаа гарлаа. Дахин оролдоно уу.');
+      if (btn) btn.disabled = false;
     }
   }
 

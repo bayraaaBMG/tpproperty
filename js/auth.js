@@ -98,8 +98,9 @@
             parking: feats.includes('parking') ? 'Паркинг бий' : '', elevator: feats.includes('elevator') ? 'Лифттэй' : '',
             balcony: feats.includes('balcony') ? 'Тагттай' : '', basement: feats.includes('basement') ? 'Зоорьтой' : '',
             furniture: feats.includes('furnished') ? 'Тавилгатай' : '',
+            landArea: d.landArea || null, usageType: d.usageType || '', barterOk: !!d.barterOk,
             deposit: d.deposit || null, minTerm: d.minTerm || '',
-            condition: d.condition || '', features: feats,
+            condition: d.condition || '', features: feats, description: d.description || '',
             videoUrl: d.videoUrl || '', tourUrl: d.tourUrl || '', floorPlan: d.floorPlan || null,
             img: (d.images && d.images[0]) || d.img || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
             tag: { type: 'new', text: 'Шинэ зар' }, badges: d.badges || ['user'],
@@ -283,22 +284,27 @@
     const email = (document.getElementById('authEmail')?.value || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Зөв имэйл хаяг оруулна уу'); return; }
     authCurrentEmail = email;
-    try {
-      const methods = await auth.fetchSignInMethodsForEmail(email);
-      if (methods.length > 0) {
-        const el = document.getElementById('loginEmailDisplay');
-        if (el) el.textContent = email;
-        goToAuthStep('3login');
-        setTimeout(() => document.getElementById('authPassword')?.focus(), 100);
-      } else {
-        const el = document.getElementById('regEmailDisplay');
-        if (el) el.textContent = email;
-        goToAuthStep('3register');
-        setTimeout(() => document.getElementById('authLastName')?.focus(), 100);
-      }
-    } catch(e) {
-      showToast('Алдаа гарлаа. Дахин оролдоно уу.');
-    }
+    // fetchSignInMethodsForEmail always resolves to an empty array on projects with Email
+    // Enumeration Protection (the current Firebase default) — it can no longer tell an
+    // existing account from a new one, so branching on it routed every returning user into
+    // the registration form instead of login. Go straight to login (the common case for a
+    // live product); authStep3Login carries a "Бүртгүүлэх" escape hatch for genuinely new
+    // emails, and createAccount() already handles auth/email-already-in-use if someone
+    // still lands on registration with an existing address.
+    const el = document.getElementById('loginEmailDisplay');
+    if (el) el.textContent = email;
+    goToAuthStep('3login');
+    setTimeout(() => document.getElementById('authPassword')?.focus(), 100);
+  }
+
+  // Login step's "Бүртгүүлэх" link — switches to the registration step for the same email
+  // (for a genuinely new address that has no password to log in with yet).
+  function goToAuthRegisterFromLogin() {
+    const email = authCurrentEmail || (document.getElementById('authEmail')?.value || '').trim().toLowerCase();
+    const el = document.getElementById('regEmailDisplay');
+    if (el) el.textContent = email;
+    goToAuthStep('3register');
+    setTimeout(() => document.getElementById('authLastName')?.focus(), 100);
   }
 
   async function loginWithEmail() {
@@ -309,9 +315,14 @@
       closeAuth();
       showToast('Тавтай морилно уу!', 'success');
     } catch(e) {
+      // Enumeration protection also collapses "wrong password" and "no such account" into
+      // the same auth/invalid-credential code — the message below covers both since we can
+      // no longer distinguish them, and the login step's "Бүртгүүлэх" link is the recovery
+      // path for the latter case.
       const msgs = {
         'auth/wrong-password': 'Нууц үг буруу байна',
-        'auth/invalid-credential': 'Нууц үг буруу байна',
+        'auth/invalid-credential': 'Нууц үг буруу эсвэл энэ имэйлээр бүртгэл байхгүй байна',
+        'auth/user-not-found': 'Энэ имэйлээр бүртгэл олдсонгүй. Доорх "Бүртгүүлэх" холбоосыг дарна уу.',
         'auth/too-many-requests': 'Хэт олон оролдлого. Түр хүлээнэ үү.',
         'auth/user-disabled': 'Энэ бүртгэл хаагдсан байна'
       };
@@ -352,6 +363,16 @@
         role: 'user',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      // onAuthStateChanged (top of this file) already ran by this point, off the Auth user
+      // object alone — displayName wasn't set yet when it fired, so currentUser.name landed
+      // on the generic "Хэрэглэгч" fallback. Patch it now that we actually know the name,
+      // rather than leaving the wrong name showing until the next full reload.
+      if (currentUser && currentUser.uid === cred.user.uid) {
+        currentUser.name = firstName;
+        currentUser.lastName = lastName;
+        currentUser.letter = firstName[0] || 'Х';
+        updateNavLoggedIn();
+      }
     } catch(e) {
       console.error('createAccount profile write failed:', e.code, e.message);
       showToast('Профайл мэдээлэл хадгалахад алдаа гарлаа (Firestore зөвшөөрөл шалгана уу)');
