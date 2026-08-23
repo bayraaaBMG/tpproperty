@@ -34,6 +34,34 @@
     return items;
   }
 
+  // ===== Building/professional + legal fields not already covered by ldSpecItems above —
+  // merged into the same compact spec table (unegui.mn-style dense 2-column layout)
+  // instead of their own separate card sections. Same real-data-only rule: a field with
+  // no value is omitted, never shown with a "—" placeholder (the old separate
+  // "Барилгын мэргэжлийн мэдээлэл" section used to always render every row regardless).
+  // A 3rd array element ('ok'/'warn') marks the two legal fields that carry a real status
+  // color, exactly the same logic the old .legal-item.ok/.warn classes used. =====
+  function ldExtraSpecRows(l) {
+    const rows = [];
+    if (l.buildingName) rows.push(['Барилгын нэр', l.buildingName]);
+    if (l.complex) rows.push(['Хотхон', l.complex]);
+    if (l.insulation) rows.push(['Дулаалга', l.insulation]);
+    if (l.heating) rows.push(['Халаалт', l.heating]);
+    if (l.parking) rows.push(['Паркинг', l.parking]);
+    if (l.elevator) rows.push(['Лифт', l.elevator]);
+    if (l.basement) rows.push(['Зоорь', l.basement]);
+    if (l.furniture) rows.push(['Тавилга', l.furniture]);
+    if (l.hoaFee) rows.push(['СӨХ-ийн төлбөр', fmt(l.hoaFee) + ' ₮/сар']);
+    if (l.deposit) rows.push(['Барьцаа/Урьдчилгаа', l.deposit + ' сая ₮']);
+    if (l.minTerm) rows.push(['Хамгийн бага хугацаа', l.minTerm]);
+    if (l.utilityCost) rows.push(['Нийтийн зардал', l.utilityCost]);
+    // l.ownership is already covered by ldSpecItems above whenever it's set — not repeated here.
+    if (l.cadastre) rows.push(['Кадастр', l.cadastre]);
+    if (l.collateral) rows.push(['Барьцааны байдал', l.collateral, l.collateral.includes('Барьцаагүй') ? 'ok' : 'warn']);
+    if (l.taxDebt) rows.push(['Татвар', l.taxDebt, l.taxDebt.includes('өргүй') ? 'ok' : 'warn']);
+    return rows;
+  }
+
   // ===== DESCRIPTION — plain user text, expand/collapse past a length threshold. Never
   // rendered at all when the listing has none (see the doSubmitListing fix that made this
   // field actually get saved — older listings created before that fix have none). =====
@@ -402,20 +430,28 @@
             </div>` : ''}
           </div>
 
-          <!-- SPEC GRID -->
-          <div class="ld-spec-grid">
-            ${ldSpecItems(l).map(([label, value]) => `
-              <div class="ld-spec-item">
-                <div class="ld-spec-label">${esc(label)}</div>
-                <div class="ld-spec-value">${esc(String(value))}</div>
+          <!-- SPEC TABLE — physical facts (ldSpecItems) + building/professional + legal
+               fields (ldExtraSpecRows) merged into one dense unegui.mn-style 2-column
+               table instead of 3 separate card sections. Same real-data-only rule as
+               before: a field with no value is a missing row, never a "—" placeholder. -->
+          <div class="ld-spec-table">
+            ${[...ldSpecItems(l).map(r => [...r, '']), ...ldExtraSpecRows(l)].map(([label, value, variant]) => `
+              <div class="ld-spec-row">
+                <span class="ld-spec-row-label">${esc(label)}</span>
+                <span class="ld-spec-row-value ${variant || ''}">${esc(String(value))}</span>
               </div>
             `).join('')}
           </div>
+          ${l.legalNotes ? `
+          <div class="ld-legal-notes">
+            <strong>Нэмэлт тэмдэглэл:</strong> ${esc(l.legalNotes)}
+          </div>
+          ` : ''}
 
           ${l.videoUrl && videoEmbedUrl(l.videoUrl) ? `
           <div class="modal-section">
             <h4>Видео</h4>
-            <div style="border-radius:14px; overflow:hidden; aspect-ratio:16/9; background:#0A1628;">
+            <div style="border-radius:10px; overflow:hidden; aspect-ratio:16/9; background:#0A1628;">
               <iframe width="100%" height="100%" src="${esc(videoEmbedUrl(l.videoUrl))}" title="Зарын видео" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div>
           </div>
@@ -424,7 +460,7 @@
           ${l.tourUrl && safeEmbedUrl(l.tourUrl) ? `
           <div class="modal-section">
             <h4>360° тойрох</h4>
-            <div style="border-radius:14px; overflow:hidden; aspect-ratio:16/9; background:#0A1628;">
+            <div style="border-radius:10px; overflow:hidden; aspect-ratio:16/9; background:#0A1628;">
               <iframe width="100%" height="100%" src="${esc(safeEmbedUrl(l.tourUrl))}" title="360° тойрох" frameborder="0" allow="xr-spatial-tracking; gyroscope; accelerometer" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div>
           </div>
@@ -433,182 +469,52 @@
           ${l.floorPlan ? `
           <div class="modal-section">
             <h4>Планировка</h4>
-            <img src="${esc(l.floorPlan)}" alt="Планировка" style="width:100%; border-radius:14px; border:1px solid var(--line); display:block;" />
+            <img src="${esc(l.floorPlan)}" alt="Планировка" style="width:100%; border-radius:10px; border:1px solid var(--line); display:block;" />
           </div>
           ` : ''}
 
-          ${ldDescriptionHtml(l)}
-
-          <!-- БАРИЛГЫН МЭРГЭЖЛИЙН МЭДЭЭЛЭЛ -->
-          <div class="modal-section">
-            <h4>Барилгын мэргэжлийн мэдээлэл</h4>
-            <div class="prof-info-list">
-              ${l.buildingName ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Барилгын нэр</div>
-                <div class="prof-info-value">${esc(l.buildingName)}</div>
-              </div>
-              ` : ''}
-              ${l.complex ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Хотхон</div>
-                <div class="prof-info-value">${esc(l.complex)}</div>
-              </div>
-              ` : ''}
-              <div class="prof-info-row">
-                <div class="prof-info-label">Барилгын төрөл</div>
-                <div class="prof-info-value">${l.buildingType || '—'}</div>
-              </div>
-              <div class="prof-info-row">
-                <div class="prof-info-label">Дулаалга</div>
-                <div class="prof-info-value">${l.insulation || '—'}</div>
-              </div>
-              <div class="prof-info-row">
-                <div class="prof-info-label">Халаалт</div>
-                <div class="prof-info-value">${l.heating || '—'}</div>
-              </div>
-              ${l.windowDirection ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Цонхны чиглэл</div>
-                <div class="prof-info-value">${l.windowDirection}</div>
-              </div>
-              ` : ''}
-              <div class="prof-info-row">
-                <div class="prof-info-label">Паркинг</div>
-                <div class="prof-info-value">${l.parking || '—'}</div>
-              </div>
-              <div class="prof-info-row">
-                <div class="prof-info-label">Лифт</div>
-                <div class="prof-info-value">${l.elevator || '—'}</div>
-              </div>
-              ${l.balcony ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Тагт</div>
-                <div class="prof-info-value">${l.balcony}</div>
-              </div>
-              ` : ''}
-              ${l.basement ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Зоорь</div>
-                <div class="prof-info-value">${l.basement}</div>
-              </div>
-              ` : ''}
-              ${l.furniture ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Тавилга</div>
-                <div class="prof-info-value">${l.furniture}</div>
-              </div>
-              ` : ''}
-              <div class="prof-info-row">
-                <div class="prof-info-label">Засвар/Төлөв</div>
-                <div class="prof-info-value">${l.condition || '—'}</div>
-              </div>
-              ${l.hoaFee ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">СӨХ-ийн төлбөр</div>
-                <div class="prof-info-value">${fmt(l.hoaFee)} ₮/сар</div>
-              </div>
-              ` : ''}
-              ${l.deposit ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Барьцаа/Урьдчилгаа</div>
-                <div class="prof-info-value">${l.deposit} сая ₮</div>
-              </div>
-              ` : ''}
-              ${l.minTerm ? `
-              <div class="prof-info-row">
-                <div class="prof-info-label">Хамгийн бага хугацаа</div>
-                <div class="prof-info-value">${l.minTerm}</div>
-              </div>
-              ` : ''}
-              <div class="prof-info-row highlight">
-                <div class="prof-info-label">Нийтийн зардал</div>
-                <div class="prof-info-value">${l.utilityCost || '—'}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ЭРХ ЗҮЙН СТАТУС -->
-          <div class="modal-section">
-            <h4>Эрх зүйн статус ба баримт бичиг</h4>
-            <div class="legal-grid">
-              <div class="legal-item">
-                <div class="legal-label">Эзэмшлийн хэлбэр</div>
-                <div class="legal-value">${l.ownership || '—'}</div>
-              </div>
-              <div class="legal-item">
-                <div class="legal-label">Кадастр</div>
-                <div class="legal-value">${l.cadastre || '—'}</div>
-              </div>
-              <div class="legal-item ${l.collateral && l.collateral.includes('Барьцаагүй') ? 'ok' : 'warn'}">
-                <div class="legal-label">Барьцааны байдал</div>
-                <div class="legal-value">${l.collateral || '—'}</div>
-              </div>
-              <div class="legal-item ${l.taxDebt && l.taxDebt.includes('өргүй') ? 'ok' : 'warn'}">
-                <div class="legal-label">Татвар</div>
-                <div class="legal-value">${l.taxDebt || '—'}</div>
-              </div>
-            </div>
-            <div class="legal-notes">
-              <div class="legal-notes-label">Нэмэлт тэмдэглэл</div>
-              <div class="legal-notes-text">${esc(l.legalNotes) || '—'}</div>
-            </div>
+          <!-- ЗАРЫН ДЭД БАЙРШИЛ -->
+          <div class="ld-sublocation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Зарын дэд байршил:</span>
+            <strong>Улаанбаатар — ${esc(districtLabel)}${l.khoroo ? ' — ' + l.khoroo + '-р хороо' : ''}</strong>
           </div>
 
           <!-- БАЙРШИЛ -->
-          <div class="modal-section">
-            <h4>Байршил</h4>
-            <div style="border-radius:14px;overflow:hidden;border:1px solid var(--line);">
+          <div class="modal-section ld-section-compact">
+            <div style="border-radius:10px;overflow:hidden;border:1px solid var(--line);">
               ${(l.geoLat && l.geoLng) ? `
-              <div id="listingDetailMap" style="width:100%;height:260px;"></div>
+              <div id="listingDetailMap" style="width:100%;height:220px;"></div>
               ` : `
               <iframe
-                width="100%" height="260" style="border:0;display:block;"
+                width="100%" height="220" style="border:0;display:block;"
                 loading="lazy" referrerpolicy="no-referrer-when-downgrade"
                 src="https://www.google.com/maps?q=${encodeURIComponent(l.loc + ', ' + districtLabel + ' дүүрэг, Улаанбаатар, Монгол улс')}&output=embed">
               </iframe>
               `}
             </div>
-            <div style="font-size:13px;color:var(--ink-2);margin-top:8px;display:flex;align-items:center;gap:5px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div style="font-size:12.5px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               ${esc(l.loc)}
             </div>
-          </div>
-
-          <!-- ОЙР ОРЧИМ — real OpenStreetMap data (Overpass API), fetched only once a category
-               is actually clicked, never all 8 at once, to keep the free public API's load down. -->
-          <div class="modal-section">
-            <h4>Ойр орчим</h4>
             ${(l.geoLat && l.geoLng) ? `
-              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <details class="ld-nearby-collapse">
+              <summary>Ойр орчмын газрууд</summary>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
                 ${NEARBY_CATEGORIES.map(c => `
-                  <button class="btn btn-ghost" data-nearby-cat="${c.key}" style="font-size:12.5px;padding:8px 12px;" onclick="loadNearbyCategory(${l.id}, ${l.geoLat}, ${l.geoLng}, '${c.key}')">${c.icon} ${esc(c.label)}</button>
+                  <button class="btn btn-ghost" data-nearby-cat="${c.key}" style="font-size:12px;padding:7px 11px;" onclick="loadNearbyCategory(${l.id}, ${l.geoLat}, ${l.geoLng}, '${c.key}')">${c.icon} ${esc(c.label)}</button>
                 `).join('')}
               </div>
-              <div id="nearbyMapWrap" style="display:none;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:10px;">
-                <div id="nearbyMap" style="width:100%;height:200px;"></div>
+              <div id="nearbyMapWrap" style="display:none;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin-bottom:10px;">
+                <div id="nearbyMap" style="width:100%;height:180px;"></div>
               </div>
-              <div id="nearbyResults" style="font-size:13px;color:var(--ink-3);">Дээрх ангиллаас сонгож ойролцоох газруудыг харна уу.</div>
-              <div style="font-size:10.5px;color:var(--ink-3);margin-top:8px;font-style:italic;">Эх сурвалж: OpenStreetMap — нийтийн бодит газрын зургийн өгөгдөл, зарын эзний оруулсан мэдээлэл биш.</div>
-            ` : `
-              <div style="font-size:13px;color:var(--ink-3);">Ойр орчмын мэдээлэл авахын тулд байршил шаардлагатай. Энэ зар байршлаа газрын зураг дээр тэмдэглээгүй байна.</div>
-            `}
+              <div id="nearbyResults" style="font-size:12.5px;color:var(--ink-3);">Дээрх ангиллаас сонгож ойролцоох газруудыг харна уу.</div>
+              <div style="font-size:10.5px;color:var(--ink-3);margin-top:6px;font-style:italic;">Эх сурвалж: OpenStreetMap.</div>
+            </details>
+            ` : ''}
           </div>
 
-          ${ldMarketInsightHtml(l, valuation, stability)}
-
-          <!-- ШАЛГАХ ЁСТОЙ ЗҮЙЛС -->
-          <div class="modal-section">
-            <h4>Худалдан авахаасаа өмнө шалгах зүйлс</h4>
-            <ol class="check-required">
-              <li>Эзэмшлийн гэрчилгээний эх хувийг харж, ХҮ-н нэртэй таарч буй эсэхийг шалгана</li>
-              <li>Шилжүүлэхэд хорьдох барьцаа, татвар, мөрдөн байцаалт байгаа эсэх</li>
-              <li>Дотор үзлэг хийж — хана, шал, дээвэр, шугам сүлжээний байдлыг харна</li>
-              <li>Хороогоор очиж — өвлийн дулаалга, чимээ, хөршүүдийн талаар асууна</li>
-              <li>Кадастрын зургаар талбайн хэмжээ нь баримтын мэдээлэлтэй таарч буй эсэх</li>
-              <li>Сүүлийн 12 сарын нийтийн төлбөрийн квитанц харж бодит зардал тооцно</li>
-            </ol>
-          </div>
+          ${ldDescriptionHtml(l)}
 
           ${similar.length > 0 ? `
           <!-- ИЖИЛ ТӨСТЭЙ ЗАРУУД -->
@@ -619,6 +525,30 @@
             </div>
           </div>
           ` : ''}
+
+          <!-- Compact bottom sections — BairX's own differentiators, kept real and
+               data-backed, just out of the way of the main scan-path above. -->
+          ${ldMarketInsightHtml(l, valuation, stability)}
+
+          ${l.cat !== 'rent' ? `
+          <div class="modal-section ld-section-compact">
+            <h4>Зээлийн тооцоолол</h4>
+            <div class="ld-calc-inline">${ldCalcHtml(l)}</div>
+          </div>
+          ` : ''}
+
+          <!-- ШАЛГАХ ЁСТОЙ ЗҮЙЛС -->
+          <div class="modal-section ld-section-compact">
+            <h4>Худалдан авахаасаа өмнө шалгах зүйлс</h4>
+            <ol class="check-required">
+              <li>Эзэмшлийн гэрчилгээний эх хувийг харж, ХҮ-н нэртэй таарч буй эсэхийг шалгана</li>
+              <li>Шилжүүлэхэд хорьдох барьцаа, татвар, мөрдөн байцаалт байгаа эсэх</li>
+              <li>Дотор үзлэг хийж — хана, шал, дээвэр, шугам сүлжээний байдлыг харна</li>
+              <li>Хороогоор очиж — өвлийн дулаалга, чимээ, хөршүүдийн талаар асууна</li>
+              <li>Кадастрын зургаар талбайн хэмжээ нь баримтын мэдээлэлтэй таарч буй эсэх</li>
+              <li>Сүүлийн 12 сарын нийтийн төлбөрийн квитанц харж бодит зардал тооцно</li>
+            </ol>
+          </div>
 
           <!-- REPORT BUTTON -->
           ${l.userSubmitted && (!currentUser || l.ownerId !== currentUser.uid) ? `
@@ -651,23 +581,25 @@
 
             <!-- ХОЛБОО БАРИХ -->
             <div id="contactBox_${l.id}" class="ld-contact-box">
-              <div style="font-size:13px;color:var(--ink-3);margin-bottom:12px;">Утасны дугаарыг харахдаа дарна уу</div>
+              <div style="font-size:12.5px;color:var(--ink-3);margin-bottom:10px;">Утасны дугаарыг харахдаа дарна уу</div>
               <button class="btn btn-blue btn-lg" style="width:100%;justify-content:center;" onclick="revealPhone('${l.id}')">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.21 3.39 2 2 0 0 1 3.22 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 8 8l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 23 18l-.08-1.08z"/></svg>
                 Дугаар харах
               </button>
             </div>
-            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:10px;" onclick="openListingChat(${l.id})">
+            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;" onclick="openListingChat(${l.id})">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Чат бичих
+            </button>
+            <button type="button" class="btn btn-ghost listing-compare ld-compare-btn" style="width:100%;justify-content:center;margin-top:8px;border:1.5px solid var(--line-2);" onclick="toggleCompare(${l.id}, this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+              Харьцуулах жагсаалтад нэмэх
             </button>
             ${totalListings != null ? `
             <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;border:1.5px solid var(--line-2);" onclick="openSellerProfile('${l.ownerId}')">
               Энэ хэрэглэгчийн бусад зар
             </button>
             ` : ''}
-
-            ${ldCalcHtml(l)}
           </div>
         </div>
       </div>
