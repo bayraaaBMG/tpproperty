@@ -170,12 +170,44 @@
     addListingState.step = 1;
     // Default the "Та хэн вэ?" role to the account's saved identity (Миний тохиргоо) so
     // it stays consistent across listings instead of resetting to "owner" every time —
-    // still overridable per listing in Step 5.
+    // still overridable per listing in Step 6.
     if (currentUser?.accountType) addListingState.role = currentUser.accountType;
+    restoreDraftIfPresent();
     document.getElementById('modalContent').innerHTML = renderAddListing();
     document.getElementById('modal').classList.add('open');
     document.body.style.overflow = 'hidden';
     setTimeout(attachAddListingHandlers, 50);
+  }
+
+  // ===== DRAFT PERSISTENCE =====
+  // Protects against an accidental refresh/back-navigation losing everything typed so
+  // far — every text/selection field in addListingState (never the in-progress images:
+  // File/Blob objects and blob: preview URLs can't survive JSON.stringify or a reload in
+  // any useful way, so a restored draft always starts step 4's photos from scratch, same
+  // as this app's honest "local-only" language elsewhere rather than pretending uploads
+  // can resume). Only for a fresh listing — editMyListing() already restores the real
+  // saved data for an edit, and saving a fresh-listing draft mid-edit would leak one
+  // listing's data into the next new listing someone starts.
+  const AL_DRAFT_KEY = 'bairxAddListingDraft';
+  function saveDraftToStorage() {
+    if (editingListingId) return;
+    try {
+      const { images, ...rest } = addListingState;
+      localStorage.setItem(AL_DRAFT_KEY, JSON.stringify(rest));
+    } catch (e) {}
+  }
+  function clearDraftStorage() {
+    try { localStorage.removeItem(AL_DRAFT_KEY); } catch (e) {}
+  }
+  function restoreDraftIfPresent() {
+    if (editingListingId) return;
+    let draft;
+    try { draft = JSON.parse(localStorage.getItem(AL_DRAFT_KEY) || 'null'); } catch (e) { draft = null; }
+    // A draft is only worth restoring once the user actually got somewhere — step 1 alone
+    // (just an intent/type pick, or nothing at all) isn't worth a "continued" toast for.
+    if (!draft || !draft.step || draft.step < 2) return;
+    Object.assign(addListingState, draft, { images: [] });
+    showToast('Өмнөх ноорог сэргээгдлээ — зургаа дахин оруулна уу', 'success');
   }
 
   function renderAddListing() {
@@ -190,20 +222,19 @@
           <div class="al-sub">Бүх алхамыг бөглөж дуусгахад ойролцоогоор 4-6 минут зарцуулагдана.</div>
         </div>
 
-        <!-- Stepper -->
+        <!-- Stepper — full pill row on desktop; a compact "Алхам X/7" + progress bar on
+             mobile (see .al-stepper-mobile CSS) so 7 steps never needs to scroll or wrap. -->
         <div class="stepper">
-          ${[
-            { n: 1, name: 'Төрөл' },
-            { n: 2, name: 'Үндсэн мэдээлэл' },
-            { n: 3, name: 'Дэлгэрэнгүй' },
-            { n: 4, name: 'Зураг' },
-            { n: 5, name: 'Холбоо барих' }
-          ].map(s => `
+          ${AL_STEPS.map(s => `
             <div class="step ${addListingState.step === s.n ? 'active' : ''} ${addListingState.step > s.n ? 'done' : ''}">
               <div class="step-num">${addListingState.step > s.n ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : s.n}</div>
               <span class="step-name">${s.name}</span>
             </div>
           `).join('')}
+        </div>
+        <div class="al-stepper-mobile">
+          <div class="al-stepper-mobile-label">Алхам ${addListingState.step} / ${AL_STEPS.length} — ${(AL_STEPS.find(s => s.n === addListingState.step) || {}).name || ''}</div>
+          <div class="al-stepper-mobile-bar"><div class="al-stepper-mobile-fill" style="width:${(Math.min(addListingState.step, AL_STEPS.length) / AL_STEPS.length) * 100}%;"></div></div>
         </div>
 
         ${renderStep1()}
@@ -211,10 +242,22 @@
         ${renderStep3()}
         ${renderStep4()}
         ${renderStep5()}
+        ${renderStep6()}
+        ${renderStep7()}
         ${renderSuccess()}
       </div>
     `;
   }
+
+  const AL_STEPS = [
+    { n: 1, name: 'Ангилал' },
+    { n: 2, name: 'Мэдээлэл' },
+    { n: 3, name: 'Нэмэлт' },
+    { n: 4, name: 'Зураг' },
+    { n: 5, name: 'Тайлбар' },
+    { n: 6, name: 'Холбоо барих' },
+    { n: 7, name: 'Урьдчилан харах' }
+  ];
 
   function renderStep1() {
     const active = addListingState.step === 1;
@@ -722,12 +765,6 @@
         </div>
         ` : ''}
 
-        <div class="form-row" style="margin-top:18px;">
-          <label class="form-label">Дэлгэрэнгүй тайлбар<span class="req">*</span></label>
-          <textarea class="form-textarea" id="alDescription" rows="5" placeholder="Үл хөдлөх хөрөнгийнхөө онцлог, давуу талыг тайлбарлана уу. Жнь: Зайсаны бизнес төвөөс 5 минутын зайтай, өмнөд талдаа задгай, наран гэрэлтэй..." maxlength="2000">${addListingState.description}</textarea>
-          <div class="form-err-msg">Тайлбараа оруулна уу</div>
-        </div>
-
         <div class="step-nav">
           <button class="btn btn-ghost btn-back" onclick="prevStep(3)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -850,11 +887,14 @@
     });
     if (addListingState.images.length < MAX_LISTING_IMAGES) {
       boxes.push(`
-        <label class="image-upload-box" for="imgInputMulti">
+        <label class="image-upload-box image-upload-drop" for="imgInputMulti"
+          ondragover="event.preventDefault(); event.stopPropagation(); this.classList.add('drag-over');"
+          ondragleave="this.classList.remove('drag-over');"
+          ondrop="handleImageDrop(event, this)">
           <input type="file" id="imgInputMulti" accept="image/*" multiple style="display:none" onchange="handleImageUpload(event)" />
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
           <div class="image-upload-text">${addListingState.images.length === 0 ? 'Үндсэн зураг' : 'Зураг нэмэх'}</div>
-          <div class="image-upload-hint">JPG, PNG — олноор сонгож болно</div>
+          <div class="image-upload-hint">JPG, PNG — чирж оруулах эсвэл олноор сонгож болно</div>
         </label>
       `);
     }
@@ -867,7 +907,7 @@
     updateSubmitButtonState();
   }
 
-  // Mirrors upload progress onto the step-5 "Зар нийтлэх" button so a still-uploading
+  // Mirrors upload progress onto the step-7 "Зар нийтлэх" button so a still-uploading
   // photo can never be submitted twice or published half-attached — see submitListing().
   function updateSubmitButtonState() {
     const btn = document.getElementById('alSubmitBtn');
@@ -875,14 +915,45 @@
     const label = document.getElementById('alSubmitBtnLabel');
     const busy = addListingState.images.some(im => im.status === 'uploading' || im.status === 'waiting');
     btn.disabled = busy;
-    if (label) label.textContent = busy ? 'Зураг байршуулж байна...' : 'Зар нийтлэх';
+    if (label) label.textContent = busy ? 'Зураг байршуулж байна...' : (editingListingId ? 'Өөрчлөлт хадгалах' : 'Зар нийтлэх');
   }
 
   function renderStep5() {
     const active = addListingState.step === 5;
+    const len = (addListingState.description || '').length;
     return `
       <div class="step-panel ${active ? 'active' : ''}" data-step="5">
-        <div class="step-section-title">Холбоо барих ба нийтлэх</div>
+        <div class="step-section-title">Тайлбар</div>
+        <div class="step-section-sub">Үл хөдлөх хөрөнгийнхөө онцлог, давуу талыг чөлөөтэй бичнэ үү</div>
+
+        <div class="form-row">
+          <div class="form-label-row">
+            <label class="form-label" for="alDescription">Дэлгэрэнгүй тайлбар<span class="req">*</span></label>
+            <span class="form-char-count" id="alDescCount">${len} / 2000</span>
+          </div>
+          <textarea class="form-textarea form-textarea-lg" id="alDescription" rows="10" placeholder="Жнь: Зайсаны бизнес төвөөс 5 минутын зайтай, өмнөд талдаа задгай, наран гэрэлтэй, ойролцоо сургууль цэцэрлэгтэй. Шинэ засвартай, бүх тавилга үлдэнэ..." maxlength="2000" oninput="document.getElementById('alDescCount').textContent = this.value.length + ' / 2000';">${addListingState.description}</textarea>
+          <div class="form-err-msg">Тайлбараа оруулна уу</div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn btn-ghost btn-back" onclick="prevStep(5)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Буцах
+          </button>
+          <button class="btn btn-blue btn-lg" onclick="nextStep(5)">
+            Үргэлжлүүлэх
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderStep6() {
+    const active = addListingState.step === 6;
+    return `
+      <div class="step-panel ${active ? 'active' : ''}" data-step="6">
+        <div class="step-section-title">Холбоо барих</div>
         <div class="step-section-sub">Худалдан авагчид зөвхөн энэ дугаараар холбогдоно</div>
 
         <div class="form-row">
@@ -949,21 +1020,104 @@
           </button>
         </div>
 
-        <div style="padding:12px 14px; background:rgba(255,176,32,0.1); border:1px solid rgba(255,176,32,0.3); border-radius:10px; font-size:12px; color:var(--ink-2); line-height:1.5; margin-bottom:14px;">
+        <div style="padding:12px 14px; background:rgba(255,176,32,0.1); border:1px solid rgba(255,176,32,0.3); border-radius:10px; font-size:12px; color:var(--ink-2); line-height:1.5;">
           <strong>Демо — бодит төлбөрийн систем одоогоор холбогдоогүй.</strong> VIP/Онцлох сонголтууд зөвхөн урьдчилан харуулж байгаа болно; төлбөрийн систем холбогдох хүртэл таны зар үргэлж Энгийн (үнэгүй) нөхцөлөөр нийтлэгдэнэ.
         </div>
 
-        <div style="padding:14px; background:var(--paper-2); border-radius:10px; font-size:12px; color:var(--ink-3); line-height:1.5;">
-          Зар нийтлэхээр <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="saveStepData(5); openInfoPage('terms', 'addListing')">Үйлчилгээний нөхцөл</a> болон <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="saveStepData(5); openInfoPage('privacy', 'addListing')">Нууцлалын бодлого</a>-той зөвшөөрсөнд тооцогдоно. Хуурамч мэдээлэл оруулсан тохиолдолд зар нь устгагдаж, бүртгэл блоклогдох эрсдэлтэй.
+        <div class="step-nav">
+          <button class="btn btn-ghost btn-back" onclick="prevStep(6)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Буцах
+          </button>
+          <button class="btn btn-blue btn-lg" onclick="nextStep(6)">
+            Урьдчилан харах
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Builds a real listing-shaped object out of the in-progress wizard state so the
+  // preview step can reuse the exact same listingCardHtml() component every other grid
+  // in the app uses — real visual parity with the real card, not a lookalike. id:0 never
+  // matches a real listing (openListing/toggleFav no-op on it), and the card is wrapped
+  // pointer-events:none below since none of its click targets (favorite, compare, the
+  // card itself) mean anything yet.
+  function alPreviewListingShim() {
+    const s = addListingState;
+    const districtLabels = {
+      'khan-uul': 'Хан-Уул', 'sukhbaatar': 'Сүхбаатар', 'chingeltei': 'Чингэлтэй',
+      'bayanzurkh': 'Баянзүрх', 'bayangol': 'Баянгол', 'songinokhairkhan': 'Сонгинохайрхан',
+      'nalaikh': 'Налайх', 'bagakhangai': 'Багахангай', 'baganuur': 'Багануур'
+    };
+    const isLand = s.propertyType === 'land';
+    const a = parseFloat(s.area) || 0;
+    return {
+      id: 0,
+      img: s.images[0]?.previewUrl || s.images[0]?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
+      title: s.title || 'Гарчиг оруулаагүй',
+      badges: [],
+      listingVerified: false, sellerVerified: false, userSubmitted: true,
+      price: parseFloat(s.price) || 0,
+      cat: s.intent === 'rent' ? 'rent' : propertyTypeBucket(s.propertyType || 'apartment'),
+      features: s.features || [],
+      tag: { type: 'normal', text: 'Урьдчилан харах' },
+      loc: (districtLabels[s.district] || s.district || 'Байршил сонгоогүй') + (s.khoroo ? ' · ' + s.khoroo + '-р хороо' : ''),
+      area: a,
+      rooms: isLand ? (a ? (a / 10000).toFixed(2) + ' га' : '—') : (parseInt(s.rooms) || '—'),
+      floor: isLand ? 'Эзэмшил' : (s.floor ? s.floor + '/' + (s.totalFloors || '?') : '?'),
+      year: isLand ? null : (parseInt(s.year) || null)
+    };
+  }
+
+  function renderStep7() {
+    const active = addListingState.step === 7;
+    if (!active) return '<div class="step-panel" data-step="7"></div>';
+    const s = addListingState;
+    const roleLabels = { owner: 'Үл хөдлөхийн эзэн', agent: 'Үл хөдлөхийн агент', company: 'Барилгын компани' };
+    return `
+      <div class="step-panel active" data-step="7">
+        <div class="step-section-title">Урьдчилан харах</div>
+        <div class="step-section-sub">Нийтлэхээс өмнө зараа шалгаарай — талбар бүрийн "Засах" товч тухайн алхам руу шууд буцаана.</div>
+
+        <div class="al-preview-wrap">
+          <div class="al-preview-card" style="pointer-events:none;">
+            ${listingCardHtml(alPreviewListingShim())}
+          </div>
+          <button type="button" class="al-preview-edit" onclick="jumpToStep(4)">Зураг/мэдээлэл засах</button>
+        </div>
+
+        <div class="al-preview-block">
+          <div class="al-preview-block-head">
+            <span>Тайлбар</span>
+            <button type="button" class="al-preview-edit" onclick="jumpToStep(5)">Засах</button>
+          </div>
+          <div class="al-preview-block-body">${s.description ? esc(s.description).replace(/\n/g, '<br>') : '<span style="color:var(--ink-3);">Тайлбар оруулаагүй</span>'}</div>
+        </div>
+
+        <div class="al-preview-block">
+          <div class="al-preview-block-head">
+            <span>Холбоо барих мэдээлэл</span>
+            <button type="button" class="al-preview-edit" onclick="jumpToStep(6)">Засах</button>
+          </div>
+          <div class="al-preview-block-body">
+            ${esc(s.name || '—')} · ${roleLabels[s.role] || roleLabels.owner}<br>
+            +976 ${esc(s.phone || '—')}
+          </div>
+        </div>
+
+        <div style="padding:14px; background:var(--paper-2); border-radius:10px; font-size:12px; color:var(--ink-3); line-height:1.5; margin-top:18px;">
+          Зар нийтлэхээр <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="openInfoPage('terms', 'addListing')">Үйлчилгээний нөхцөл</a> болон <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="openInfoPage('privacy', 'addListing')">Нууцлалын бодлого</a>-той зөвшөөрсөнд тооцогдоно. Хуурамч мэдээлэл оруулсан тохиолдолд зар нь устгагдаж, бүртгэл блоклогдох эрсдэлтэй.
         </div>
 
         <div class="step-nav">
-          <button class="btn btn-ghost btn-back" onclick="prevStep(5)">
+          <button class="btn btn-ghost btn-back" onclick="prevStep(7)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Буцах
           </button>
           <button class="btn btn-blue btn-lg" id="alSubmitBtn" onclick="submitListing()">
-            <span id="alSubmitBtnLabel">Зар нийтлэх</span>
+            <span id="alSubmitBtnLabel">${editingListingId ? 'Өөрчлөлт хадгалах' : 'Зар нийтлэх'}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
         </div>
@@ -971,8 +1125,18 @@
     `;
   }
 
+  // Jumps straight to a step from the Preview screen's "Засах" links — all of the
+  // wizard's own state is already saved (nextStep/prevStep call saveStepData on every
+  // transition), so this just needs to re-render at the target step.
+  function jumpToStep(n) {
+    addListingState.step = n;
+    document.getElementById('modalContent').innerHTML = renderAddListing();
+    document.querySelector('.modal')?.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(attachAddListingHandlers, 50);
+  }
+
   function renderSuccess() {
-    const active = addListingState.step === 6;
+    const active = addListingState.step === 8;
     if (!active) return '';
     const listingId = 'BX-' + Date.now().toString().slice(-7);
     return `
@@ -1161,17 +1325,20 @@
       addListingState.usageType = document.getElementById('alUsageType')?.value || '';
       addListingState.deposit = document.getElementById('alDeposit')?.value || '';
       addListingState.minTerm = document.getElementById('alMinTerm')?.value || '';
-      addListingState.description = document.getElementById('alDescription')?.value || '';
     }
     if (step === 4) {
       addListingState.videoUrl = document.getElementById('alVideoUrl')?.value || '';
       addListingState.tourUrl = document.getElementById('alTourUrl')?.value || '';
     }
     if (step === 5) {
+      addListingState.description = document.getElementById('alDescription')?.value || '';
+    }
+    if (step === 6) {
       addListingState.phone = document.getElementById('alPhone')?.value || '';
       addListingState.name = document.getElementById('alName')?.value || '';
       addListingState.role = document.getElementById('alRole')?.value || 'owner';
     }
+    saveDraftToStorage();
   }
 
   // Scrolls/focuses the first invalid field so a validation failure is never silent —
@@ -1206,9 +1373,7 @@
     if (step === 3) {
       let ok = true;
       const price = document.getElementById('alPrice');
-      const desc = document.getElementById('alDescription');
       if (!price.value || parseFloat(price.value) < 1) { price.classList.add('err'); ok = false; }
-      if (!desc.value || !desc.value.trim()) { desc.classList.add('err'); ok = false; }
       if (!ok) { showToast('Заавал бөглөх талбаруудыг шалгана уу'); focusFirstInvalid(); }
       return ok;
     }
@@ -1220,6 +1385,16 @@
       return true;
     }
     if (step === 5) {
+      const desc = document.getElementById('alDescription');
+      if (!desc.value || !desc.value.trim()) {
+        desc.classList.add('err');
+        showToast('Тайлбараа оруулна уу');
+        focusFirstInvalid();
+        return false;
+      }
+      return true;
+    }
+    if (step === 6) {
       let ok = true;
       const phone = document.getElementById('alPhone');
       if (!phone.value || phone.value.length !== 8) { phone.classList.add('err'); ok = false; }
@@ -1267,8 +1442,21 @@
   }
 
   function handleImageUpload(event) {
-    const files = Array.from(event.target.files || []);
+    addImageFiles(event.target.files);
     event.target.value = ''; // lets the user pick the same file again later (e.g. after removing it)
+  }
+
+  // Desktop drag & drop onto the upload box — same file list, same add pipeline as the
+  // file picker (handleImageUpload), just a different entry point into it.
+  function handleImageDrop(event, el) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (el) el.classList.remove('drag-over');
+    addImageFiles(event.dataTransfer?.files);
+  }
+
+  function addImageFiles(fileList) {
+    const files = Array.from(fileList || []);
     if (!files.length) return;
     const room = MAX_LISTING_IMAGES - addListingState.images.length;
     if (room <= 0) {
@@ -1280,6 +1468,10 @@
       showToast(toAdd.length + ' зураг нэмэгдлээ — хамгийн ихдээ ' + MAX_LISTING_IMAGES + ' зураг байна');
     }
     toAdd.forEach(file => {
+      if (!file.type || !file.type.startsWith('image/')) {
+        showToast('"' + file.name + '" — зурган файл биш байна');
+        return;
+      }
       if (file.size > 15 * 1024 * 1024) {
         showToast('"' + file.name + '" — зураг 15MB-аас бага байх ёстой');
         return;
@@ -1421,7 +1613,18 @@
   }
 
   async function submitListing() {
-    if (!validateStep(5)) return;
+    // Defensive re-check — step 6 (Contact) is already validated once by nextStep(6)
+    // before the Preview step is even reachable, so this should never actually fail in
+    // normal use. If it somehow does, jump back to step 6 first (jumpToStep re-renders
+    // that panel's inputs from scratch, which would wipe an .err class added beforehand)
+    // and validate there, so the flagged field is both visible and actually marked.
+    if (addListingState.step === 7) {
+      jumpToStep(6);
+      if (!validateStep(6)) return;
+      jumpToStep(7);
+    } else if (!validateStep(6)) {
+      return;
+    }
     // Never publish while a photo is mid-upload or stuck on a failure — otherwise a
     // double-click (or a slow retry) could either submit before the image exists
     // server-side, or claim success on a listing with a photo silently missing.
@@ -1467,7 +1670,7 @@
   }
 
   async function doSubmitListing() {
-    saveStepData(5);
+    saveStepData(6);
 
     const s = addListingState;
     const districtLabels = {
@@ -1743,7 +1946,10 @@
     // message here even though nothing had actually left the device — this now matches
     // reality in every case, not just an actual Firestore error.
     addListingState._syncFailed = !(currentUser && allImagesSynced) || firestoreSaveFailed;
-    addListingState.step = 6;
+    addListingState.step = 8;
+    // The listing itself (local or synced) now holds this data — the in-progress draft
+    // copy would otherwise resurface stale text the next time the wizard is opened.
+    clearDraftStorage();
     document.getElementById('modalContent').innerHTML = renderAddListing();
   }
 
@@ -2057,31 +2263,31 @@
     showToast('Зар устгагдлаа');
   }
 
+  function blankAddListingState() {
+    return {
+      step: 1, intent: 'sell', propertyType: '',
+      title: '', district: '', khoroo: '', address: '', geoLat: null, geoLng: null, area: '', rooms: '',
+      bedrooms: '', bathrooms: '', floor: '', totalFloors: '', year: '', buildingName: '', complex: '', landArea: '',
+      price: '', buildingType: '', heating: '', insulationType: '', windowDirection: '', hoaFee: '',
+      condition: '', usageType: '', deposit: '', minTerm: '', description: '', features: [], images: [],
+      videoUrl: '', tourUrl: '', floorPlan: null,
+      phone: '', name: '', role: 'owner', plan: 'basic'
+    };
+  }
+
   function confirmCloseAddListing() {
-    if (addListingState.step === 6 || addListingState.step === 1) {
+    if (addListingState.step === 8 || addListingState.step === 1) {
       closeModal();
-      addListingState = {
-        step: 1, intent: 'sell', propertyType: '',
-        title: '', district: '', khoroo: '', address: '', geoLat: null, geoLng: null, area: '', rooms: '',
-        bedrooms: '', bathrooms: '', floor: '', totalFloors: '', year: '', buildingName: '', complex: '', landArea: '',
-        price: '', buildingType: '', heating: '', insulationType: '', windowDirection: '', hoaFee: '',
-        condition: '', usageType: '', deposit: '', minTerm: '', description: '', features: [], images: [],
-        videoUrl: '', tourUrl: '', floorPlan: null,
-        phone: '', name: '', role: 'owner', plan: 'basic'
-      };
+      addListingState = blankAddListingState();
+      editingListingId = null; // was never reset here — a cancelled edit used to silently overwrite the same listing on the next fresh submission
+      clearDraftStorage();
       return;
     }
     if (confirm('Зар нэмэх процессоос гарвал оруулсан мэдээлэл устгагдана. Үргэлжлүүлэх үү?')) {
       closeModal();
-      addListingState = {
-        step: 1, intent: 'sell', propertyType: '',
-        title: '', district: '', khoroo: '', address: '', geoLat: null, geoLng: null, area: '', rooms: '',
-        bedrooms: '', bathrooms: '', floor: '', totalFloors: '', year: '', buildingName: '', complex: '', landArea: '',
-        price: '', buildingType: '', heating: '', insulationType: '', windowDirection: '', hoaFee: '',
-        condition: '', usageType: '', deposit: '', minTerm: '', description: '', features: [], images: [],
-        videoUrl: '', tourUrl: '', floorPlan: null,
-        phone: '', name: '', role: 'owner', plan: 'basic'
-      };
+      addListingState = blankAddListingState();
+      editingListingId = null;
+      clearDraftStorage();
     }
   }
 
