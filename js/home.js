@@ -32,6 +32,7 @@
             <span class="listing-meta-item"><strong>${l.area}</strong> м²</span>
             <span class="listing-meta-item"><strong>${l.rooms}</strong>${typeof l.rooms === 'number' ? ' өрөө' : ''}</span>
             <span class="listing-meta-item"><strong>${l.floor}</strong></span>
+            ${l.year ? `<span class="listing-meta-item"><strong>${l.year}</strong></span>` : ''}
           </div>
         </div>
       </article>

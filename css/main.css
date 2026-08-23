@@ -332,19 +332,28 @@
   /* Compact 5-across card grid for the home page's own listing sections — the Listings
      search-results page keeps its own .listings-grid (3-col, taller cards) unchanged;
      this only restyles .listing-card when it's inside a home grid. */
-  .home-listings-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  /* auto-fit/minmax at every tier (not a fixed column count) — 5-6/row on desktop,
+     2-4/row adaptive on tablet, 2/row on mobile with 1/row as an automatic fallback
+     if a viewport is ever too narrow for two cards, never a hardcoded per-device rule. */
+  .home-listings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
   .home-listings-grid .listing-img { aspect-ratio: 4/3; }
   .home-listings-grid .listing-body { padding: 12px; }
   .home-listings-grid .listing-price { font-size: 16px; }
   .home-listings-grid .listing-price-sub { font-size: 10.5px; }
-  .home-listings-grid .listing-title { font-size: 12.5px; margin-bottom: 4px; -webkit-line-clamp: 1; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-  .home-listings-grid .listing-loc { font-size: 11px; margin-bottom: 8px; }
-  .home-listings-grid .listing-meta { padding-top: 8px; gap: 8px; font-size: 10.5px; flex-wrap: wrap; }
+  .home-listings-grid .listing-title {
+    font-size: 12.5px; margin-bottom: 4px; -webkit-line-clamp: 2; display: -webkit-box;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .home-listings-grid .listing-loc { font-size: 11px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .home-listings-grid .listing-meta { padding-top: 8px; gap: 6px 8px; font-size: 10.5px; flex-wrap: wrap; }
   .home-listings-grid .badge { padding: 3px 7px; font-size: 9px; }
-  .home-listings-grid .listing-fav { width: 32px; height: 32px; }
+  .home-listings-grid .listing-fav { width: 40px; height: 40px; }
   .home-listings-grid .price-tag { font-size: 9.5px; padding: 3px 7px; }
-  @media (max-width: 1024px) { .home-listings-grid { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 640px) { .home-listings-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+  /* :hover already gives desktop cards elevation (shared .listing-card rule above);
+     this adds the touch-equivalent press feedback :hover doesn't reliably give on mobile. */
+  .home-listings-grid .listing-card:active { transform: scale(0.98); box-shadow: var(--shadow-sm); }
+  @media (max-width: 1024px) { .home-listings-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+  @media (max-width: 640px) { .home-listings-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; } }
 
   /* ============ SECTION ============ */
   section { padding: 100px 32px; display: none; }
