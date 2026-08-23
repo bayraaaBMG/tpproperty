@@ -33,12 +33,168 @@
     // Render either way — a failed fetch (e.g. rules not yet published for this
     // collection) should still show the empty state instead of leaving the grid
     // as the raw "Rendered by JS" placeholder comment forever.
+    populateNewdevFilterOptions();
     renderProjectsGrid();
+  }
+
+  // ===== FILTER SIDEBAR — completion date and developer are free-text fields on the
+  // real Firestore schema (no structured year/enum), so their dropdown options are built
+  // from the distinct values actually present in `projects` rather than any fixed/fake list. =====
+  const ndActiveUnitTypes = [];
+  let newdevSort = 'default';
+
+  function populateNewdevFilterOptions() {
+    const districtSel = document.getElementById('ndDistrict');
+    if (districtSel) {
+      districtSel.innerHTML = '<option value="all">Бүх дүүрэг</option>' +
+        Object.keys(NEWDEV_DISTRICT_LABELS).map(k => `<option value="${k}">${NEWDEV_DISTRICT_LABELS[k]}</option>`).join('');
+    }
+    const completionSel = document.getElementById('ndCompletion');
+    if (completionSel) {
+      const values = [...new Set(projects.map(p => p.completionDate).filter(Boolean))].sort();
+      completionSel.innerHTML = '<option value="all">Бүгд</option>' +
+        values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    }
+    const devSel = document.getElementById('ndDeveloper');
+    if (devSel) {
+      const values = [...new Set(projects.map(p => p.company).filter(Boolean))].sort();
+      devSel.innerHTML = '<option value="all">Бүгд</option>' +
+        values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    }
+    const toggleWrap = document.getElementById('ndUnitTypeToggles');
+    if (toggleWrap) {
+      toggleWrap.innerHTML = NEWDEV_UNIT_TYPE_ORDER.map(t => `
+        <button type="button" class="filter-toggle" data-ndunittype="${t}">${NEWDEV_UNIT_TYPE_LABELS[t]}</button>
+      `).join('');
+      toggleWrap.querySelectorAll('.filter-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = btn.dataset.ndunittype;
+          btn.classList.toggle('active');
+          const i = ndActiveUnitTypes.indexOf(t);
+          if (btn.classList.contains('active')) { if (i === -1) ndActiveUnitTypes.push(t); }
+          else if (i > -1) ndActiveUnitTypes.splice(i, 1);
+          applyNewdevFilters();
+        });
+      });
+    }
+  }
+
+  function getFilteredProjects() {
+    let results = projects.slice();
+    const q = (document.getElementById('ndSearch')?.value || '').trim().toLowerCase();
+    if (q) {
+      results = results.filter(p => {
+        const haystack = [p.projectName, p.company, ndDistrictLabel(p.district), p.address, p.completionDate].join(' ').toLowerCase();
+        return q.split(/\s+/).every(word => haystack.includes(word));
+      });
+    }
+    const district = document.getElementById('ndDistrict')?.value || 'all';
+    if (district !== 'all') results = results.filter(p => p.district === district);
+    const priceMin = parseFloat(document.getElementById('ndPriceMin')?.value) || 0;
+    const priceMax = parseFloat(document.getElementById('ndPriceMax')?.value) || Infinity;
+    if (priceMin || priceMax !== Infinity) results = results.filter(p => (p.pricePerSqm || 0) >= priceMin && (p.pricePerSqm || 0) <= priceMax);
+    const completion = document.getElementById('ndCompletion')?.value || 'all';
+    if (completion !== 'all') results = results.filter(p => p.completionDate === completion);
+    const developer = document.getElementById('ndDeveloper')?.value || 'all';
+    if (developer !== 'all') results = results.filter(p => p.company === developer);
+    if (ndActiveUnitTypes.length) results = results.filter(p => Array.isArray(p.unitTypes) && ndActiveUnitTypes.some(t => p.unitTypes.includes(t)));
+
+    if (newdevSort === 'price-asc') results.sort((a, b) => (a.pricePerSqm || 0) - (b.pricePerSqm || 0));
+    else if (newdevSort === 'price-desc') results.sort((a, b) => (b.pricePerSqm || 0) - (a.pricePerSqm || 0));
+
+    return results;
+  }
+
+  function newdevActiveFilterCount() {
+    let n = 0;
+    if ((document.getElementById('ndDistrict')?.value || 'all') !== 'all') n++;
+    if (document.getElementById('ndPriceMin')?.value) n++;
+    if (document.getElementById('ndPriceMax')?.value) n++;
+    if ((document.getElementById('ndCompletion')?.value || 'all') !== 'all') n++;
+    if ((document.getElementById('ndDeveloper')?.value || 'all') !== 'all') n++;
+    n += ndActiveUnitTypes.length;
+    return n;
+  }
+
+  function renderNewdevActiveTags() {
+    const wrap = document.getElementById('newdevActiveFilterTags');
+    if (!wrap) return;
+    const tags = [];
+    const districtVal = document.getElementById('ndDistrict')?.value;
+    if (districtVal && districtVal !== 'all') tags.push({ label: ndDistrictLabel(districtVal), clear: () => { document.getElementById('ndDistrict').value = 'all'; } });
+    const q = document.getElementById('ndSearch')?.value;
+    if (q) tags.push({ label: '"' + q + '"', clear: () => { document.getElementById('ndSearch').value = ''; } });
+    const priceMin = document.getElementById('ndPriceMin')?.value;
+    if (priceMin) tags.push({ label: priceMin + '+сая ₮/м²', clear: () => { document.getElementById('ndPriceMin').value = ''; } });
+    const priceMax = document.getElementById('ndPriceMax')?.value;
+    if (priceMax) tags.push({ label: '≤' + priceMax + 'сая ₮/м²', clear: () => { document.getElementById('ndPriceMax').value = ''; } });
+    const completionVal = document.getElementById('ndCompletion')?.value;
+    if (completionVal && completionVal !== 'all') tags.push({ label: completionVal, clear: () => { document.getElementById('ndCompletion').value = 'all'; } });
+    const devVal = document.getElementById('ndDeveloper')?.value;
+    if (devVal && devVal !== 'all') tags.push({ label: devVal, clear: () => { document.getElementById('ndDeveloper').value = 'all'; } });
+    ndActiveUnitTypes.slice().forEach(t => tags.push({
+      label: NEWDEV_UNIT_TYPE_LABELS[t] || t,
+      clear: () => {
+        const i = ndActiveUnitTypes.indexOf(t);
+        if (i > -1) ndActiveUnitTypes.splice(i, 1);
+        document.querySelectorAll('#ndUnitTypeToggles .filter-toggle').forEach(el => el.classList.toggle('active', ndActiveUnitTypes.includes(el.dataset.ndunittype)));
+      }
+    }));
+    if (tags.length === 0) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = tags.map((t, i) => `
+      <span class="active-filter-chip" onclick="newdevClearTag(${i})">
+        ${esc(t.label)}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </span>
+    `).join('') + `<button type="button" class="active-filter-clear-all" onclick="resetNewdevFilters()">Бүгдийг арилгах</button>`;
+    window._newdevTagClears = tags.map(t => t.clear);
+  }
+  function newdevClearTag(i) {
+    const fn = window._newdevTagClears && window._newdevTagClears[i];
+    if (fn) fn();
+    applyNewdevFilters();
+  }
+
+  function applyNewdevFilters() {
+    renderProjectsGrid();
+  }
+
+  function resetNewdevFilters() {
+    ['ndSearch', 'ndPriceMin', 'ndPriceMax'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['ndDistrict', 'ndCompletion', 'ndDeveloper'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'all'; });
+    ndActiveUnitTypes.length = 0;
+    document.querySelectorAll('#ndUnitTypeToggles .filter-toggle').forEach(el => el.classList.remove('active'));
+    newdevSort = 'default';
+    const sortEl = document.getElementById('newdevSortSelect'); if (sortEl) sortEl.value = 'default';
+    applyNewdevFilters();
+  }
+
+  function setNewdevSorting(val) {
+    newdevSort = val;
+    applyNewdevFilters();
+  }
+
+  function openNewdevFilterSheet() {
+    document.getElementById('newdevSidebar')?.classList.add('open');
+    document.getElementById('newdevSidebarOverlay')?.classList.add('open');
+  }
+  function closeNewdevFilterSheet() {
+    document.getElementById('newdevSidebar')?.classList.remove('open');
+    document.getElementById('newdevSidebarOverlay')?.classList.remove('open');
   }
 
   function renderProjectsGrid() {
     const el = document.getElementById('newdevGrid');
     if (!el) return;
+    const items = getFilteredProjects();
+    const countEl = document.getElementById('newdevFilterCount');
+    if (countEl) countEl.textContent = items.length;
+    const mfCount = document.getElementById('newdevMobileFilterCount');
+    if (mfCount) {
+      const n = newdevActiveFilterCount();
+      mfCount.textContent = n > 0 ? ` (${n})` : '';
+    }
     if (projects.length === 0) {
       el.innerHTML = `
         <div class="newdev-empty" style="grid-column:1/-1;">
@@ -49,7 +205,19 @@
       `;
       return;
     }
-    el.innerHTML = projects.map(projectCard).join('');
+    if (items.length === 0) {
+      el.innerHTML = `
+        <div class="newdev-empty" style="grid-column:1/-1;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;margin:0 auto 12px;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">Тохирох төсөл олдсонгүй</div>
+          <div style="font-size:13px;max-width:320px;margin:0 auto 20px;">Шүүлтүүрийн нөхцлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.</div>
+          <button class="btn btn-blue" onclick="resetNewdevFilters()">Шүүлтүүр цэвэрлэх</button>
+        </div>
+      `;
+      return;
+    }
+    el.innerHTML = items.map(projectCard).join('');
+    renderNewdevActiveTags();
   }
 
   function projectCard(p) {
@@ -869,6 +1037,7 @@
       return;
     }
 
+    populateNewdevFilterOptions();
     renderProjectsGrid();
     addProjectState.step = 4;
     document.getElementById('modalContent').innerHTML = renderAddProject();

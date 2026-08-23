@@ -1,208 +1,204 @@
-﻿  // ===== RENT LISTINGS DATA =====
-  const rentListings = [
-    {
-      id: 'r1', type: 'monthly',
-      title: 'Зайсан, тавилгатай 2 өрөө',
-      loc: 'Хан-Уул, 11-р хороо · Зайсан',
-      price: 1.8, // сая ₮/сар
-      deposit: 3.6, // сая ₮ (хоёр сарын)
-      area: 65, rooms: 2,
-      features: ['Тавилгатай', 'Цахилгаан хэрэгсэлтэй', 'Wi-Fi орсон'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80'
-    },
-    {
-      id: 'r2', type: 'monthly',
-      title: 'Сүхбаатар, төв байр, ганц өрөө',
-      loc: 'Сүхбаатар, 1-р хороо',
-      price: 1.4,
-      deposit: 2.8,
-      area: 42, rooms: 1,
-      features: ['Тавилгатай', 'Цэвэрхэн', 'Лифттэй'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80'
-    },
-    {
-      id: 'r3', type: 'monthly',
-      title: 'Чингэлтэй, шинэ барилга 3 өрөө',
-      loc: 'Чингэлтэй, 4-р хороо',
-      price: 2.2,
-      deposit: 4.4,
-      area: 78, rooms: 3,
-      features: ['Тавилгатай', 'Паркинг', 'Гэр бүлд тохиромжтой'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80'
-    },
-    {
-      id: 'r4', type: 'daily',
-      title: 'Зайсан, Airbnb стандарт студио',
-      loc: 'Хан-Уул, Зайсан · Богино хугацааны',
-      price: 0.18, // сая ₮/хоног (180,000 ₮)
-      deposit: 0.5,
-      area: 38, rooms: 1,
-      features: ['Үйлчилгээтэй', 'Цэвэрлэгээ', 'Цай, кофе'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80'
-    },
-    {
-      id: 'r5', type: 'monthly',
-      title: 'Яармаг, тагт орон сууц',
-      loc: 'Хан-Уул, Яармаг',
-      price: 3.5,
-      deposit: 7.0,
-      area: 140, rooms: 4,
-      features: ['Тавилгатай', 'Гараж', 'Хашаатай', 'Цэцэрлэг'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80'
-    },
-    {
-      id: 'r6', type: 'daily',
-      title: 'Сүхбаатар, бизнес айлчилгаанд',
-      loc: 'Сүхбаатар · Чингисийн өргөн чөлөө',
-      price: 0.22,
-      deposit: 0.6,
-      area: 52, rooms: 2,
-      features: ['Тавилгатай', 'Үйлчилгээтэй', 'Бизнес центр ойр'],
-      protected: true,
-      img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80'
-    }
-  ];
+  // ===== RENT PAGE — unified marketplace design system (same search/sidebar/grid shell
+  // as the Listings page), now sourced from the same real `listings` array (cat==='rent')
+  // instead of a separate hardcoded demo dataset. Real user-submitted rentals were already
+  // being mirrored into the old `rentListings` array by doSubmitListing() (my-listings.js)
+  // purely so this page could show them — now that this page reads `listings` directly,
+  // that mirroring is redundant but harmless to leave in place (kept unused rather than
+  // risk touching doSubmitListing's real submit path for this round). =====
+  const rentListings = []; // kept declared — my-listings.js's mirroring code still checks `typeof rentListings !== 'undefined'`
 
-  function renderRentListings(type) {
+  let rentSort = 'default';
+  const rentActiveToggles = [];
+
+  function rentDistrictLabel(code) {
+    const labels = {
+      'khan-uul': 'Хан-Уул', 'sukhbaatar': 'Сүхбаатар', 'chingeltei': 'Чингэлтэй',
+      'bayanzurkh': 'Баянзүрх', 'bayangol': 'Баянгол', 'songinokhairkhan': 'Сонгинохайрхан',
+      'nalaikh': 'Налайх', 'bagakhangai': 'Багахангай', 'baganuur': 'Багануур'
+    };
+    return labels[code] || code;
+  }
+
+  function getFilteredRentListings() {
+    let results = listings.filter(l => l.cat === 'rent' && !l._inactive);
+    const q = (document.getElementById('rfSearch')?.value || '').trim().toLowerCase();
+    if (q) {
+      results = results.filter(l => {
+        const haystack = [l.title, l.loc, l.district, String(l.rooms), l.description || ''].join(' ').toLowerCase();
+        return q.split(/\s+/).every(word => haystack.includes(word));
+      });
+    }
+    const district = document.getElementById('rfDistrict')?.value || 'all';
+    if (district !== 'all') results = results.filter(l => l.district === district);
+    const priceMin = parseFloat(document.getElementById('rfPriceMin')?.value) || 0;
+    const priceMax = parseFloat(document.getElementById('rfPriceMax')?.value) || Infinity;
+    results = results.filter(l => l.price >= priceMin && l.price <= priceMax);
+    const areaMin = parseFloat(document.getElementById('rfAreaMin')?.value) || 0;
+    const areaMax = parseFloat(document.getElementById('rfAreaMax')?.value) || Infinity;
+    results = results.filter(l => l.area >= areaMin && l.area <= areaMax);
+    const rooms = document.getElementById('rfRooms')?.value || 'all';
+    if (rooms !== 'all') {
+      const r = parseInt(rooms);
+      results = results.filter(l => typeof l.rooms === 'number' && (r === 4 ? l.rooms >= 4 : l.rooms === r));
+    }
+    const depositMax = parseFloat(document.getElementById('rfDepositMax')?.value);
+    if (depositMax) results = results.filter(l => !l.deposit || l.deposit <= depositMax);
+    const minTerm = document.getElementById('rfMinTerm')?.value || '';
+    if (minTerm) {
+      const minTermLabels = { '1m': '1 сар', '3m': '3 сар', '6m': '6 сар', '1y': '1 жил+' };
+      results = results.filter(l => l.minTerm === minTermLabels[minTerm]);
+    }
+    if (rentActiveToggles.includes('furnished')) results = results.filter(l =>
+      (l.condition && l.condition.toLowerCase().includes('тавилга')) ||
+      (Array.isArray(l.features) && l.features.some(f => f === 'furnished' || (typeof f === 'string' && f.toLowerCase().includes('тавилга'))))
+    );
+    if (rentActiveToggles.includes('verified')) results = results.filter(l => l.sellerVerified === true || l.listingVerified === true);
+    if (rentActiveToggles.includes('parking')) results = results.filter(l =>
+      (l.parking && !l.parking.includes('Байхгүй') && !l.parking.includes('Хамаарахгүй')) ||
+      (Array.isArray(l.features) && l.features.includes('parking'))
+    );
+
+    if (rentSort === 'price-asc') results.sort((a, b) => a.price - b.price);
+    else if (rentSort === 'price-desc') results.sort((a, b) => b.price - a.price);
+    else if (rentSort === 'area-desc') results.sort((a, b) => b.area - a.area);
+    else results.sort((a, b) => (b._bumpedAt || b.id) - (a._bumpedAt || a.id));
+
+    return results;
+  }
+
+  // Kept as the entry point doSubmitListing() (my-listings.js) already calls after a real
+  // rent submission — the old `type` tab argument no longer applies (tabs replaced by the
+  // sidebar's real minTerm/district/price filters) and is simply ignored.
+  function renderRentListings() {
     const grid = document.getElementById('rentGrid');
     if (!grid) return;
-    const items = type === 'all' ? rentListings : rentListings.filter(r => r.type === type);
+    const items = getFilteredRentListings();
+    const countEl = document.getElementById('rentFilterCount');
+    if (countEl) countEl.textContent = items.length;
+    const mfCount = document.getElementById('rentMobileFilterCount');
+    if (mfCount) {
+      const n = rentActiveFilterCount();
+      mfCount.textContent = n > 0 ? ` (${n})` : '';
+    }
     if (items.length === 0) {
-      grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px; color:var(--ink-3);">Энэ ангилалд зар олдсонгүй</div>';
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 24px;color:var(--ink-3);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:14px;opacity:0.3;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">Тохирох түрээсийн зар олдсонгүй</div>
+        <div style="font-size:13px;max-width:320px;margin:0 auto 20px;">Шүүлтүүрийн нөхцөлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.</div>
+        <button class="btn btn-blue" onclick="resetRentFilters()">Шүүлтүүр цэвэрлэх</button>
+      </div>`;
       return;
     }
-    grid.innerHTML = items.map(r => {
-      const priceDisplay = r.type === 'daily' ?
-        `${(r.price * 1000).toFixed(0)} мянга ₮` :
-        `${r.price.toFixed(1)} сая ₮`;
-      const period = r.type === 'daily' ? '/хоног' : '/сар';
-      const depositDisplay = r.type === 'daily' ?
-        `Барьцаа ${(r.deposit * 1000).toFixed(0)} мянга` :
-        `Барьцаа ${r.deposit.toFixed(1)} сая`;
-      return `
-        <article class="rent-card" onclick="openRentDetail('${r.id}')">
-          <div class="rent-img">
-            <img src="${r.img}" alt="${r.title}" loading="lazy" />
-            <span class="rent-type-badge ${r.type}">${r.type === 'monthly' ? 'Сарын' : 'Хоногийн'}</span>
-          </div>
-          <div class="rent-body">
-            <div class="rent-price-row">
-              <div>
-                <div class="rent-price">${priceDisplay}<span class="rent-price-period">${period}</span></div>
-              </div>
-              <span class="rent-deposit">${depositDisplay}</span>
-            </div>
-            <h3 class="rent-title">${r.title}</h3>
-            <div class="rent-loc">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:middle; margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              ${r.loc}
-            </div>
-            <div class="rent-features">
-              ${r.features.slice(0, 3).map(f => `<span class="rent-feature">${f}</span>`).join('')}
-            </div>
-            <div class="rent-meta">
-              <span><strong>${r.area}</strong> м²</span>
-              <span><strong>${r.rooms}</strong> өрөө</span>
-              <span style="margin-left:auto; color:var(--primary); font-weight:700;">Дэлгэрэнгүй →</span>
-            </div>
-          </div>
-        </article>
-      `;
-    }).join('');
+    grid.innerHTML = items.map(l => listingCardHtml(l, { fullFeatures: true })).join('');
+    renderRentActiveTags();
   }
 
-  function openRentDetail(id) {
-    // Real user-submitted rentals are mirrored into this list with a "u"-prefixed id (see
-    // doSubmitListing in my-listings.js) — route those to the real listing detail modal
-    // (openListing in listing-detail.js), which already has working contact/chat/report
-    // functionality, instead of duplicating a second, thinner detail view here.
-    if (typeof id === 'string' && id.charAt(0) === 'u') {
-      const numId = parseInt(id.slice(1), 10);
-      if (!isNaN(numId) && typeof listings !== 'undefined' && listings.some(l => l.id === numId)) {
-        openListing(numId);
-        return;
+  function rentActiveFilterCount() {
+    let n = 0;
+    if ((document.getElementById('rfDistrict')?.value || 'all') !== 'all') n++;
+    if (document.getElementById('rfPriceMin')?.value) n++;
+    if (document.getElementById('rfPriceMax')?.value) n++;
+    if (document.getElementById('rfAreaMin')?.value) n++;
+    if (document.getElementById('rfAreaMax')?.value) n++;
+    if ((document.getElementById('rfRooms')?.value || 'all') !== 'all') n++;
+    if (document.getElementById('rfDepositMax')?.value) n++;
+    if (document.getElementById('rfMinTerm')?.value) n++;
+    n += rentActiveToggles.length;
+    return n;
+  }
+
+  function renderRentActiveTags() {
+    const wrap = document.getElementById('rentActiveFilterTags');
+    if (!wrap) return;
+    const tags = [];
+    const districtVal = document.getElementById('rfDistrict')?.value;
+    if (districtVal && districtVal !== 'all') tags.push({ label: rentDistrictLabel(districtVal), clear: () => { document.getElementById('rfDistrict').value = 'all'; } });
+    const q = document.getElementById('rfSearch')?.value;
+    if (q) tags.push({ label: '"' + q + '"', clear: () => { document.getElementById('rfSearch').value = ''; } });
+    const priceMin = document.getElementById('rfPriceMin')?.value;
+    if (priceMin) tags.push({ label: priceMin + '+сая ₮/сар', clear: () => { document.getElementById('rfPriceMin').value = ''; } });
+    const priceMax = document.getElementById('rfPriceMax')?.value;
+    if (priceMax) tags.push({ label: '≤' + priceMax + 'сая ₮/сар', clear: () => { document.getElementById('rfPriceMax').value = ''; } });
+    const rooms = document.getElementById('rfRooms')?.value;
+    if (rooms && rooms !== 'all') tags.push({ label: rooms + '+ өрөө', clear: () => { document.getElementById('rfRooms').value = 'all'; } });
+    const toggleLabels = { furnished: 'Тавилгатай', verified: 'Баталгаажсан', parking: 'Паркингтай' };
+    rentActiveToggles.slice().forEach(t => tags.push({
+      label: toggleLabels[t] || t,
+      clear: () => {
+        const i = rentActiveToggles.indexOf(t);
+        if (i > -1) rentActiveToggles.splice(i, 1);
+        document.querySelectorAll('#rentSidebar .filter-toggle').forEach(el => el.classList.toggle('active', rentActiveToggles.includes(el.dataset.rftoggle)));
       }
-    }
-    const r = rentListings.find(x => x.id === id);
-    if (!r) return;
-    const priceDisplay = r.type === 'daily' ?
-      `${(r.price * 1000).toFixed(0)} мянга ₮ / хоног` :
-      `${r.price.toFixed(1)} сая ₮ / сар`;
-    document.getElementById('modalContent').innerHTML = `
-      <button class="modal-close" onclick="closeModal()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-      <img class="modal-img" src="${r.img}" alt="${r.title}" />
-      <div class="modal-body">
-        <span class="badge demo" style="margin-bottom:10px;">Жишээ зар</span>
-        <h2 class="modal-title">${r.title}</h2>
-        <div class="modal-loc">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${r.loc}
-        </div>
-
-        <div style="background:linear-gradient(135deg, rgba(0,212,170,0.1), rgba(30,91,255,0.05)); border:1px solid rgba(0,212,170,0.25); padding:20px; border-radius:14px; margin-bottom:24px;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline;">
-            <div style="font-family:'Fraunces', serif; font-size:28px; font-weight:700; color:var(--primary-deep);">${priceDisplay}</div>
-            <div style="font-size:13px; color:var(--ink-2); font-weight:600;">Барьцаа: ${r.type === 'daily' ? (r.deposit * 1000).toFixed(0) + ' мянга ₮' : r.deposit.toFixed(1) + ' сая ₮'}</div>
-          </div>
-        </div>
-
-        <div class="modal-info-grid">
-          <div class="info-card">
-            <div class="info-card-label">Талбай</div>
-            <div class="info-card-value">${r.area} м²</div>
-          </div>
-          <div class="info-card">
-            <div class="info-card-label">Өрөө</div>
-            <div class="info-card-value">${r.rooms}</div>
-          </div>
-          <div class="info-card">
-            <div class="info-card-label">Төрөл</div>
-            <div class="info-card-value">${r.type === 'monthly' ? 'Сарын' : 'Хоногийн'}</div>
-          </div>
-        </div>
-
-        <div class="modal-section">
-          <h4>Түрээслэхэд туслах хэрэгслүүд</h4>
-          <div style="background:var(--paper-2); padding:18px; border-radius:12px;">
-            <div style="display:grid; gap:10px;">
-              <div style="display:flex; gap:10px; align-items:start;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#009878" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>
-                <div style="font-size:13.5px; line-height:1.5;">Стандарт түрээсийн гэрээний загварыг үзэж, ашиглаж болно.</div>
-              </div>
-              <div style="display:flex; gap:10px; align-items:start;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#009878" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>
-                <div style="font-size:13.5px; line-height:1.5;">Зарын мэдээллийг өөрөө нягтлан шалгаарай — үнэ, талбай, байршил бодит эсэхийг.</div>
-              </div>
-              <div style="display:flex; gap:10px; align-items:start;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#009878" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;"><polyline points="20 6 9 17 4 12"/></svg>
-                <div style="font-size:13.5px; line-height:1.5;">Сэжигтэй зар бол шууд мэдээлж болно.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-section">
-          <h4>Онцлогууд</h4>
-          <div style="display:flex; flex-wrap:wrap; gap:8px;">
-            ${r.features.map(f => `<span style="padding:7px 14px; background:var(--primary-soft); color:var(--primary-deep); border-radius:100px; font-size:13px; font-weight:600;">${f}</span>`).join('')}
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn btn-primary btn-lg" onclick="openContractTemplate()">
-            Гэрээ загвар үзэх
-          </button>
-        </div>
-      </div>
-    `;
-    document.getElementById('modal').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    }));
+    if (tags.length === 0) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = tags.map((t, i) => `
+      <span class="active-filter-chip" onclick="rentClearTag(${i})">
+        ${esc(t.label)}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </span>
+    `).join('') + `<button type="button" class="active-filter-clear-all" onclick="resetRentFilters()">Бүгдийг арилгах</button>`;
+    window._rentTagClears = tags.map(t => t.clear);
+  }
+  function rentClearTag(i) {
+    const fn = window._rentTagClears && window._rentTagClears[i];
+    if (fn) fn();
+    applyRentFilters();
   }
 
+  function applyRentFilters() {
+    renderRentListings();
+  }
+
+  function resetRentFilters() {
+    ['rfSearch', 'rfPriceMin', 'rfPriceMax', 'rfAreaMin', 'rfAreaMax', 'rfDepositMax'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['rfDistrict', 'rfRooms'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'all'; });
+    const minTermEl = document.getElementById('rfMinTerm'); if (minTermEl) minTermEl.value = '';
+    rentActiveToggles.length = 0;
+    document.querySelectorAll('#rentSidebar .filter-toggle').forEach(el => el.classList.remove('active'));
+    rentSort = 'default';
+    const sortEl = document.getElementById('rentSortSelect'); if (sortEl) sortEl.value = 'default';
+    applyRentFilters();
+  }
+
+  function setRentSorting(val) {
+    rentSort = val;
+    applyRentFilters();
+  }
+
+  function setRentView(mode) {
+    const grid = document.getElementById('rentGrid');
+    if (!grid) return;
+    grid.classList.toggle('view-list', mode === 'list');
+    document.querySelectorAll('#rent .lrh-view-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.view === mode));
+  }
+
+  function openRentFilterSheet() {
+    document.getElementById('rentSidebar')?.classList.add('open');
+    document.getElementById('rentSidebarOverlay')?.classList.add('open');
+  }
+  function closeRentFilterSheet() {
+    document.getElementById('rentSidebar')?.classList.remove('open');
+    document.getElementById('rentSidebarOverlay')?.classList.remove('open');
+  }
+
+  document.querySelectorAll('#rentSidebar .filter-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const f = btn.dataset.rftoggle;
+      btn.classList.toggle('active');
+      const i = rentActiveToggles.indexOf(f);
+      if (btn.classList.contains('active')) { if (i === -1) rentActiveToggles.push(f); }
+      else if (i > -1) rentActiveToggles.splice(i, 1);
+      applyRentFilters();
+    });
+  });
+  ['rfDistrict', 'rfRooms', 'rfMinTerm'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', applyRentFilters);
+  });
+
+  // Real listing detail modal — every card on this page is now a real `listings` entry
+  // (no separate thinner detail view needed, unlike the old fake-data rentListings system).
+  function openRentDetail(id) {
+    if (typeof id === 'string' && id.charAt(0) === 'u') id = parseInt(id.slice(1), 10);
+    if (typeof openListing === 'function') openListing(id);
+  }

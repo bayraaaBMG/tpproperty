@@ -1105,12 +1105,9 @@
 <!-- ============ RENT SECTION ============ -->
 <section class="rent-section" id="rent">
   <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">Түрээсийн платформ</span>
-        <h2 class="section-title display"><em>Түрээслэгчдэд</em> ээлтэй платформ</h2>
-      </div>
-      <p class="section-sub">Баталгаажсан эзэнтэй (✓) зар, стандарт гэрээний загвар, луйврын эсрэг мэдээлэх систем — түрээслэхдээ бэлдээрэй.</p>
+    <div class="listings-page-head">
+      <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Түрээс</span></div>
+      <h1 class="listings-page-title display">Түрээслүүлэх <em>зарууд</em></h1>
     </div>
 
     <div class="rent-cta">
@@ -1124,14 +1121,141 @@
       </a>
     </div>
 
-    <div class="rent-tabs">
-      <button class="rent-tab active" data-rent-type="all">Бүгд</button>
-      <button class="rent-tab" data-rent-type="monthly">Сарын түрээс</button>
-      <button class="rent-tab" data-rent-type="daily">Богино хугацааны</button>
+    <!-- Compact search bar (same component classes as Listings) -->
+    <div class="listings-search-bar">
+      <div class="hs-keyword-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="rfSearch" aria-label="Хайлтын үг" placeholder="Хотхон, хороолол, гарчиг…" oninput="applyRentFilters()" onkeydown="if(event.key==='Enter') applyRentFilters()" />
+      </div>
+      <button type="button" class="btn btn-blue hs-search-btn" onclick="applyRentFilters()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Хайх</span>
+      </button>
+      <button type="button" class="hs-adv-toggle lsb-mobile-filter-btn" id="rentMobileFilterBtn" onclick="openRentFilterSheet()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <span>Шүүлтүүр<span id="rentMobileFilterCount"></span></span>
+      </button>
     </div>
 
-    <div class="rent-grid" id="rentGrid">
-      <!-- Rendered by JS -->
+    <div class="listings-layout">
+      <aside class="listings-sidebar" id="rentSidebar">
+        <div class="ls-sidebar-head">
+          <span>Шүүлтүүр</span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="filter-reset" onclick="resetRentFilters()">Цэвэрлэх</button>
+            <button type="button" class="ls-sidebar-close" onclick="closeRentFilterSheet()" aria-label="Хаах">×</button>
+          </div>
+        </div>
+        <div class="ls-sidebar-scroll">
+          <details class="filter-section" open>
+            <summary>Байршил</summary>
+            <div class="filter-section-body">
+              <select id="rfDistrict">
+                <option value="all">Бүх дүүрэг</option>
+                <option value="khan-uul">Хан-Уул</option>
+                <option value="sukhbaatar">Сүхбаатар</option>
+                <option value="chingeltei">Чингэлтэй</option>
+                <option value="bayanzurkh">Баянзүрх</option>
+                <option value="bayangol">Баянгол</option>
+                <option value="songinokhairkhan">Сонгинохайрхан</option>
+                <option value="nalaikh">Налайх</option>
+                <option value="bagakhangai">Багахангай</option>
+                <option value="baganuur">Багануур</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section" open>
+            <summary>Сарын үнэ (сая ₮)</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="rfPriceMin" aria-label="Сарын үнэ, доод" placeholder="Доод" />
+                <span>—</span>
+                <input type="number" id="rfPriceMax" aria-label="Сарын үнэ, дээд" placeholder="Дээд" />
+              </div>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Талбай (м²)</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <input type="number" id="rfAreaMin" aria-label="Талбай, доод" placeholder="Доод" />
+                <span>—</span>
+                <input type="number" id="rfAreaMax" aria-label="Талбай, дээд" placeholder="Дээд" />
+              </div>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Өрөө</summary>
+            <div class="filter-section-body">
+              <select id="rfRooms">
+                <option value="all">Бүгд</option>
+                <option value="1">1 өрөө</option>
+                <option value="2">2 өрөө</option>
+                <option value="3">3 өрөө</option>
+                <option value="4">4+ өрөө</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Барьцаа (сая ₮ хүртэл)</summary>
+            <div class="filter-section-body">
+              <input type="number" id="rfDepositMax" aria-label="Барьцаа, дээд" placeholder="Жнь: 5" />
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Хамгийн бага хугацаа</summary>
+            <div class="filter-section-body">
+              <select id="rfMinTerm">
+                <option value="">Бүгд</option>
+                <option value="1m">1 сар</option>
+                <option value="3m">3 сар</option>
+                <option value="6m">6 сар</option>
+                <option value="1y">1 жил+</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section" open>
+            <summary>Нэмэлт</summary>
+            <div class="filter-section-body filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
+              <button class="filter-toggle" data-rftoggle="furnished">Тавилгатай</button>
+              <button class="filter-toggle" data-rftoggle="verified">Баталгаажсан</button>
+              <button class="filter-toggle" data-rftoggle="parking">Паркингтай</button>
+            </div>
+          </details>
+        </div>
+        <div class="ls-sidebar-footer">
+          <button type="button" class="btn btn-blue ls-apply-btn" onclick="applyRentFilters(); closeRentFilterSheet();">Хайх</button>
+        </div>
+      </aside>
+      <button type="button" class="listings-sidebar-overlay" id="rentSidebarOverlay" onclick="closeRentFilterSheet()" aria-label="Шүүлтүүр хаах" tabindex="-1"></button>
+
+      <div class="listings-main">
+        <div class="listings-results-header">
+          <div class="lrh-count"><strong id="rentFilterCount">0</strong> зар олдлоо</div>
+          <div class="lrh-actions">
+            <select id="rentSortSelect" onchange="setRentSorting(this.value)" aria-label="Эрэмбэлэх">
+              <option value="default">Шинэ зар</option>
+              <option value="price-asc">Үнэ өсөх</option>
+              <option value="price-desc">Үнэ буурах</option>
+              <option value="area-desc">Талбай</option>
+            </select>
+            <div class="lrh-view-toggle">
+              <button type="button" class="lrh-view-btn active" data-view="grid" onclick="setRentView('grid')" title="Grid харагдац" aria-label="Grid харагдац">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </button>
+              <button type="button" class="lrh-view-btn" data-view="list" onclick="setRentView('list')" title="List харагдац" aria-label="List харагдац">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="rentActiveFilterTags" style="display:none; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px;"></div>
+
+        <div class="rent-browse-grid" id="rentGrid">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1139,12 +1263,10 @@
 <!-- ============ NEW DEVELOPMENTS (Шинэ орон сууц) ============ -->
 <section class="newdev-section" id="newdev">
   <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">Барилгын компаниудын шинэ төслүүд</span>
-        <h2 class="section-title display">Шинээр <em>баригдаж</em> буй орон сууц</h2>
-      </div>
-      <p class="section-sub">Компаниас шууд, урьдчилсан захиалгаар авах боломжтой шинэ төслүүд — 1м² үнэ, давхарын төлөвлөгөө, төлбөрийн нөхцөлийн хамт.</p>
+
+    <div class="listings-page-head">
+      <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Шинэ орон сууц</span></div>
+      <h1 class="listings-page-title display">Шинээр <em>баригдаж</em> буй төслүүд</h1>
     </div>
 
     <div class="newdev-cta">
@@ -1158,9 +1280,95 @@
       </a>
     </div>
 
-    <div class="newdev-grid" id="newdevGrid">
-      <!-- Rendered by JS -->
+    <div class="listings-search-bar">
+      <div class="hs-keyword-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="ndSearch" aria-label="Хайлтын үг" placeholder="Төслийн нэр, компани, байршил…" oninput="applyNewdevFilters()" onkeydown="if(event.key==='Enter') applyNewdevFilters()" />
+      </div>
+      <button type="button" class="btn btn-blue hs-search-btn" onclick="applyNewdevFilters()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Хайх</span>
+      </button>
+      <button type="button" class="hs-adv-toggle lsb-mobile-filter-btn" id="newdevMobileFilterBtn" onclick="openNewdevFilterSheet()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <span>Шүүлтүүр<span id="newdevMobileFilterCount"></span></span>
+      </button>
     </div>
+
+    <div class="listings-layout">
+      <aside class="listings-sidebar" id="newdevSidebar">
+        <div class="ls-sidebar-head">
+          <span>Шүүлтүүр</span>
+          <button type="button" class="ls-sidebar-close" onclick="closeNewdevFilterSheet()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="ls-sidebar-scroll">
+          <details class="filter-section" open>
+            <summary>Байршил</summary>
+            <div class="filter-section-body">
+              <select class="form-select" id="ndDistrict" onchange="applyNewdevFilters()">
+                <option value="all">Бүх дүүрэг</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>1м² үнэ (сая ₮)</summary>
+            <div class="filter-section-body filter-range">
+              <input type="number" min="0" step="0.1" placeholder="Доод" id="ndPriceMin" oninput="applyNewdevFilters()" />
+              <span>—</span>
+              <input type="number" min="0" step="0.1" placeholder="Дээд" id="ndPriceMax" oninput="applyNewdevFilters()" />
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Ашиглалтад орох хугацаа</summary>
+            <div class="filter-section-body">
+              <select class="form-select" id="ndCompletion" onchange="applyNewdevFilters()">
+                <option value="all">Бүгд</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Барилгын компани</summary>
+            <div class="filter-section-body">
+              <select class="form-select" id="ndDeveloper" onchange="applyNewdevFilters()">
+                <option value="all">Бүгд</option>
+              </select>
+            </div>
+          </details>
+          <details class="filter-section">
+            <summary>Байрны төрөл</summary>
+            <div class="filter-section-body filter-toggles" id="ndUnitTypeToggles">
+              <!-- Rendered by JS from NEWDEV_UNIT_TYPE_ORDER -->
+            </div>
+          </details>
+        </div>
+        <div class="ls-sidebar-footer">
+          <button type="button" class="btn btn-blue ls-apply-btn" onclick="applyNewdevFilters(); closeNewdevFilterSheet();">Хайх</button>
+          <button type="button" class="filter-reset" onclick="resetNewdevFilters()">Цэвэрлэх</button>
+        </div>
+      </aside>
+
+      <div class="listings-main">
+        <div class="listings-results-header">
+          <div class="lrh-count"><strong id="newdevFilterCount">0</strong> төсөл олдлоо</div>
+          <div class="lrh-actions">
+            <select id="newdevSortSelect" onchange="setNewdevSorting(this.value)">
+              <option value="default">Шинээр нэмэгдсэн</option>
+              <option value="price-asc">Үнэ: багаас их</option>
+              <option value="price-desc">Үнэ: ихээс бага</option>
+            </select>
+          </div>
+        </div>
+        <div id="newdevActiveFilterTags" style="display:none; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px;"></div>
+
+        <div class="newdev-grid" id="newdevGrid">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div class="listings-sidebar-overlay" id="newdevSidebarOverlay" onclick="closeNewdevFilterSheet()"></div>
   </div>
 </section>
 
@@ -1440,12 +1648,10 @@
 <!-- ============ CALCULATOR ============ -->
 <section class="calc-section" id="calc">
   <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">Ухаалаг тооцоолуур</span>
-        <h2 class="section-title display">Зээлийн<br><em>сар бүрийн төлбөрөө</em> тооцоол</h2>
-      </div>
-      <p class="section-sub">Параметрүүдээ оруулаад сар бүрийн төлбөр, нийт хүү, орлогын дарамтаа тооцоол. Доор зарим томоохон банкны албан ёсны вэбсайтаас шалгасан нөхцөлийг («Шалгасан» тэмдэгтэй) харьцуулж үзээрэй.</p>
+    <div class="listings-page-head">
+      <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Тооцоолуур</span></div>
+      <h1 class="listings-page-title display">Зээлийн <em>тооцоолуур</em></h1>
+      <p style="font-size:13.5px; color:var(--ink-3); margin-top:6px; max-width:640px; line-height:1.5;">Параметрүүдээ оруулаад сар бүрийн төлбөр, нийт хүү, орлогын дарамтаа тооцоол. Доор зарим томоохон банкны албан ёсны вэбсайтаас шалгасан нөхцөлийг («Шалгасан» тэмдэгтэй) харьцуулж үзээрэй.</p>
     </div>
 
     <div class="calc-grid">

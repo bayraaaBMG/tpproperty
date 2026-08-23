@@ -70,6 +70,19 @@
     updateCompareBar();
   }
 
+  // Removing a listing from inside the open compare modal — re-renders the table with
+  // the item gone, or closes back out once fewer than 2 remain (the modal has nothing
+  // meaningful left to compare).
+  function removeFromCompareModal(id) {
+    removeFromCompare(id);
+    if (compareList.length < 2) {
+      closeModal();
+      showToast('Харьцуулахын тулд дор хаяж 2 байр сонгоно уу');
+    } else {
+      openCompareModal();
+    }
+  }
+
   function openCompareModal() {
     const props = compareList.map(id => listings.find(x => x.id === id));
 
@@ -100,10 +113,10 @@
       { label: 'Давхар', get: p => p.floor, best: () => false },
       { label: 'Барилгын он', get: p => p.year, best: p => typeof p.year === 'number' && p.year === maxYear },
       { label: 'Байршил', get: p => esc(p.loc), best: () => false },
-      { label: 'Паркинг', get: p => boolCell(!!p.parking), best: p => !!p.parking },
-      { label: 'Лифт', get: p => boolCell(!!p.elevator), best: p => !!p.elevator },
-      { label: 'Тавилга', get: p => boolCell(!!p.furniture), best: p => !!p.furniture },
-      { label: 'Ипотек', get: p => boolCell(loanEligible(p)), best: p => loanEligible(p) },
+      { label: 'Паркинг', get: p => boolCell(!!p.parking), best: () => false },
+      { label: 'Лифт', get: p => boolCell(!!p.elevator), best: () => false },
+      { label: 'Тавилга', get: p => boolCell(!!p.furniture), best: () => false },
+      { label: 'Ипотек', get: p => boolCell(loanEligible(p)), best: () => false },
       { label: 'СӨХ', get: p => typeof p.hoaFee === 'number' && p.hoaFee > 0 ? fmt(p.hoaFee) + ' ₮/сар' : '—', best: p => minHoa != null && p.hoaFee === minHoa },
       { label: 'Үнийн дүн шинжилгээ', get: p => {
           const v = aiVerdictFor(p);
@@ -121,8 +134,21 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
       <div style="padding:32px 24px;">
-        <span class="al-eyebrow">Харьцуулалт</span>
-        <div class="al-title" style="margin-bottom:20px;">${props.length} байрны харьцуулалт</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+          <div>
+            <span class="al-eyebrow">Харьцуулалт</span>
+            <div class="al-title" style="margin-bottom:0;">${props.length} байрны харьцуулалт</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-ghost" style="font-size:12.5px; padding:8px 14px;" onclick="closeModal(); showPage('listings');">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Өөр зар нэмэх
+            </button>
+            <button type="button" class="btn btn-ghost" style="font-size:12.5px; padding:8px 14px; color:var(--danger); border-color:rgba(255,71,87,0.3);" onclick="clearCompare(); closeModal();">
+              Бүгдийг цэвэрлэх
+            </button>
+          </div>
+        </div>
         <div style="overflow-x:auto;">
           <table class="compare-table-modal">
             <thead>
@@ -130,6 +156,9 @@
                 <th class="row-label"></th>
                 ${props.map(p => `
                   <th class="compare-prop-head">
+                    <button type="button" class="compare-prop-remove" title="Харьцуулалтаас хасах" onclick="removeFromCompareModal(${p.id})">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
                     <img class="compare-prop-img" src="${esc(p.img)}" alt="" />
                     <div class="compare-prop-title">${esc(p.title)}</div>
                     <div style="font-size:13px; font-weight:700; color:var(--primary); font-family:'Fraunces',serif;">${fmtPrice(p.price)}</div>
