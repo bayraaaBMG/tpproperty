@@ -84,32 +84,9 @@
       return { x, score };
     }).sort((a, b) => b.score - a.score).slice(0, max).map(s => s.x);
   }
-  function ldSimilarCardHtml(x) {
-    return `
-      <article class="listing-card" onclick="closeModal(); setTimeout(()=>openListing(${x.id}),200)">
-        <div class="listing-img">
-          <img src="${esc(x.img)}" alt="${esc(x.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
-          <button class="listing-fav ${favorites.includes(x.id) ? 'faved' : ''}" onclick="event.stopPropagation(); toggleFav(this, ${x.id})">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
-          </button>
-        </div>
-        <div class="listing-body">
-          <div class="listing-price-row">
-            <div>
-              <div class="listing-price">${fmtPrice(x.price)}</div>
-              <div class="listing-price-sub">${x.cat === 'rent' ? 'Сарын түрээс' : pricePerSqmText(x)}</div>
-            </div>
-          </div>
-          <h3 class="listing-title">${esc(x.title)}</h3>
-          <div class="listing-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(x.loc)}</div>
-          <div class="listing-meta">
-            <span class="listing-meta-item"><strong>${x.area}</strong> м²</span>
-            ${typeof x.rooms === 'number' ? `<span class="listing-meta-item"><strong>${x.rooms}</strong> өрөө</span>` : ''}
-          </div>
-        </div>
-      </article>
-    `;
-  }
+  // Similar listings reuse the exact same shared card component as the home page and
+  // the Listings page browse grid (listingCardHtml(), home.js) — one card look across
+  // the whole app, not a third bespoke template.
 
   // ===== MINI LOAN CALCULATOR — same amortization math and the same verified-only bank
   // data as the standalone /calc page (banks/SAFE_DTI, calc.js); this widget just gives an
@@ -216,7 +193,7 @@
 
     let verdict, color, reasoning, confLabel, confColor, basisLine;
     if (!valuation.available) {
-      verdict = 'Мэдээлэл хүрэлцэхгүй'; color = 'var(--ink-3)'; confLabel = null;
+      verdict = 'Зах зээлийн үнэлгээ хийхэд мэдээлэл хангалтгүй'; color = 'var(--ink-3)'; confLabel = null;
       basisLine = valuation.sampleSize
         ? `Одоогоор ${valuation.sampleSize} харьцуулах зар олдсон — найдвартай тооцоолол хийхэд хамгийн багадаа 2 хэрэгтэй.`
         : 'BairX дээр энэ төрлийн харьцуулах зар одоогоор алга.';
@@ -638,7 +615,7 @@
           <div class="modal-section">
             <h4>Ижил төстэй зарууд</h4>
             <div class="listings-grid ld-similar-grid">
-              ${similar.map(ldSimilarCardHtml).join('')}
+              ${similar.map(x => listingCardHtml(x)).join('')}
             </div>
           </div>
           ` : ''}

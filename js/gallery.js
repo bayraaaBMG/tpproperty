@@ -59,3 +59,18 @@
   function galleryNext() { galleryIndex = (galleryIndex + 1) % galleryImages.length; renderGallery(); }
   function galleryGoto(i) { galleryIndex = i; renderGallery(); }
 
+  // Desktop keyboard nav for both the fullscreen gallery and the listing-detail modal's
+  // inline carousel — skipped while a form control has focus so it doesn't hijack normal
+  // text-cursor/select arrow-key use.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (!document.getElementById('modal')?.classList.contains('open')) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (document.querySelector('.gallery-modal')) {
+      e.key === 'ArrowLeft' ? galleryPrev() : galleryNext();
+    } else if (document.querySelector('.mc-wrap')) {
+      e.key === 'ArrowLeft' ? mcPrev() : mcNext();
+    }
+  });
+

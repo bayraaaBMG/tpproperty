@@ -1115,9 +1115,7 @@
   .map-pin { width: 40px; height: 40px; background: var(--primary); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; box-shadow: 0 4px 14px rgba(30,91,255,0.4); }
   .map-pin svg { transform: rotate(45deg); }
 
-  /* Similar listings in modal */
-  .similar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  @media (max-width: 640px) { .similar-grid { grid-template-columns: 1fr 1fr; } .mc-thumb { width: 44px; height: 34px; } }
+  @media (max-width: 640px) { .mc-thumb { width: 44px; height: 34px; } }
 
   .modal-body { padding: 32px; }
   .modal-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
@@ -1223,7 +1221,7 @@
   }
 
   /* ============ LISTING DETAIL PAGE (2-column desktop layout) ============ */
-  .listing-modal { max-width: 1240px; }
+  .listing-modal { max-width: 1320px; } /* matches .section-inner's max-width elsewhere in the marketplace design system */
 
   .ld-header { padding: 28px 32px 0; }
   .ld-breadcrumb {
@@ -1292,9 +1290,32 @@
   .ld-mi-stat-label { font-size: 11px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
   .ld-mi-stat-val { font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--ink); }
 
-  /* Similar listings — reuses .listings-grid/.listing-card as-is; this modifier only
-     tightens the gap to suit the narrower modal column. */
-  .ld-similar-grid { gap: 16px; }
+  /* Similar listings — same shared listingCardHtml() card as home/Listings, styled
+     compact to match the unified marketplace design system. A distinct class from
+     .listings-browse-grid (Listings page) and .home-listings-grid (home) so none of the
+     three can leak into each other despite all sharing the base .listings-grid/
+     .listing-card rules. 3-4/row desktop, 2-3/row tablet, 2/row mobile (auto-fit floor
+     tuned so 2 never collapses to 1 in the modal's narrower column). */
+  .ld-similar-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+  .ld-similar-grid .listing-img { aspect-ratio: 4/3; }
+  .ld-similar-grid .listing-body { padding: 14px; }
+  .ld-similar-grid .listing-price { font-size: 17px; }
+  .ld-similar-grid .listing-price-sub { font-size: 11px; }
+  .ld-similar-grid .listing-title {
+    font-size: 13px; margin-bottom: 5px; -webkit-line-clamp: 2; display: -webkit-box;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ld-similar-grid .listing-loc { font-size: 11.5px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ld-similar-grid .listing-meta { display: flex; padding-top: 10px; gap: 6px 10px; font-size: 11px; flex-wrap: wrap; }
+  .ld-similar-grid .badge { padding: 3px 8px; font-size: 9.5px; }
+  .ld-similar-grid .listing-fav { width: 40px; height: 40px; }
+  .ld-similar-grid .price-tag { display: inline-block; font-size: 10px; padding: 3px 8px; }
+  @media (max-width: 900px) {
+    .ld-similar-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .ld-similar-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  }
 
   /* Mini loan calculator (sidebar) */
   .ld-calc {
