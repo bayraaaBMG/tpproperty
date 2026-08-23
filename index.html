@@ -134,80 +134,153 @@
 <section class="hero hero-compact" id="home">
   <div class="hero-compact-inner">
     <div class="home-search-bar">
-      <div class="home-cat-tabs" id="homeCatTabs">
-        <button type="button" class="home-cat-tab active" data-cat="all" onclick="setHomeCatTab('all')">Бүх категори</button>
-        <button type="button" class="home-cat-tab" data-cat="apartment" onclick="setHomeCatTab('apartment')">Орон сууц</button>
-        <button type="button" class="home-cat-tab" data-cat="rent" onclick="setHomeCatTab('rent')">Түрээс</button>
-        <button type="button" class="home-cat-tab" data-cat="office" onclick="setHomeCatTab('office')">Оффис</button>
-        <button type="button" class="home-cat-tab" data-cat="house" onclick="setHomeCatTab('house')">Хашаа байшин</button>
-        <button type="button" class="home-cat-tab" data-cat="land" onclick="setHomeCatTab('land')">Газар</button>
+      <div class="hs-top-row">
+        <div class="hs-primary-row">
+          <div class="hs-select-wrap hs-cat-select">
+            <svg class="hs-select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <select id="hSearchType" aria-label="Ангилал">
+              <option value="all">Ангилал</option>
+              <option value="apartment">Орон сууц</option>
+              <option value="rent">Түрээс</option>
+              <option value="office">Оффис</option>
+              <option value="house">Хашаа байшин</option>
+              <option value="land">Газар</option>
+            </select>
+            <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <div class="hs-keyword-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="hSearchKeyword" placeholder="Хотхон, хороолол, байр, зар хайх…" autocomplete="off" onkeydown="if(event.key==='Enter') performSearch()" />
+          </div>
+          <button type="button" class="btn btn-blue hs-search-btn" onclick="performSearch()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+            <span>Хайх</span>
+          </button>
+        </div>
+        <div class="hs-secondary-row">
+          <div class="hs-select-wrap hs-location-select">
+            <svg class="hs-select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <select id="hSearchDistrict" aria-label="Байршил">
+              <option value="all">Бүх байршил</option>
+              <option value="khan-uul">Хан-Уул</option>
+              <option value="sukhbaatar">Сүхбаатар</option>
+              <option value="chingeltei">Чингэлтэй</option>
+              <option value="bayanzurkh">Баянзүрх</option>
+              <option value="bayangol">Баянгол</option>
+              <option value="songinokhairkhan">Сонгинохайрхан</option>
+              <option value="nalaikh">Налайх</option>
+              <option value="bagakhangai">Багахангай</option>
+              <option value="baganuur">Багануур</option>
+            </select>
+            <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <button type="button" class="hs-adv-toggle" id="homeAdvToggleBtn" onclick="toggleHomeAdvancedFilters()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span>Шүүлтүүр</span>
+            <svg id="homeAdvChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s;"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
       </div>
 
-      <div class="home-search-fields">
-        <div class="hs-field">
-          <label for="hSearchDistrict">Байршил</label>
-          <select id="hSearchDistrict">
-            <option value="all">Бүх байршил</option>
-            <option value="khan-uul">Хан-Уул</option>
-            <option value="sukhbaatar">Сүхбаатар</option>
-            <option value="chingeltei">Чингэлтэй</option>
-            <option value="bayanzurkh">Баянзүрх</option>
-            <option value="bayangol">Баянгол</option>
-            <option value="songinokhairkhan">Сонгинохайрхан</option>
-            <option value="nalaikh">Налайх</option>
-            <option value="bagakhangai">Багахангай</option>
-            <option value="baganuur">Багануур</option>
-          </select>
-        </div>
-        <div class="hs-field">
-          <label for="hSearchType">Төрөл</label>
-          <select id="hSearchType" onchange="setHomeCatTab(this.value)">
-            <option value="all">Бүх төрөл</option>
-            <option value="apartment">Орон сууц</option>
-            <option value="rent">Түрээс</option>
-            <option value="office">Оффис</option>
-            <option value="house">Хашаа байшин</option>
-            <option value="land">Газар</option>
-          </select>
-        </div>
-        <div class="hs-field hs-field-wide">
-          <label for="hSearchKeyword">Түлхүүр үг</label>
-          <div class="hs-input-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="hSearchKeyword" placeholder="Хотхон, хороолол, үг…" onkeydown="if(event.key==='Enter') performSearch()" />
-          </div>
-        </div>
-        <div class="hs-field">
-          <label>Үнэ (сая ₮)</label>
-          <div class="hs-range">
-            <input type="number" id="hSearchPriceMin" aria-label="Үнэ, доод" placeholder="Мин үнэ" />
-            <input type="number" id="hSearchPriceMax" aria-label="Үнэ, дээд" placeholder="Макс үнэ" />
-          </div>
-        </div>
-        <div class="hs-field">
-          <label>Талбай (м²)</label>
-          <div class="hs-range">
-            <input type="number" id="hSearchAreaMin" aria-label="Талбай, доод" placeholder="Мин" />
-            <input type="number" id="hSearchAreaMax" aria-label="Талбай, дээд" placeholder="Макс" />
-          </div>
-        </div>
-        <button type="button" class="btn btn-blue hs-search-btn" onclick="performSearch()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          Хайх
+      <div class="hs-cat-shortcuts" id="homeCatShortcuts">
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('apartment')">
+          <span class="hs-cs-icon" style="--cat-color:#1E5BFF; --cat-color-soft:#E8EFFF;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/></svg></span>
+          Орон сууц
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('rent')">
+          <span class="hs-cs-icon" style="--cat-color:#C77700; --cat-color-soft:rgba(255,176,32,0.16);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3M17 6l3 3M14 9l2 2"/></svg></span>
+          Түрээс
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="showPage('newdev')">
+          <span class="hs-cs-icon" style="--cat-color:var(--primary); --cat-color-soft:var(--primary-soft);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M6 21V10a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11M9 21v-4h6v4"/><path d="M12 8V3m0 0h5m-5 0-3 3"/></svg></span>
+          Шинэ орон сууц
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('office')">
+          <span class="hs-cs-icon" style="--cat-color:#7B2CBF; --cat-color-soft:rgba(123,44,191,0.12);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+          Оффис
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('house')">
+          <span class="hs-cs-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          Хашаа байшин
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('land')">
+          <span class="hs-cs-icon" style="--cat-color:#009878; --cat-color-soft:rgba(0,152,120,0.12);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
+          Газар
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+          <span class="hs-cs-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V11L12 4l8 7v10"/><path d="M9 21v-6h6v6"/></svg></span>
+          Зуслан
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+          <span class="hs-cs-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M5 21v-8h14v8"/></svg></span>
+          Гараж
+        </button>
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('office')" title="Оффис бүсэд хайна">
+          <span class="hs-cs-icon" style="--cat-color:#7B2CBF; --cat-color-soft:rgba(123,44,191,0.12);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5M4 9h16v11H4z"/><path d="M9 20v-6h6v6"/></svg></span>
+          Худалдаа, үйлчилгээ
         </button>
       </div>
 
-      <div class="quick-filters home-chip-row">
-        <span class="chip" data-filter="new">Шинэ барилга</span>
-        <span class="chip" data-filter="renovated">Засвар хийсэн</span>
-        <span class="chip" data-filter="furnished">Тавилгатай</span>
-        <span class="chip" data-filter="barter">Бартер сонсоно</span>
-        <span class="chip" data-filter="loan">Зээлд хамрагдана</span>
-        <span class="chip" data-filter="below">Үнэ буурсан</span>
-        <a class="hs-advanced-link" onclick="showPage('listings')">
-          Дэлгэрэнгүй шүүлтүүр
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-        </a>
+      <div class="hs-adv-panel" id="homeAdvPanel" style="display:none;">
+        <div class="hs-adv-grid">
+          <div class="hs-field">
+            <label>Үнэ (сая ₮)</label>
+            <div class="hs-range">
+              <input type="number" id="hSearchPriceMin" aria-label="Үнэ, доод" placeholder="Мин үнэ" />
+              <input type="number" id="hSearchPriceMax" aria-label="Үнэ, дээд" placeholder="Макс үнэ" />
+            </div>
+          </div>
+          <div class="hs-field">
+            <label>Талбай (м²)</label>
+            <div class="hs-range">
+              <input type="number" id="hSearchAreaMin" aria-label="Талбай, доод" placeholder="Мин" />
+              <input type="number" id="hSearchAreaMax" aria-label="Талбай, дээд" placeholder="Макс" />
+            </div>
+          </div>
+          <div class="hs-field">
+            <label for="hSearchRooms">Өрөө</label>
+            <select id="hSearchRooms">
+              <option value="all">Бүгд</option>
+              <option value="1">1 өрөө</option>
+              <option value="2">2 өрөө</option>
+              <option value="3">3 өрөө</option>
+              <option value="4">4+ өрөө</option>
+            </select>
+          </div>
+          <div class="hs-field">
+            <label>Давхар</label>
+            <div class="hs-range">
+              <input type="number" id="hSearchFloorMin" aria-label="Давхар, доод" placeholder="Мин" min="1" />
+              <input type="number" id="hSearchFloorMax" aria-label="Давхар, дээд" placeholder="Макс" min="1" />
+            </div>
+          </div>
+          <div class="hs-field">
+            <label for="hSearchBuildingType">Барилгын төрөл</label>
+            <select id="hSearchBuildingType">
+              <option value="">Бүгд</option>
+              <option value="reinforced-concrete">Цутгамал төмөр бетон</option>
+              <option value="brick">Хийц өрлөгийн (керамзитбетон)</option>
+              <option value="panel">Угсармал панель</option>
+              <option value="frame">Каркасан хийц</option>
+              <option value="wooden">Модон</option>
+            </select>
+          </div>
+          <div class="hs-field">
+            <label>Ашиглалтад орсон он</label>
+            <div class="hs-range">
+              <input type="number" id="hSearchYearMin" aria-label="Барилгын он, доод" placeholder="2000" min="1950" max="2030" />
+              <input type="number" id="hSearchYearMax" aria-label="Барилгын он, дээд" placeholder="2025" min="1950" max="2030" />
+            </div>
+          </div>
+        </div>
+        <div class="quick-filters home-chip-row hs-adv-toggles">
+          <span class="chip" data-filter="new">Шинэ барилга</span>
+          <span class="chip" data-filter="renovated">Засвар хийсэн</span>
+          <span class="chip" data-filter="furnished">Тавилгатай</span>
+          <span class="chip" data-filter="barter">Бартер сонсоно</span>
+          <span class="chip" data-filter="loan">Зээлд хамрагдана</span>
+          <span class="chip" data-filter="below">Үнэ буурсан</span>
+        </div>
       </div>
     </div>
 

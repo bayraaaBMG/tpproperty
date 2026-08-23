@@ -145,6 +145,19 @@
       const r = parseInt(rooms);
       results = results.filter(l => typeof l.rooms === 'number' && (r === 4 ? l.rooms >= 4 : l.rooms === r));
     }
+    // Home hero's advanced panel — the field lives in the header, which stays in the
+    // DOM across every page in this single-page app, so it's safe to read here too.
+    // l.buildingType holds free-text labels ("Цутгамал төмөр бетон, газар хөдлөлтийн...",
+    // "Хийц өрлөгийн (AAC блок)"), not the select's short codes, so match by keyword
+    // the same way other free-text fields (condition, parking) are matched below.
+    const buildingType = document.getElementById('hSearchBuildingType')?.value || '';
+    const buildingTypeKeywords = {
+      'reinforced-concrete': 'цутгамал', 'brick': 'блок', 'panel': 'панель', 'frame': 'каркас', 'wooden': 'модон'
+    };
+    if (buildingType && buildingTypeKeywords[buildingType]) {
+      const kw = buildingTypeKeywords[buildingType];
+      results = results.filter(l => (l.buildingType || '').toLowerCase().includes(kw));
+    }
     // Year filter
     if (yearMin > 0 || yearMax < 9999) {
       results = results.filter(l => !l.year || (l.year >= yearMin && l.year <= yearMax));

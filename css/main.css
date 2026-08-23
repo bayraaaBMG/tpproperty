@@ -207,24 +207,85 @@
   .home-info-stat-label { font-size: 11.5px; color: var(--ink-3); }
 
   .home-search-bar {
-    background: white; border-radius: var(--radius-lg); padding: 18px 24px 14px;
+    background: white; border-radius: var(--radius-lg); padding: 16px 20px;
     box-shadow: var(--shadow-sm); border: 1px solid var(--line); text-align: left;
   }
-  .home-cat-tabs {
-    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px;
-  }
-  .home-cat-tab {
-    padding: 9px 16px; border-radius: 100px; font-weight: 600; font-size: 13.5px;
-    cursor: pointer; color: var(--ink-2); background: var(--paper-2);
-    border: 1.5px solid transparent; transition: all 0.18s; font-family: inherit;
-  }
-  .home-cat-tab:hover:not(.active) { border-color: var(--primary-soft); }
-  .home-cat-tab.active { background: var(--primary); color: white; }
 
-  .home-search-fields {
-    display: grid; grid-template-columns: 1fr 1fr 1.6fr 1fr 1fr auto;
-    gap: 10px; align-items: end;
+  /* Top row: [Ангилал][keyword][Хайх] as one group, [Байршил][Шүүлтүүр] as another —
+     the two groups wrap independently so mobile naturally gets a 3-item row then a
+     2-item row underneath, with no per-viewport breakpoint needed to force it. */
+  .hs-top-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .hs-primary-row { display: flex; gap: 8px; flex: 3 1 260px; min-width: 0; }
+  .hs-secondary-row { display: flex; gap: 8px; flex: 1 1 200px; min-width: 0; }
+
+  .hs-select-wrap { position: relative; flex: 1 1 110px; min-width: 0; }
+  .hs-cat-select { flex: 0 1 130px; }
+  .hs-select-wrap select {
+    width: 100%; height: 44px; padding: 0 30px 0 34px; border: 1.5px solid var(--line-2);
+    border-radius: 10px; font-family: inherit; font-size: 13.5px; font-weight: 600;
+    color: var(--ink); background: var(--paper); cursor: pointer; transition: all 0.18s;
+    appearance: none; -webkit-appearance: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .hs-select-wrap select:focus {
+    outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+  .hs-select-icon, .hs-select-chevron {
+    position: absolute; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ink-3);
+  }
+  .hs-select-icon { left: 11px; }
+  .hs-select-chevron { right: 10px; }
+
+  .hs-keyword-wrap { position: relative; flex: 4 1 140px; min-width: 0; }
+  .hs-keyword-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ink-3); }
+  .hs-keyword-wrap input {
+    width: 100%; height: 44px; padding: 0 12px 0 36px; border: 1.5px solid var(--line-2);
+    border-radius: 10px; font-family: inherit; font-size: 13.5px; background: var(--paper); color: var(--ink);
+    transition: all 0.18s;
+  }
+  .hs-keyword-wrap input:focus {
+    outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+
+  .hs-search-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 0 clamp(14px, 4vw, 22px); white-space: nowrap; height: 44px; flex: 0 0 auto;
+  }
+
+  .hs-adv-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    height: 44px; padding: 0 14px; border: 1.5px solid var(--line-2); border-radius: 10px;
+    background: var(--paper); color: var(--ink-2); font-size: 13px; font-weight: 600;
+    font-family: inherit; cursor: pointer; white-space: nowrap; flex: 0 0 auto; transition: all 0.18s;
+  }
+  .hs-adv-toggle:hover, .hs-adv-toggle.open { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+  /* Category shortcuts: unegui.mn-style icon+label row, same horizontal-scroll
+     technique as the old tab row so it works identically at every width. */
+  .hs-cat-shortcuts {
+    display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
+    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .hs-cat-shortcuts::-webkit-scrollbar { display: none; }
+  .hs-cat-shortcut {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0;
+    width: 78px; padding: 8px 4px; border-radius: 12px; border: 1px solid transparent;
+    background: none; cursor: pointer; font-family: inherit; color: var(--ink-2);
+    font-size: 11.5px; font-weight: 600; line-height: 1.25; text-align: center; transition: all 0.18s;
+  }
+  .hs-cat-shortcut:hover { background: var(--paper-2); border-color: var(--line); }
+  .hs-cs-icon {
+    width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+    background: var(--cat-color-soft, var(--primary-soft)); color: var(--cat-color, var(--primary));
+  }
+
+  /* Advanced filters: hidden by default, revealed by .hs-adv-toggle — a plain
+     in-flow block (not a fixed overlay) so it's automatically full-width and
+     contained on mobile with none of position:fixed's overflow pitfalls. */
+  .hs-adv-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); flex-direction: column; gap: 14px; }
+  .hs-adv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .hs-adv-toggles { align-items: center; margin-top: 4px; }
+
   .hs-field label {
     display: block; font-size: 11px; font-weight: 700; color: var(--ink-3);
     text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
@@ -237,35 +298,15 @@
   .hs-field select:focus, .hs-field input:focus {
     outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft);
   }
-  .hs-input-icon { position: relative; }
-  .hs-input-icon svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-  .hs-input-icon input { padding-left: 34px; }
   .hs-range { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .hs-search-btn {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 11px 20px; white-space: nowrap; height: 42px;
-  }
-
-  .home-chip-row { align-items: center; }
-  .hs-advanced-link {
-    display: inline-flex; align-items: center; gap: 5px; margin-left: auto;
-    font-size: 12.5px; font-weight: 700; color: var(--primary); cursor: pointer;
-  }
-  .hs-advanced-link:hover { text-decoration: underline; }
 
   @media (max-width: 1024px) {
-    .home-search-fields { grid-template-columns: 1fr 1fr; }
-    .hs-field-wide { grid-column: 1 / -1; }
-    .hs-search-btn { grid-column: 1 / -1; }
     .home-info-strip { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 640px) {
     .hero-compact { padding: 14px 18px 24px; }
-    .home-search-bar { padding: 16px; border-radius: var(--radius-lg); }
-    .home-cat-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 16px; padding: 0 16px; }
-    .home-cat-tabs::-webkit-scrollbar { display: none; }
-    .home-cat-tab { flex-shrink: 0; }
-    .home-search-fields { grid-template-columns: 1fr; }
+    .home-search-bar { padding: 14px 16px; border-radius: var(--radius-lg); }
+    .hs-cat-shortcuts { margin: 16px -16px 0; padding: 16px 16px 0; }
     .home-info-strip { padding: 16px 18px; gap: 16px; }
     .home-info-stats { gap: 16px 22px; }
   }
