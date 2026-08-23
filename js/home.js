@@ -105,6 +105,9 @@
       const el = document.getElementById('heroStat-' + key);
       if (el) el.textContent = fmt(heroStats[key]);
     });
+    // No fake "0 зар" — only show the inline stat strip once there's something real to count.
+    const statsStrip = document.getElementById('heroMiniStats');
+    if (statsStrip) statsStrip.style.display = active.length > 0 ? '' : 'none';
   }
 
   // Shared by every home-category tile: jump to Listings pre-filtered to the tile's
