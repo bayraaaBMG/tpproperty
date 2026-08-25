@@ -30,6 +30,11 @@
         isPhone
       };
       updateNavLoggedIn();
+      // isOwnerUser() only needs the email (already known here, before the Firestore role
+      // fetch below resolves) — re-checking now lets the owner's direct #admin link resolve
+      // immediately instead of waiting on that fetch; a plain admin still needs it, and gets
+      // the second refreshAdminPageIfActive() call further down once role loads.
+      if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
 
       // Email verify banner (not applicable to phone-only accounts, which have no email)
       const banner = document.getElementById('emailVerifyBanner');
@@ -52,13 +57,15 @@
           if (data.photoURL) currentUser.photoURL = data.photoURL;
           currentUser.accountType = data.accountType || 'owner';
           currentUser.companyName = data.companyName || '';
-          // 'admin' can only ever be set by hand in the Firebase Console (see
-          // firestore.rules) — there is no in-app way to grant it.
+          // 'admin' can only ever be granted by the owner through the Users management page
+          // (js/admin.js grantAdminRole()), which writes through the one privileged
+          // firestore.rules path for it — never settable by the user themselves.
           currentUser.role = data.role || 'user';
           // Phone-auth accounts are always verified via their sign-in number even if this
           // predates verifiedPhone being stored on the profile doc (older accounts).
           currentUser.verifiedPhone = data.verifiedPhone || (isPhone ? normalizePhone(fbUser.phoneNumber) : null);
           updateNavLoggedIn();
+          if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
         }
       } catch(e) {
         showToast('Профайл мэдээлэл татахад алдаа гарлаа (Firestore зөвшөөрөл шалгана уу)');
@@ -146,6 +153,7 @@
       if (typeof refreshSavedSearchesCount === 'function') refreshSavedSearchesCount();
       if (typeof renderAccountSidebar === 'function') renderAccountSidebar();
       if (typeof subscribeNotifications === 'function') subscribeNotifications();
+      if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
     }
   });
 
@@ -353,6 +361,11 @@
     // Account creation itself succeeded — close the modal regardless of the profile-doc write below
     closeAuth();
     showToast(`Бүртгэл амжилттай! Тавтай морилно уу, ${firstName}!`, 'success');
+    // The one hardcoded owner address bootstraps itself as role:'owner' the moment it first
+    // creates a profile doc — firestore.rules' create rule only accepts 'owner' here from
+    // this exact email (isOwner(), checked off the verified ID token) and only 'user' from
+    // anyone else, so this line can't be used to self-elevate under any other address.
+    const bootstrapRole = isOwnerEmail(authCurrentEmail) ? 'owner' : 'user';
     try {
       await cred.user.updateProfile({ displayName: firstName + ' ' + lastName });
       await db.collection('users').doc(cred.user.uid).set({
@@ -360,17 +373,18 @@
         firstName,
         lastName,
         email: authCurrentEmail,
-        role: 'user',
+        role: bootstrapRole,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       // onAuthStateChanged (top of this file) already ran by this point, off the Auth user
-      // object alone — displayName wasn't set yet when it fired, so currentUser.name landed
-      // on the generic "Хэрэглэгч" fallback. Patch it now that we actually know the name,
-      // rather than leaving the wrong name showing until the next full reload.
+      // object alone — displayName wasn't set yet when it fired, so currentUser.name (and,
+      // for the owner, currentUser.role) landed on the generic pre-Firestore defaults. Patch
+      // both now that we actually know them, rather than leaving them wrong until reload.
       if (currentUser && currentUser.uid === cred.user.uid) {
         currentUser.name = firstName;
         currentUser.lastName = lastName;
         currentUser.letter = firstName[0] || 'Х';
+        currentUser.role = bootstrapRole;
         updateNavLoggedIn();
       }
     } catch(e) {
@@ -401,14 +415,21 @@
       const userDoc = await db.collection('users').doc(fbUser.uid).get();
       if (!userDoc.exists) {
         const parts = (fbUser.displayName || 'Хэрэглэгч').split(' ');
+        // See the matching comment in createAccount() above — this is the one address
+        // firestore.rules will accept role:'owner' from at doc-creation time.
+        const bootstrapRole = isOwnerEmail(fbUser.email) ? 'owner' : 'user';
         await db.collection('users').doc(fbUser.uid).set({
           uid: fbUser.uid,
           firstName: parts[0] || 'Хэрэглэгч',
           lastName: parts.slice(1).join(' ') || '',
           email: fbUser.email,
-          role: 'user',
+          role: bootstrapRole,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        if (currentUser && currentUser.uid === fbUser.uid) {
+          currentUser.role = bootstrapRole;
+          updateNavLoggedIn();
+        }
       }
     } catch(e) {
       console.error('Google profile doc write failed:', e.code, e.message);
@@ -455,7 +476,7 @@
     if (userDropName) userDropName.textContent = (currentUser.lastName ? currentUser.lastName + ' ' : '') + currentUser.name;
     if (userDropPhone) userDropPhone.textContent = currentUser.isGoogle ? 'Google хэрэглэгч' : (currentUser.isPhone ? (currentUser.phoneNumber || '') : (currentUser.email || ''));
     const adminLink = document.getElementById('adminNavLink');
-    if (adminLink) adminLink.style.display = currentUser.role === 'admin' ? '' : 'none';
+    if (adminLink) adminLink.style.display = isAdminOrOwnerUser(currentUser) ? '' : 'none';
   }
 
   function toggleUserMenu(e) {

@@ -248,7 +248,8 @@
     if (activeLink) activeLink.classList.add('active');
     window.scrollTo(0, 0);
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
-    if (target === 'admin' && typeof renderAdminDashboard === 'function') renderAdminDashboard();
+    if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()
+        && typeof renderAdminDashboard === 'function') renderAdminDashboard();
   }
 
   function scrollToSection(id) {

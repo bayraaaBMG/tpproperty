@@ -105,7 +105,7 @@
           </a>
           <a id="adminNavLink" onclick="showPage('admin'); toggleUserMenu(null)" style="display:none;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Admin
+            Удирдлага
           </a>
           <a class="danger" onclick="logout()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -302,6 +302,7 @@
 <!-- ============ HOME PORTAL ============ -->
 <section class="home-portal-section" id="home-portal">
   <div class="home-content-inner">
+    <div id="homeAdBanner"></div>
     <div class="portal-section-head">
       <div>
         <h2 class="portal-section-title display">Шинээр нэмэгдсэн <em>зарууд</em></h2>
@@ -1048,6 +1049,7 @@
       <button type="button" class="listings-sidebar-overlay" id="listingsSidebarOverlay" onclick="closeMobileFilterSheet()" aria-label="Шүүлтүүр хаах" tabindex="-1"></button>
 
       <div class="listings-main">
+        <div id="listingsAdBanner"></div>
         <!-- Map view (hidden by default) -->
         <div id="mapView" style="display:none; margin-bottom:16px;">
           <div class="mini-map" id="miniMap" style="aspect-ratio:21/9;"></div>
@@ -1515,14 +1517,11 @@
 
 <!-- ============ SELLER DASHBOARD ============ -->
 <!-- ============ ADMIN — SCAM PROTECTION DASHBOARD ============ -->
-<section class="dash-section" id="admin">
+<section class="admin-page-section" id="admin">
   <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">Луйврын эсрэг хамгаалалт</span>
-        <h2 class="section-title display">Сэжигтэй <em>зарууд</em></h2>
-      </div>
-      <p class="section-sub">Хэрэглэгчдийн мэдээлсэн болон зах зээлийн үнээс огцом хямд зарууд эндээс шалгагдана.</p>
+    <div class="listings-page-head">
+      <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Удирдлага</span></div>
+      <h1 class="listings-page-title display">BairX <em>удирдлага</em></h1>
     </div>
     <div id="adminContent"></div>
   </div>
@@ -2386,6 +2385,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script src="/js/firebase-init.js"></script>
+<script src="/js/permissions.js"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/data.js"></script>

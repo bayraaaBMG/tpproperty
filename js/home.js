@@ -147,3 +147,41 @@
       applyListingFilter();
     }, 100);
   }
+
+  // ===== SITE-FACING ADVERTISING PLACEMENTS =====
+  // Real Firestore-backed banners (js/admin.js owns the CRUD) — a placement's <div> is left
+  // completely empty (no placeholder, no "coming soon") whenever no real, currently-active ad
+  // targets it. isAdCurrentlyActive() (admin.js) is the same active-window check the admin
+  // list view uses, so what's shown here always matches what the dashboard says is live.
+  const AD_PLACEMENT_SLOTS = { 'home-banner': 'homeAdBanner', 'listings': 'listingsAdBanner' };
+  let _siteAdsCache = null;
+
+  async function renderSiteAds() {
+    try {
+      const snap = await db.collection('ads').where('active', '==', true).get();
+      _siteAdsCache = snap.docs.map(d => Object.assign({ fsId: d.id }, d.data()));
+    } catch(e) {
+      _siteAdsCache = [];
+    }
+    paintSiteAdSlots();
+  }
+
+  function paintSiteAdSlots() {
+    if (!_siteAdsCache) return;
+    Object.keys(AD_PLACEMENT_SLOTS).forEach(placement => {
+      const el = document.getElementById(AD_PLACEMENT_SLOTS[placement]);
+      if (!el) return;
+      const ad = _siteAdsCache.find(a => a.placement === placement && (typeof isAdCurrentlyActive !== 'function' || isAdCurrentlyActive(a)));
+      if (!ad) { el.innerHTML = ''; return; }
+      el.innerHTML = `
+        <a class="site-ad-banner" href="${ad.targetUrl ? esc(ad.targetUrl) : 'javascript:void(0)'}" target="${ad.targetUrl ? '_blank' : '_self'}" rel="noopener sponsored">
+          ${ad.image ? `<img src="${esc(ad.image)}" alt="${esc(ad.title || '')}" />` : ''}
+          <div class="site-ad-body">
+            <span class="site-ad-label">Ивээн тэтгэсэн</span>
+            <div class="site-ad-title">${esc(ad.title || '')}</div>
+            <div class="site-ad-sponsor">${esc(ad.sponsorName || '')}</div>
+          </div>
+        </a>
+      `;
+    });
+  }

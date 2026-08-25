@@ -1108,6 +1108,112 @@
     .admin-flag-card { flex-direction: column; }
     .admin-flag-img { width: 100%; height: 160px; }
   }
+
+  /* ============ ADMIN DASHBOARD SHELL ============ */
+  .admin-page-section { background: var(--paper); }
+  .admin-shell { display: flex; align-items: flex-start; gap: 24px; }
+  .admin-sidebar {
+    flex: 0 0 240px; width: 240px; background: white; border: 1px solid var(--line);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 16px 12px;
+    position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto;
+  }
+  .admin-role-badge {
+    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800;
+    letter-spacing: 0.06em; padding: 4px 10px; border-radius: 100px; margin: 4px 8px 2px;
+    background: var(--primary-soft); color: var(--primary-deep);
+  }
+  .admin-role-badge.owner { background: #FFF4DC; color: #8A5A00; }
+  .admin-role-email { font-size: 11.5px; color: var(--ink-3); margin: 0 8px 14px; word-break: break-all; }
+  .admin-nav-group { margin-bottom: 14px; }
+  .admin-nav-group-label {
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); padding: 0 8px; margin-bottom: 4px;
+  }
+  .admin-nav-item {
+    display: block; width: 100%; text-align: left; padding: 9px 10px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600; color: var(--ink-2); background: none; border: none;
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .admin-nav-item:hover { background: var(--paper-2); }
+  .admin-nav-item.active { background: var(--primary-soft); color: var(--primary-deep); }
+  .admin-main { flex: 1; min-width: 0; }
+
+  .admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .admin-stat-card {
+    background: white; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 16px 18px; box-shadow: var(--shadow-sm);
+  }
+  .admin-stat-card .v { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--ink); }
+  .admin-stat-card .l { font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-top: 4px; }
+
+  .admin-panel { background: white; border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+  .admin-panel-head { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); padding: 14px 16px; border-bottom: 1px solid var(--line); }
+
+  .admin-search-row { margin-bottom: 16px; max-width: 380px; }
+
+  .admin-list-table { display: flex; flex-direction: column; gap: 10px; }
+  .admin-row {
+    display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: white;
+    border: 1px solid var(--line); border-radius: 12px;
+  }
+  .admin-row-img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--paper-2); }
+  .admin-user-avatar {
+    width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-deep);
+    display: grid; place-items: center; font-weight: 700; font-size: 16px; flex-shrink: 0;
+  }
+  .admin-row-body { flex: 1; min-width: 0; }
+  .admin-row-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .admin-row-meta { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+  .admin-row-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+  .admin-row-actions .btn { padding: 6px 12px; font-size: 12px; }
+
+  .admin-status-pill {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .admin-status-pill.status-pending { background: #FFF4DC; color: #8A5A00; }
+  .admin-status-pill.status-active { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-rejected { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+  .admin-role-pill {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.03em; margin-right: 4px;
+  }
+  .admin-role-pill.role-owner { background: #FFF4DC; color: #8A5A00; }
+  .admin-role-pill.role-admin { background: var(--primary-soft); color: var(--primary-deep); }
+  .admin-role-pill.role-user { background: var(--paper-2); color: var(--ink-3); }
+
+  @media (max-width: 900px) {
+    .admin-shell { display: block; }
+    .admin-sidebar { position: static; width: 100%; max-height: none; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 16px; }
+    .admin-role-badge { flex: 0 0 auto; width: fit-content; }
+    .admin-role-email { flex: 0 0 100%; }
+    .admin-nav-group { margin-bottom: 0; display: flex; align-items: center; gap: 4px; }
+    .admin-nav-group-label { display: none; }
+    .admin-nav-item { width: auto; white-space: nowrap; }
+  }
+  @media (max-width: 640px) {
+    .admin-row { flex-wrap: wrap; }
+    .admin-row-actions { width: 100%; }
+  }
+
+  /* Site-facing sponsored/ad banner — real Firestore data only (see renderSiteAds(),
+     js/home.js); the placement <div> stays empty with zero layout footprint whenever no
+     active ad targets it, so an empty slot never shows as a blank gap. */
+  .site-ad-banner {
+    display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, rgba(30, 91, 255, 0.06) 0%, rgba(123, 44, 191, 0.05) 100%);
+    border: 1px solid var(--line-2); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;
+    text-decoration: none; color: inherit; transition: border-color 0.15s;
+  }
+  .site-ad-banner:hover { border-color: var(--primary); }
+  .site-ad-banner img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+  .site-ad-body { min-width: 0; }
+  .site-ad-label {
+    display: inline-block; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--primary-deep); background: var(--primary-soft); padding: 2px 8px; border-radius: 100px; margin-bottom: 4px;
+  }
+  .site-ad-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .site-ad-sponsor { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+
   .seller-stats { display: flex; gap: 16px; font-size: 11px; color: var(--ink-3); margin-top: 6px; }
   .seller-stats span b { color: var(--ink); font-weight: 700; }
 

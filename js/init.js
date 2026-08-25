@@ -21,6 +21,7 @@
   loadPublicListings();
   loadProjects();
   renderAccountSidebar();
+  renderSiteAds();
 
   // Initialize page router + listing hash restore
   (function() {

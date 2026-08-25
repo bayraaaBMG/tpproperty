@@ -2,69 +2,109 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // There are no Cloud Functions/custom claims in this app, so "admin" is just a `role`
-    // field on the user's own profile doc — checked here via get(), never trusted from the
-    // client's `currentUser` object. Promoting an account to admin can only be done by
-    // editing that field directly in the Firebase Console (see the `users` rule below for
-    // why a signed-in user can never grant this to themselves).
-    function isAdmin() {
-      return request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ===== ROLES =====
+    // Three roles: 'owner' (exactly one, hardcoded below), 'admin' (granted/revoked only by
+    // the owner, through the privileged users/{uid} update rule further down), 'user'
+    // (everyone else, the default). There is no backend/Cloud Functions in this app, so this
+    // is the server-authoritative root of the whole permission system — every other check in
+    // this file, and every admin UI gate in the app, ultimately traces back to these four
+    // helpers. The owner's email is the ONE hardcoded literal in the entire system (mirrored
+    // client-side only in js/permissions.js, for UI — never trusted there for security) —
+    // isOwner() reads it off request.auth.token.email, which comes from the verified Firebase
+    // ID token itself and cannot be spoofed by any client-supplied document data.
+    function ownerEmail() { return 'bbayraaa20@gmail.com'; }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner() { return isSignedIn() && request.auth.token.email == ownerEmail(); }
+    function userRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'user');
     }
+    function isAdmin() { return isSignedIn() && userRole(request.auth.uid) == 'admin'; }
+    function isAdminOrOwner() { return isAdmin() || isOwner(); }
 
-    // A blocked user can no longer create or edit listings — set by an admin (see the
-    // users/{uid} rule below), never by the user themselves.
+    // A blocked user can no longer create or edit listings — set by an admin/owner (see the
+    // users/{uid} rules below), never by the user themselves.
     function isBlocked() {
-      return request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('blocked', false) == true;
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('blocked', false) == true;
     }
 
     // ===== USERS =====
-    // Profile doc, keyed by uid. Only the account owner can read/write it.
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null && request.auth.uid == uid
-                    && (!('role' in request.resource.data) || request.resource.data.role == 'user');
-      // `role` may never change through a client write (create or update) — it can only be
-      // 'user' at creation and can only change afterwards via the Firebase Console. Without
-      // this, any signed-in user could set role:'admin' on their own doc and unlock the
-      // admin dashboard / moderation actions below.
-      allow update: if request.auth != null && request.auth.uid == uid
+      // Everyone reads their own profile; admin/owner can read any profile (Users management
+      // page — this covers both single-doc get() and the list() query it runs).
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdminOrOwner());
+
+      // Bootstrap on first sign-in. The owner's own email is the only address ever allowed
+      // to create itself as role:'owner' — everyone else can only ever create themselves as
+      // 'user' (or omit the field entirely). Nobody can hand themselves 'admin' at signup.
+      allow create: if isSignedIn() && request.auth.uid == uid && (
+        (isOwner() && request.resource.data.role == 'owner') ||
+        (!isOwner() && (!('role' in request.resource.data) || request.resource.data.role == 'user'))
+      );
+
+      // Self-update: every field is free to edit except `role`, which must stay exactly what
+      // it already is — a signed-in user can never grant themselves admin (or owner) this way.
+      allow update: if isSignedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
-      // Admin-only "block user" action — scoped to exactly the `blocked` field on ANY
-      // user's doc, never role (still Console-only) and never anything else.
-      allow update: if isAdmin()
+
+      // ===== PRIVILEGED ROLE MANAGEMENT — OWNER ONLY =====
+      // The one and only path by which `role` may ever change to/from 'admin'. Scoped tightly:
+      // - only the owner (verified token email) can call it
+      // - never on the owner's own row (immutable — this rule can't touch a doc it's also
+      //   reading as the target, since request.auth.uid != uid excludes self-targeting, and
+      //   the resource.data.role != 'owner' guard below blocks it even if that were bypassed)
+      // - can never target a row that is currently 'owner' — there is only ever one, and this
+      //   path can't create a second one or demote the real one
+      // - the new role can only be 'admin' or 'user' — never 'owner' — so this path can never
+      //   mint a second owner account either
+      // - touches nothing but role (+ an updatedAt timestamp for the audit trail)
+      allow update: if isOwner() && request.auth.uid != uid
+                    && resource.data.get('role', 'user') != 'owner'
+                    && request.resource.data.role in ['admin', 'user']
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt']);
+
+      // Block/unblock a user. Admin may only ever touch a plain 'user' row (never another
+      // admin, never the owner); the owner may touch anyone except themselves. Scoped to
+      // exactly the `blocked` field — this path can never touch `role`.
+      allow update: if isAdmin() && resource.data.get('role', 'user') == 'user'
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
+      allow update: if isOwner() && request.auth.uid != uid
+                    && resource.data.get('role', 'user') != 'owner'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
+
+      // No one can delete a profile doc through the client — the owner's row is immutable by
+      // definition, and deleting any other user's row would silently orphan their listings/
+      // favorites/chats. (Account deletion, if ever needed, is a Firebase-Console operation.)
       allow delete: if false;
     }
 
     // ===== LISTINGS =====
-    // Lifecycle: pending (just submitted/edited, awaiting review) -> active (admin-approved,
-    // public) -> sold/rented (owner marks complete) or expired (30 days, auto) -> closed.
-    // Admin can also reject (pending -> rejected) at any point during review. Only status ==
-    // 'active' is ever returned by the public read query (loadPublicListings in data.js), so
-    // this field is what actually gates visibility — not a separate "published" flag.
+    // Lifecycle: pending (just submitted/edited, awaiting review) -> active (admin/owner-
+    // approved, public) -> sold/rented (owner marks complete) or expired (30 days, auto) ->
+    // closed. Admin/owner can also reject (pending -> rejected) at any point during review.
+    // Only status == 'active' is ever returned by the public read query (loadPublicListings
+    // in data.js), so this field is what actually gates visibility — not a separate
+    // "published" flag.
     match /listings/{listingId} {
       allow read: if true;
 
       // A brand-new listing can't already be admin-verified or start out publicly visible —
       // otherwise a malicious owner could just set listingVerified/status themselves. Blocked
       // users can't create listings at all.
-      allow create: if request.auth != null
+      allow create: if isSignedIn()
                     && request.resource.data.ownerId == request.auth.uid
                     && request.resource.data.get('listingVerified', false) == false
                     && request.resource.data.get('status', 'pending') == 'pending'
                     && !isBlocked();
 
       // Owner can edit/delete their own listing, with guardrails: they can never flip
-      // listingVerified into true (only the admin rule below can), never reset their own
-      // reportCount (would let a scammer erase their reports), and can't move `status`
-      // anywhere except the transitions that don't require a human review — any edit resets
-      // to 'pending' (my-listings.js does this on every save), an expired listing can be
-      // renewed straight back to 'active' (content didn't change), and an active listing can
-      // be marked sold/rented/expired by its own owner. Only an admin can move something INTO
-      // 'active' from 'pending'/'rejected', or move it INTO 'rejected' at all.
-      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid
+      // listingVerified into true (only the admin/owner moderation rule below can), never
+      // reset their own reportCount (would let a scammer erase their reports), and can't move
+      // `status` anywhere except the transitions that don't require a human review — any edit
+      // resets to 'pending' (my-listings.js does this on every save), an expired listing can
+      // be renewed straight back to 'active' (content didn't change), and an active listing
+      // can be marked sold/rented/expired by its own owner. Only an admin/owner can move
+      // something INTO 'active' from 'pending'/'rejected', or move it INTO 'rejected' at all.
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid
                     && !isBlocked()
                     && !(request.resource.data.get('listingVerified', false) == true
                          && resource.data.get('listingVerified', false) != true)
@@ -75,63 +115,76 @@ service cloud.firestore {
                          (resource.data.status == 'expired' && request.resource.data.status == 'active') ||
                          (resource.data.status == 'active' && request.resource.data.status in ['sold', 'rented', 'expired'])
                        );
-      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
       // Anyone (including logged-out viewers) may bump viewCount by exactly 1, nothing else.
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
                     && request.resource.data.viewCount == resource.data.viewCount + 1;
 
       // Any signed-in user may bump reportCount by exactly 1 (reporting someone else's listing).
-      allow update: if request.auth != null
+      allow update: if isSignedIn()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
                     && request.resource.data.reportCount == resource.data.reportCount + 1;
 
-      // Admin moderation — approve/reject/archive from the admin dashboard, scoped to only
-      // the fields it touches, never full content.
-      allow update: if isAdmin()
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'listingVerified', 'rejectionReason']);
+      // Admin/owner moderation — approve/reject/hide from the admin dashboard, scoped to only
+      // the fields it touches, never full content. Rejecting requires a real, non-empty reason
+      // (the owner sees it on their own listing) — enforced here, not just in the UI.
+      allow update: if isAdminOrOwner()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'listingVerified', 'rejectionReason'])
+                    && (request.resource.data.get('status', '') != 'rejected' || request.resource.data.get('rejectionReason', '').size() > 0);
 
-      // Admin can hard-delete any listing (spam/abuse) — owners can only delete their own,
-      // via the rule above.
-      allow delete: if isAdmin();
+      // Admin/owner can hard-delete any listing (spam/abuse) — owners can only delete their
+      // own, via the rule above. The moderation UI always pairs this with an adminAuditLogs
+      // entry carrying the reason (a delete request itself carries no document body, so a
+      // reason can't be enforced on the delete call in the rules the way it is for reject).
+      allow delete: if isAdminOrOwner();
     }
 
     // ===== NEW DEVELOPMENTS (барилгын компанийн шинэ төслүүд) =====
     match /projects/{projectId} {
       allow read: if true;
 
-      allow create: if request.auth != null
-                    && request.resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // Owner can edit/delete their own project.
-      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // Owner can edit/delete their own project; admin/owner can moderate (hide/edit/delete)
+      // any project the same way they moderate listings.
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAdminOrOwner();
 
       // Anyone (including logged-out viewers) may bump viewCount by exactly 1, nothing else.
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
                     && request.resource.data.viewCount == resource.data.viewCount + 1;
 
       // Any signed-in user may bump contactCount by exactly 1 (revealed the phone number).
-      allow update: if request.auth != null
+      allow update: if isSignedIn()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['contactCount'])
                     && request.resource.data.contactCount == resource.data.contactCount + 1;
     }
 
+    // ===== ADVERTISING (banner / sponsored / featured placements) =====
+    // Public read so the site itself can render active ads to every visitor; only admin/owner
+    // can create, edit, or remove one.
+    match /ads/{adId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrOwner();
+    }
+
     // ===== FAVORITES =====
     match /favorites/{favId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       // Owner may update their own favorite doc (used to track priceAtSave for price-drop alerts).
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.userId == request.auth.uid;
     }
 
     // ===== SAVED SEARCHES =====
     match /savedSearches/{searchId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if false;
     }
 
@@ -141,40 +194,54 @@ service cloud.firestore {
     // is scoped to the owner just like reads. Delete is disallowed — "mark all read" only
     // ever flips `read`, never removes the doc.
     match /notifications/{notifId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if false;
     }
 
     // ===== REPORTS =====
     // Write-only from a regular client — reporting a listing never lets you read other
-    // people's reports. The admin dashboard is the one reader/moderator (see isAdmin()).
+    // people's reports. The admin dashboard is the one reader/moderator.
     match /reports/{reportId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow read: if isAdmin();
-      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdminOrOwner();
+      allow update: if isAdminOrOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
       allow delete: if false;
+    }
+
+    // ===== ADMIN AUDIT LOGS =====
+    // Every privileged admin/owner action (approve/reject/delete a listing, block a user,
+    // grant/revoke admin, manage an ad) writes one immutable entry here. No client — admin,
+    // owner, or otherwise — can ever update or delete a log entry once written; the log can
+    // only grow. An actor can only ever write themselves as `actorUid` (never attribute an
+    // action to someone else). The owner can read every entry; an admin can only read their
+    // own — matching "Admin өөрийн audit log-оо delete хийж болохгүй" (they can't touch it at
+    // all, delete included) while still letting them see their own moderation history.
+    match /adminAuditLogs/{logId} {
+      allow create: if isAdminOrOwner() && request.resource.data.actorUid == request.auth.uid;
+      allow read: if isOwner() || (isAdmin() && resource.data.actorUid == request.auth.uid);
+      allow update, delete: if false;
     }
 
     // ===== TRANSACTIONS (boost purchase history — demo payment, real tracking) =====
     match /transactions/{txnId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
 
     // ===== CHATS =====
     match /chats/{chatId} {
-      allow read, update: if request.auth != null && request.auth.uid in resource.data.participants;
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
+      allow read, update: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if request.auth != null
+        allow read: if isSignedIn()
                     && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if request.auth != null
+        allow create: if isSignedIn()
                       && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
                       && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
