@@ -1,11 +1,12 @@
 ﻿  // ===== FIREBASE INIT =====
   const firebaseConfig = {
-    apiKey: "AIzaSyBdCxMJWmdO9BLuSPLJrkigQTqKfmvZvYw",
-    authDomain: "bairx-fd502.firebaseapp.com",
-    projectId: "bairx-fd502",
-    storageBucket: "bairx-fd502.firebasestorage.app",
-    messagingSenderId: "459958506902",
-    appId: "1:459958506902:web:4032ffe101a40e7d49b9b7"
+    apiKey: "AIzaSyDl34Ow-YN1KqQgfLdyf6IgBFveIPD09-Y",
+    authDomain: "tpproperty-c383e.firebaseapp.com",
+    projectId: "tpproperty-c383e",
+    storageBucket: "tpproperty-c383e.firebasestorage.app",
+    messagingSenderId: "55121095219",
+    appId: "1:55121095219:web:f69c2876f1dbf1ae461146",
+    measurementId: "G-1B5N2LLT6P"
   };
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
