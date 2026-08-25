@@ -76,7 +76,7 @@
 
   // Auth state resolves asynchronously (Firebase restores a persisted session after the
   // page's own initial showPage() call has already run) — if the owner/admin loads
-  // bairx.vercel.app/#admin directly, the very first guardAdminRoute() call can land before
+  // tpproperty.vercel.app/#admin directly, the very first guardAdminRoute() call can land before
   // currentUser is populated and show 403 for a moment. Called from auth.js's
   // onAuthStateChanged, both branches, right after currentUser is set/cleared — re-runs the
   // guard (and the real dashboard once it passes) only if the visitor is actually still on

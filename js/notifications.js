@@ -2,10 +2,10 @@
   // Schema: notifications/{id} { userId, type: 'match' | 'price', text, listingLocalId,
   //   listingFsId, savedSearchId (match only), price (price only), read, createdAt }
   //
-  // Honesty note: BairX has no backend / Cloud Functions running around the clock, so this
+  // Honesty note: TP Property has no backend / Cloud Functions running around the clock, so this
   // is not instant push. Matching runs client-side — right after login, and again every time
   // fresh public listings load (see auth.js / data.js) — so a real match or price drop shows
-  // up the next time a user opens or refreshes BairX, not the second it actually happens.
+  // up the next time a user opens or refreshes TP Property, not the second it actually happens.
   let notifications = [];
   let _notifUnsub = null;
 

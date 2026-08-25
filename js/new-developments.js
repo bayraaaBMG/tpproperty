@@ -514,7 +514,7 @@
       <div class="add-listing">
         <div class="al-header">
           <span class="al-eyebrow">${editingProjectId ? 'Төсөл засах' : 'Шинэ төсөл нийтлэх'}</span>
-          <div class="al-title">${editingProjectId ? 'Төслийн мэдээллээ шинэчлээрэй' : 'Барилгын төслөө BairX дээр нийтлээрэй'}</div>
+          <div class="al-title">${editingProjectId ? 'Төслийн мэдээллээ шинэчлээрэй' : 'Барилгын төслөө TP Property дээр нийтлээрэй'}</div>
           <div class="al-sub">Компани, байршил, үнэ, төлөвлөгөө, холбоо барих мэдээллийг бөглөнө үү.</div>
         </div>
 

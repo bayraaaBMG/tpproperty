@@ -34,7 +34,7 @@
     },
     {
       id: 'p5', type: 'price',
-      author: 'BairX Зах зээл', role: 'company', avatar: 'BX', avatarColor: '#0A1628',
+      author: 'TP Property Зах зээл', role: 'company', avatar: 'TP', avatarColor: '#0A1628',
       time: '8 цагийн өмнө', verified: true,
       text: 'Долоо хоногийн тойм: үл хөдлөх хөрөнгийн үнэ дүүрэг, байршил, эрэлтээс шалтгаалан ялгаатай хэлбэлзсээр байна. Тодорхой байрны одоогийн үнийг харьцуулж үзэхийг хүсвэл холбогдох зарын "Үнийн өөрчлөлтийн талаар" хэсгээс үзнэ үү.',
       images: [],
@@ -154,7 +154,7 @@
   function shareFeedPost() {
     const url = location.origin + location.pathname + '#feed';
     if (navigator.share) {
-      navigator.share({ title: 'BairX', url: url }).catch(() => {});
+      navigator.share({ title: 'TP Property', url: url }).catch(() => {});
     } else if (navigator.clipboard) {
       navigator.clipboard.writeText(url)
         .then(() => showToast('Холбоос хуулагдлаа', 'success'))

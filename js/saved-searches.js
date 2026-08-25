@@ -41,8 +41,8 @@
         <div style="display:flex;align-items:flex-start;gap:10px;padding:14px;background:var(--paper-2);border-radius:12px;margin-bottom:20px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <div>
-            <div style="font-weight:700;font-size:14px;">Мэдэгдэл BairX-ийн хонхны цэсэд ирнэ</div>
-            <div style="font-size:12px;color:var(--ink-3);">Энэ нөхцөлд тохирох шинэ зар орох бүрт BairX-ыг нээх/шинэчлэх үед мэдэгдэнэ. И-мэйлээр илгээхгүй.</div>
+            <div style="font-weight:700;font-size:14px;">Мэдэгдэл TP Property-ийн хонхны цэсэд ирнэ</div>
+            <div style="font-size:12px;color:var(--ink-3);">Энэ нөхцөлд тохирох шинэ зар орох бүрт TP Property-г нээх/шинэчлэх үед мэдэгдэнэ. И-мэйлээр илгээхгүй.</div>
           </div>
         </div>
         <button class="btn btn-blue btn-lg" style="width:100%;justify-content:center;" onclick="confirmSaveSearch(${JSON.stringify({ district, priceMin, priceMax, areaMin, areaMax, rooms, keyword, category: currentCat, toggles: activeFilterToggles, label }).replace(/"/g, '&quot;')})">

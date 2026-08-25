@@ -48,12 +48,9 @@
   }
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 22px; letter-spacing: -0.02em; cursor: pointer; }
   .logo-mark {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
-    display: grid; place-items: center; color: white; font-family: 'Fraunces', serif;
-    font-weight: 700; font-size: 18px;
-    box-shadow: 0 4px 12px rgba(30, 91, 255, 0.3);
+    width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0;
   }
+  .logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .logo-text { font-family: 'Fraunces', serif; font-weight: 700; }
   .logo-text em { color: var(--primary); font-style: normal; }
 
@@ -1008,8 +1005,8 @@
   .footer { background: var(--ink); color: rgba(255, 255, 255, 0.6); padding: 80px 32px 40px; }
   .footer-inner { max-width: 1320px; margin: 0 auto; }
   .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 56px; }
-  .footer-logo { color: white; font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; margin-bottom: 14px; }
-  .footer-logo em { color: var(--primary-glow); font-style: normal; }
+  .footer-logo { display: flex; align-items: center; margin-bottom: 14px; }
+  .footer-logo img { height: 46px; width: auto; display: block; background: #fff; border-radius: 8px; padding: 5px 12px; }
   .footer-desc { font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
   .footer-col h5 { color: white; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
   .footer-col ul { list-style: none; }
@@ -1138,9 +1135,9 @@
     background: white; color: var(--ink-2); cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .admin-topbar-logo {
-    width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: white;
-    display: grid; place-items: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 15px; flex-shrink: 0;
+    width: 32px; height: 32px; display: grid; place-items: center; flex-shrink: 0;
   }
+  .admin-topbar-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .admin-topbar-title { font-weight: 700; font-size: 15px; color: var(--ink); white-space: nowrap; }
   .admin-role-badge {
     display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800;
@@ -1500,7 +1497,7 @@
   }
   .ld-desc-toggle:hover { text-decoration: underline; }
 
-  /* BairX Market Insight stat row */
+  /* TP Property Market Insight stat row */
   .ld-mi-stats {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
     margin-bottom: 18px;
@@ -3616,12 +3613,9 @@
   }
   .auth-back-btn:hover { color: var(--ink); }
   .auth-logo-mark {
-    width: 38px; height: 38px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
-    display: grid; place-items: center; color: white;
-    font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px;
-    box-shadow: 0 4px 12px rgba(30,91,255,0.3);
+    width: 42px; height: 42px; display: grid; place-items: center; flex-shrink: 0;
   }
+  .auth-logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .auth-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 700; color: var(--ink); }
   .auth-sub { font-size: 14px; color: var(--ink-3); line-height: 1.5; margin-top: -6px; }
 

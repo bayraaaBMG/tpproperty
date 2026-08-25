@@ -200,7 +200,7 @@
     }, 300);
   }
 
-  // ===== BAIRX MARKET INSIGHT — the same real comparable-sales analysis
+  // ===== TP PROPERTY MARKET INSIGHT — the same real comparable-sales analysis
   // (computeValuation, utils.js) that used to live in its own separate "AI valuation"
   // section, now leading with the concrete stat row the spec asks for (total price, ₮/м²,
   // district average, %-vs-market, comparable price range) and folding the verdict/
@@ -224,7 +224,7 @@
       verdict = 'Зах зээлийн үнэлгээ хийхэд мэдээлэл хангалтгүй'; color = 'var(--ink-3)'; confLabel = null;
       basisLine = valuation.sampleSize
         ? `Одоогоор ${valuation.sampleSize} харьцуулах зар олдсон — найдвартай тооцоолол хийхэд хамгийн багадаа 2 хэрэгтэй.`
-        : 'BairX дээр энэ төрлийн харьцуулах зар одоогоор алга.';
+        : 'TP Property дээр энэ төрлийн харьцуулах зар одоогоор алга.';
       reasoning = `Энэ байртай харьцуулах хангалттай зар платформ дээр олдсонгүй тул үнийг зах зээлтэй бодитоор харьцуулж чадахгүй байна. Дэлгэц дээрх тоо зохиомол биш — зөвхөн бодит харьцуулах зар байхгүй тул тооцоолол хийхгүй байна.`;
     } else {
       verdict = valuation.verdict; color = valuation.color;
@@ -245,7 +245,7 @@
 
     return `
       <div class="modal-section">
-        <h4>BairX Market Insight</h4>
+        <h4>TP Property Market Insight</h4>
         <div class="ld-mi">
           ${statRow}
           <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
@@ -254,7 +254,7 @@
           </div>
           <div style="font-size:12.5px; color:var(--ink-3); margin-bottom:10px; font-family:'JetBrains Mono',monospace;">${basisLine}</div>
           <div style="font-size:14px; line-height:1.65; color:var(--ink-2);">${reasoning}</div>
-          <div style="font-size:11px; color:var(--ink-3); margin-top:12px; font-style:italic;">* Дүрэм-суурьтай тооцоолол — BairX дээрх бодит зарын дунджид үндэслэсэн, машин сургалт ашигладаггүй.</div>
+          <div style="font-size:11px; color:var(--ink-3); margin-top:12px; font-style:italic;">* Дүрэм-суурьтай тооцоолол — TP Property дээрх бодит зарын дунджид үндэслэсэн, машин сургалт ашигладаггүй.</div>
           ${stability.length > 0 ? `
           <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
             <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-3); margin-bottom:10px;">Шалгасан үзүүлэлтүүд</div>
@@ -284,7 +284,7 @@
     const districtLabel = districtNames[l.district] || 'Дүүрэг';
 
     // Real comparable-sales analysis (computeValuation() — utils.js), feeding both the
-    // BairX Market Insight section below and the Property Score badge. Demo data isn't
+    // TP Property Market Insight section below and the Property Score badge. Demo data isn't
     // synthesized here: it searches actual listings on the platform for comparables and
     // openly says "insufficient data" rather than guessing when there aren't enough.
     const valuation = computeValuation(l);
@@ -528,7 +528,7 @@
           </div>
           ` : ''}
 
-          <!-- Compact bottom sections — BairX's own differentiators, kept real and
+          <!-- Compact bottom sections — TP Property's own differentiators, kept real and
                data-backed, just out of the way of the main scan-path above. -->
           ${ldMarketInsightHtml(l, valuation, stability)}
 

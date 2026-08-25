@@ -70,7 +70,7 @@
     var banner = document.getElementById('pwaBanner');
     if (banner) banner.style.display = 'none';
     _pwaPrompt = null;
-    showToast('BairX амжилттай суулгагдлаа!', 'success');
+    showToast('TP Property амжилттай суулгагдлаа!', 'success');
   });
 
   function pwaInstall() {
