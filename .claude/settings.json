@@ -4,7 +4,37 @@
       "Bash(git init *)",
       "Bash(git commit *)",
       "Bash(git branch *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(powershell -command \"\\(Get-Content index.html | Select-String -Pattern 'section|page|id=' | Select-Object -First 60\\)\")",
+      "Bash(powershell -command \"\\(Get-Content index.html | Select-String -Pattern '<section|id=\\\\\"\\(feed|listings|rent|calc|guide|dashboard|compare|demo|hero|forecast|features|afford|edu\\)\\\\\"' | Select-Object -First 40\\)\")",
+      "Bash(powershell -command \"Get-Content index.html | Measure-Object -Line\")",
+      "Bash(powershell -command \"Get-Content index.html | Select-String -Pattern 'scrollToSection|function scroll|showPage|hidePage' | Select-Object -First 20\")",
+      "Bash(powershell -command \"Get-Content index.html | Select-Object -Index \\(6400..6500\\)\")",
+      "Bash(powershell -command \"Get-Content index.html | Select-Object -Index \\(7200..7300\\)\")",
+      "Bash(powershell -command \"Get-Content index.html | Select-Object -Index \\(7380..7468\\)\")",
+      "Bash(powershell -command \"Get-Content index.html | Select-String -Pattern 'function scrollToSection|function init|DOMContentLoaded|window.onload' | Select-Object -First 20\")",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(python3)",
+      "Bash(python3 -c ' *)",
+      "Bash(grep -v \"^.*//.*$\")",
+      "WebFetch(domain:bairx.vercel.app)",
+      "PowerShell(\\(Get-Content \"c:\\\\Users\\\\bbayr\\\\OneDrive\\\\Attachments\\\\Desktop\\\\Vlhodloh\\\\index.html\" | Measure-Object -Line\\).Lines)",
+      "Bash(awk '$1>1')",
+      "Bash(grep -oE \"[a-zA-Z_$][a-zA-Z0-9_$]*\\\\\\(\")",
+      "Read(//tmp/**)",
+      "Bash(cd \"c:\\\\Users\\\\bbayr\\\\OneDrive\\\\Attachments\\\\Desktop\\\\Vlhodloh\" && grep -hoE '^\\\\s*\\(async\\\\s+\\)?function [A-Za-z0-9_]+' js/*.js | sed -E 's/^\\\\s*\\(async\\\\s+\\)?function //' | sort -u > /tmp/defined_funcs.txt *)",
+      "Bash(sed -E \"s/id='//;s/'//\")",
+      "Bash(git commit -m ' *)",
+      "Bash(command -v vercel)",
+      "Bash(vercel whoami *)",
+      "WebFetch(domain:www.unegui.mn)",
+      "WebSearch",
+      "Bash(node --check js/calc.js)",
+      "Bash(node --check js/auth.js)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\bbayr\\AppData\\Local\\Temp\\bairx-qa"
     ]
   }
 }
