@@ -61,11 +61,16 @@
     const content = document.getElementById('adminContent');
     if (!content) return false;
     if (!isAdminOrOwnerUser()) {
+      // Keep the normal site chrome (nav/footer) around the 403 message for anyone who
+      // isn't actually authorized — the stripped-down admin-only header/chrome (see
+      // css .admin-mode rules) only ever applies once guardAdminRoute() has passed.
+      document.body.classList.remove('admin-mode');
+      const header = document.getElementById('adminHeaderBar');
+      if (header) header.innerHTML = '';
       content.innerHTML = render403();
-      const summary = document.getElementById('adminSummaryRow');
-      if (summary) summary.style.display = 'none';
       return false;
     }
+    document.body.classList.add('admin-mode');
     return true;
   }
 

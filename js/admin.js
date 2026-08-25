@@ -5,27 +5,31 @@
   // (the audit-log writer every mutating action below calls). guardAdminRoute(), called from
   // showPage('admin') before this file ever runs, is what actually keeps a non-admin out —
   // the currentUser.role check here is redundant-on-purpose defense in depth, not the real gate.
-
-  let _adminSection = 'overview';
-  let _adminLoading = false;
+  //
+  // Deliberately flat: 6 top-level sections (Нүүр/Зарууд/Хэрэглэгчид/Шинэ орон сууц/
+  // Сурталчилгаа/Тохиргоо), no nested menu groups. What used to be separate "Moderation" and
+  // "Analytics" sidebar items now live inside Зарууд (the "Report авсан" tab folds in
+  // reports + price anomalies + a duplicate-listing scan) and Нүүр (the KPI row) respectively;
+  // the full numeric breakdown and the audit log both moved into Тохиргоо.
 
   const ADMIN_NAV = [
-    { group: 'Хяналтын самбар', items: [{ id: 'overview', label: 'Overview' }] },
-    { group: 'Зар', items: [
-        { id: 'listings-all', label: 'Бүх зар' },
-        { id: 'listings-pending', label: 'Хүлээгдэж буй' },
-        { id: 'listings-active', label: 'Нийтлэгдсэн' },
-        { id: 'listings-rejected', label: 'Татгалзсан' },
-        { id: 'listings-flagged', label: 'Report авсан' }
-      ]
-    },
-    { group: 'Хэрэглэгч', items: [{ id: 'users', label: 'Бүх хэрэглэгч', ownerOnly: true }] },
-    { group: 'Шинэ орон сууц', items: [{ id: 'projects', label: 'Projects' }] },
-    { group: 'Сурталчилгаа', items: [{ id: 'ads', label: 'Зар сурталчилгаа' }] },
-    { group: 'Moderation', items: [{ id: 'moderation', label: 'Сэжигтэй & давхардсан' }] },
-    { group: 'Analytics', items: [{ id: 'analytics', label: 'Тоон үзүүлэлт' }] },
-    { group: 'Аудит', items: [{ id: 'auditlog', label: 'Үйлдлийн түүх', ownerOnly: true }] }
+    { id: 'overview', label: 'Нүүр' },
+    { id: 'listings', label: 'Зарууд' },
+    { id: 'users', label: 'Хэрэглэгчид', ownerOnly: true },
+    { id: 'projects', label: 'Шинэ орон сууц' },
+    { id: 'ads', label: 'Сурталчилгаа' },
+    { id: 'settings', label: 'Тохиргоо' }
   ];
+
+  const ADMIN_ACTION_LABELS = {
+    approve: 'Approve', reject: 'Reject', hide: 'Hide', unhide: 'Дахин нийтлэх', delete: 'Устгах',
+    verify: 'Баталгаажуулах', dismiss_reports: 'Report хаах', block_user: 'Блоклох',
+    unblock_user: 'Блок цуцлах', grant_admin: 'Admin эрх өгсөн', revoke_admin: 'Admin эрх цуцалсан',
+    create_ad: 'Ad үүсгэсэн', update_ad: 'Ad засварласан', delete_ad: 'Ad устгасан',
+    activate_ad: 'Ad идэвхжүүлсэн', deactivate_ad: 'Ad идэвхгүй болгосон'
+  };
+
+  let _adminSection = 'overview';
 
   async function renderAdminDashboard(section) {
     const el = document.getElementById('adminContent');
@@ -34,145 +38,351 @@
 
     if (section) _adminSection = section;
     const owner = isOwnerUser();
-    const validIds = ADMIN_NAV.flatMap(g => g.items).filter(it => !it.ownerOnly || owner).map(it => it.id);
+    const validIds = ADMIN_NAV.filter(it => !it.ownerOnly || owner).map(it => it.id);
     if (!validIds.includes(_adminSection)) _adminSection = 'overview';
+
+    renderAdminHeaderBar();
 
     el.innerHTML = `
       <div class="admin-shell">
-        <aside class="admin-sidebar">
-          <div class="admin-role-badge ${owner ? 'owner' : ''}">${owner ? 'OWNER' : 'ADMIN'}</div>
-          <div class="admin-role-email">${esc(currentUser.email || '')}</div>
-          ${ADMIN_NAV.map(g => {
-            const items = g.items.filter(it => !it.ownerOnly || owner);
-            if (!items.length) return '';
-            return `
-              <div class="admin-nav-group">
-                <div class="admin-nav-group-label">${esc(g.group)}</div>
-                ${items.map(it => `<button class="admin-nav-item ${_adminSection === it.id ? 'active' : ''}" onclick="renderAdminDashboard('${it.id}')">${esc(it.label)}</button>`).join('')}
-              </div>
-            `;
-          }).join('')}
+        <aside class="admin-sidebar" id="adminSidebar">
+          ${ADMIN_NAV.filter(it => !it.ownerOnly || owner).map(it => `<button class="admin-nav-item ${_adminSection === it.id ? 'active' : ''}" onclick="renderAdminDashboard('${it.id}'); closeAdminSidebar();">${esc(it.label)}</button>`).join('')}
         </aside>
+        <button type="button" class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="closeAdminSidebar()" aria-label="Хаах"></button>
         <div class="admin-main">
-          <div id="adminSummaryRow" class="admin-summary-row" style="display:none;"></div>
-          <div id="adminSectionContent"><div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div></div>
+          <div id="adminSectionContent"><div class="admin-loading">Ачааллаж байна…</div></div>
         </div>
       </div>
     `;
 
     const s = _adminSection;
     if (s === 'overview') await renderAdminOverview();
-    else if (s.startsWith('listings-')) await renderAdminListingsTab(s.replace('listings-', ''));
+    else if (s === 'listings') await renderAdminListingsSection();
     else if (s === 'users' && owner) await renderAdminUsersSection();
     else if (s === 'projects') await renderAdminProjectsSection();
     else if (s === 'ads') await renderAdminAdsSection();
-    else if (s === 'moderation') await renderAdminModerationSection();
-    else if (s === 'analytics') await renderAdminAnalyticsSection();
-    else if (s === 'auditlog' && owner) await renderAdminAuditLogSection();
+    else if (s === 'settings') await renderAdminSettingsSection();
   }
 
-  function adminSectionEl() { return document.getElementById('adminSectionContent'); }
-  function adminEmptyState(icon, title, sub) {
-    return `
-      <div style="text-align:center;padding:60px 20px;color:var(--ink-3);">
-        ${icon}
-        <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">${esc(title)}</div>
-        <div style="font-size:13px;">${esc(sub)}</div>
-      </div>
-    `;
-  }
-  const ADMIN_EMPTY_ICON = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;margin:0 auto 12px;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>`;
-
-  // ===== OVERVIEW =====
-  async function renderAdminOverview() {
-    const el = adminSectionEl();
-    if (!el) return;
-    let listingsSnap, usersCount = null, pendingReportsCount = 0;
-    try { listingsSnap = await db.collection('listings').get(); } catch(e) { listingsSnap = null; }
-    try {
-      if (isOwnerUser()) { const uSnap = await db.collection('users').get(); usersCount = uSnap.size; }
-    } catch(e) {}
-    try { const rSnap = await db.collection('reports').where('status', '==', 'pending').get(); pendingReportsCount = rSnap.size; } catch(e) {}
-
-    const byStatus = { pending: 0, active: 0, rejected: 0, expired: 0, sold: 0, rented: 0 };
-    let totalViews = 0, totalFavorites = 0, totalContacts = 0;
-    if (listingsSnap) {
-      listingsSnap.forEach(doc => {
-        const d = doc.data();
-        const st = d.status || 'active';
-        byStatus[st] = (byStatus[st] || 0) + 1;
-        totalViews += d.viewCount || 0;
-        totalFavorites += d.favoriteCount || 0;
-        totalContacts += d.contactCount || 0;
-      });
-    }
-
-    el.innerHTML = `
-      <div class="admin-stat-grid">
-        <div class="admin-stat-card"><div class="v">${listingsSnap ? listingsSnap.size : '—'}</div><div class="l">Нийт зар</div></div>
-        <div class="admin-stat-card"><div class="v">${byStatus.pending}</div><div class="l">Хянагдаж буй</div></div>
-        <div class="admin-stat-card"><div class="v">${byStatus.active}</div><div class="l">Нийтлэгдсэн</div></div>
-        <div class="admin-stat-card"><div class="v">${pendingReportsCount}</div><div class="l">Шийдэгдээгүй report</div></div>
-        ${usersCount != null ? `<div class="admin-stat-card"><div class="v">${usersCount}</div><div class="l">Нийт хэрэглэгч</div></div>` : ''}
-        <div class="admin-stat-card"><div class="v">${fmt(totalViews)}</div><div class="l">Нийт үзэлт</div></div>
-        <div class="admin-stat-card"><div class="v">${fmt(totalFavorites)}</div><div class="l">Хадгалагдсан</div></div>
-        <div class="admin-stat-card"><div class="v">${fmt(totalContacts)}</div><div class="l">Холбогдсон</div></div>
-      </div>
-      <div class="admin-panel" style="margin-top:20px;">
-        <div class="admin-panel-head">Хурдан холбоос</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;padding:16px;">
-          <button class="btn btn-blue" onclick="renderAdminDashboard('listings-pending')">Хянагдаж буй зар (${byStatus.pending})</button>
-          <button class="btn btn-ghost" onclick="renderAdminDashboard('moderation')">Сэжигтэй зар шалгах</button>
-          <button class="btn btn-ghost" onclick="renderAdminDashboard('ads')">Сурталчилгаа удирдах</button>
+  function renderAdminHeaderBar() {
+    const bar = document.getElementById('adminHeaderBar');
+    if (!bar) return;
+    const owner = isOwnerUser();
+    const letter = esc(((currentUser.name || currentUser.email || '?')[0] || '?').toUpperCase());
+    bar.innerHTML = `
+      <div class="admin-topbar">
+        <div class="admin-topbar-left">
+          <button type="button" class="admin-topbar-menu-btn" onclick="openAdminSidebar()" aria-label="Цэс">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="admin-topbar-logo">B</div>
+          <span class="admin-topbar-title">BairX Удирдлага</span>
+          <span class="admin-role-badge ${owner ? 'owner' : ''}">${owner ? 'OWNER' : 'ADMIN'}</span>
+        </div>
+        <div class="admin-topbar-right">
+          <div class="admin-topbar-avatar" title="${esc(currentUser.email || '')}">${letter}</div>
+          <button class="btn btn-ghost admin-topbar-back" onclick="showPage('home')">Сайт руу буцах</button>
         </div>
       </div>
     `;
   }
 
-  // ===== LISTINGS MODERATION =====
-  async function renderAdminListingsTab(tab) {
-    const summaryEl = document.getElementById('adminSummaryRow');
-    if (summaryEl) summaryEl.style.display = 'none';
-    const el = adminSectionEl();
-    if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
-
-    if (tab === 'flagged') { await renderAdminFlaggedTab(); return; }
-
-    const statusMap = { all: null, pending: ['pending'], active: ['active'], rejected: ['rejected'] };
-    const statuses = statusMap[tab] || ['pending'];
-    const items = statuses ? await adminFetchListingsByStatus(statuses) : await adminFetchListingsByStatus(['pending', 'active', 'rejected', 'expired', 'sold', 'rented']);
-    if (items.length === 0) {
-      el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Хоосон байна', 'Энэ ангилалд зар алга байна.');
-      return;
-    }
-    el.innerHTML = `<div class="admin-list-table">${items.map(d => adminListingRow(d)).join('')}</div>`;
+  function openAdminSidebar() {
+    document.getElementById('adminSidebar')?.classList.add('open');
+    document.getElementById('adminSidebarOverlay')?.classList.add('open');
+  }
+  function closeAdminSidebar() {
+    document.getElementById('adminSidebar')?.classList.remove('open');
+    document.getElementById('adminSidebarOverlay')?.classList.remove('open');
   }
 
-  async function renderAdminFlaggedTab() {
-    if (_adminLoading) return;
-    _adminLoading = true;
+  function adminSectionEl() { return document.getElementById('adminSectionContent'); }
+
+  function adminEmptyState(title, sub) {
+    return `
+      <div class="admin-state-block">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink-3);opacity:0.35;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+        <div class="admin-state-title">${esc(title)}</div>
+        <div class="admin-state-sub">${esc(sub)}</div>
+      </div>
+    `;
+  }
+
+  // Used everywhere a fetch can genuinely fail (network/permission) — always names the
+  // reason and gives a real retry action, instead of a dead-end blank state.
+  function adminErrorState(reason, retryCall) {
+    return `
+      <div class="admin-state-block">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.8" style="opacity:0.6;"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <div class="admin-state-title">Ачаалж чадсангүй</div>
+        <div class="admin-state-sub">${esc(reason)}</div>
+        <button class="btn btn-blue" onclick="${retryCall}">Дахин оролдох</button>
+      </div>
+    `;
+  }
+
+  // ===== COMPACT ACTION MENU (shared by every row type) =====
+  function adminActionMenu(menuId, actions) {
+    const list = actions.filter(Boolean);
+    if (!list.length) return '';
+    return `
+      <div class="admin-menu">
+        <button type="button" class="admin-menu-trigger" onclick="toggleAdminMenu(event, '${menuId}')" aria-label="Үйлдлүүд">⋮</button>
+        <div class="admin-menu-list" id="admMenu-${menuId}">
+          ${list.map(a => `<button type="button" class="admin-menu-item${a.danger ? ' danger' : ''}" onclick="closeAllAdminMenus(); ${a.onclick}">${esc(a.label)}</button>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+  function toggleAdminMenu(e, id) {
+    e.stopPropagation();
+    const target = document.getElementById('admMenu-' + id);
+    const wasOpen = target?.classList.contains('open');
+    closeAllAdminMenus();
+    if (target && !wasOpen) target.classList.add('open');
+  }
+  function closeAllAdminMenus() {
+    document.querySelectorAll('.admin-menu-list.open').forEach(el => el.classList.remove('open'));
+  }
+  document.addEventListener('click', closeAllAdminMenus);
+
+  // ===== OVERVIEW (Нүүр) =====
+  async function renderAdminOverview() {
+    const el = adminSectionEl();
+    if (!el) return;
+    el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
+    const owner = isOwnerUser();
+
+    let listingsSnap = null, usersCount = null, reportsSnap = null, listingsFailed = false;
+    try { listingsSnap = await db.collection('listings').get(); } catch(e) { listingsFailed = true; }
+    try { if (owner) { const u = await db.collection('users').get(); usersCount = u.size; } } catch(e) {}
+    try { reportsSnap = await db.collection('reports').where('status', '==', 'pending').get(); } catch(e) {}
+
+    if (listingsFailed) {
+      el.innerHTML = adminErrorState('Зарын өгөгдөл татахад алдаа гарлаа.', `renderAdminOverview()`);
+      return;
+    }
+
+    const byStatus = {};
+    listingsSnap.forEach(doc => { const st = doc.data().status || 'active'; byStatus[st] = (byStatus[st] || 0) + 1; });
+    const pendingCount = byStatus.pending || 0;
+    const reportedListingsCount = reportsSnap ? new Set(reportsSnap.docs.map(d => d.data().listingFsId).filter(Boolean)).size : 0;
+    const duplicateGroupCount = await adminCountDuplicateGroups();
+
+    const quickActions = [
+      { label: 'Зар шалгах', onclick: `adminGoToListingsTab('pending')` },
+      owner ? { label: 'Хэрэглэгч хайх', onclick: `adminGoToUsers(true)` } : null,
+      owner ? { label: 'Admin эрх өгөх', onclick: `adminGoToUsers(true)` } : null,
+      { label: 'Сурталчилгаа нэмэх', onclick: `renderAdminDashboard('ads'); setTimeout(()=>openAdForm(), 250);` }
+    ].filter(Boolean);
+
+    el.innerHTML = `
+      <div class="admin-kpi-grid">
+        <div class="admin-kpi-card"><div class="v">${listingsSnap.size}</div><div class="l">Нийт зар</div></div>
+        <div class="admin-kpi-card"><div class="v">${pendingCount}</div><div class="l">Хүлээгдэж буй</div></div>
+        ${owner ? `<div class="admin-kpi-card"><div class="v">${usersCount != null ? usersCount : '—'}</div><div class="l">Нийт хэрэглэгч</div></div>` : ''}
+        <div class="admin-kpi-card"><div class="v">${reportedListingsCount}</div><div class="l">Report авсан</div></div>
+      </div>
+
+      <div class="admin-panel" style="margin-top:16px;">
+        <div class="admin-panel-head">Хурдан үйлдэл</div>
+        <div class="admin-quick-actions">
+          ${quickActions.map(a => `<button class="btn btn-ghost" onclick="${a.onclick}">${esc(a.label)}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="admin-two-col">
+        <div class="admin-panel">
+          <div class="admin-panel-head">Сүүлийн үйлдлүүд</div>
+          <div id="adminRecentActions"><div class="admin-loading">Ачааллаж байна…</div></div>
+        </div>
+        <div class="admin-panel">
+          <div class="admin-panel-head">Анхаарах зүйлс</div>
+          <div>
+            ${adminAttentionRow('Хүлээгдэж буй зар', pendingCount, `adminGoToListingsTab('pending')`)}
+            ${adminAttentionRow('Report авсан зар', reportedListingsCount, `adminGoToListingsTab('flagged')`)}
+            ${adminAttentionRow('Магадгүй давхардсан бүлэг', duplicateGroupCount, `adminGoToListingsTab('flagged')`)}
+          </div>
+        </div>
+      </div>
+    `;
+    loadRecentActions(owner);
+  }
+
+  function adminAttentionRow(label, count, onclick) {
+    return `
+      <button type="button" class="admin-attention-row" onclick="${onclick}">
+        <span class="admin-attention-label">${esc(label)}</span>
+        <span class="admin-attention-count ${count > 0 ? 'has-items' : ''}">${count}</span>
+      </button>
+    `;
+  }
+
+  function adminGoToListingsTab(tab) {
+    _adminListingsTab = tab;
+    renderAdminDashboard('listings');
+  }
+  function adminGoToUsers(focusSearch) {
+    renderAdminDashboard('users');
+    if (focusSearch) setTimeout(() => document.getElementById('adminUserSearch')?.focus(), 350);
+  }
+
+  // where()+orderBy() on different fields needs a composite index this project hasn't
+  // provisioned — the admin-scoped query below fetches by actorUid alone (single-field,
+  // no index needed) and sorts client-side instead of adding an orderBy.
+  async function loadRecentActions(owner) {
+    const wrap = document.getElementById('adminRecentActions');
+    if (!wrap) return;
+    try {
+      let docs;
+      if (owner) {
+        const snap = await db.collection('adminAuditLogs').orderBy('timestamp', 'desc').limit(8).get();
+        docs = snap.docs;
+      } else {
+        const snap = await db.collection('adminAuditLogs').where('actorUid', '==', currentUser.uid).limit(30).get();
+        docs = snap.docs
+          .sort((a, b) => (b.data().timestamp?.toMillis?.() || 0) - (a.data().timestamp?.toMillis?.() || 0))
+          .slice(0, 8);
+      }
+      if (!docs.length) { wrap.innerHTML = `<div class="admin-empty-inline">Одоогоор бүртгэгдсэн үйлдэл алга.</div>`; return; }
+      wrap.innerHTML = docs.map(d => {
+        const l = d.data();
+        return `
+          <div class="admin-recent-item">
+            <span class="admin-recent-action">${esc(ADMIN_ACTION_LABELS[l.action] || l.action)} <span style="color:var(--ink-3);font-weight:500;">· ${esc(l.targetType || '')}</span></span>
+            <span class="admin-recent-meta">${l.timestamp?.toDate ? l.timestamp.toDate().toLocaleDateString() : '—'}</span>
+          </div>
+        `;
+      }).join('');
+    } catch(e) {
+      console.error('loadRecentActions failed:', e.code, e.message);
+      wrap.innerHTML = adminErrorState('Үйлдлийн түүх татахад алдаа гарлаа.', `loadRecentActions(${owner})`);
+    }
+  }
+
+  // ===== LISTINGS (Зарууд) — one unified table, tabbed =====
+  const LISTINGS_TABS = [
+    { id: 'all', label: 'Бүгд' },
+    { id: 'pending', label: 'Хүлээгдэж буй' },
+    { id: 'active', label: 'Нийтлэгдсэн' },
+    { id: 'rejected', label: 'Татгалзсан' },
+    { id: 'flagged', label: 'Report авсан' }
+  ];
+  let _adminListingsTab = 'pending';
+
+  async function renderAdminListingsSection(tab) {
+    if (tab) _adminListingsTab = tab;
+    const el = adminSectionEl();
+    if (!el) return;
+    el.innerHTML = `
+      <div class="admin-tabs">
+        ${LISTINGS_TABS.map(t => `<button class="mytab ${_adminListingsTab === t.id ? 'active' : ''}" onclick="renderAdminListingsSection('${t.id}')">${esc(t.label)}</button>`).join('')}
+      </div>
+      <div id="adminListingsTableWrap"><div class="admin-loading">Ачааллаж байна…</div></div>
+    `;
+    await loadAndRenderListingsTab(_adminListingsTab);
+  }
+
+  async function loadAndRenderListingsTab(tab) {
+    const wrap = document.getElementById('adminListingsTableWrap');
+    if (!wrap) return;
+    if (tab === 'flagged') {
+      const rows = await buildFlaggedRows();
+      renderListingsTableRows(wrap, rows, 'Одоогоор мэдээлэгдсэн, үнийн хэвийн бус эсвэл давхардсан зар олдсонгүй.', `renderAdminListingsSection('flagged')`);
+      return;
+    }
+    const statusMap = { all: ['pending', 'active', 'rejected', 'expired', 'sold', 'rented'], pending: ['pending'], active: ['active'], rejected: ['rejected'] };
+    const rawItems = await adminFetchListingsByStatus(statusMap[tab] || ['pending']);
+    if (rawItems === null) {
+      wrap.innerHTML = adminErrorState('Зарын жагсаалт татахад алдаа гарлаа.', `renderAdminListingsSection('${tab}')`);
+      return;
+    }
+    const rows = rawItems.map(normalizeListingRow);
+    renderListingsTableRows(wrap, rows, 'Энэ ангилалд зар алга байна.', `renderAdminListingsSection('${tab}')`);
+  }
+
+  function renderListingsTableRows(wrap, rows, emptyMsg) {
+    if (!wrap) return;
+    if (rows.length === 0) { wrap.innerHTML = adminEmptyState('Хоосон байна', emptyMsg); return; }
+    wrap.innerHTML = `<div class="admin-list-table">${rows.map(adminListingRow).join('')}</div>`;
+  }
+
+  // Normalizes either shape this file ever deals with into one row shape: a raw Firestore
+  // listing doc (fsId set by the caller, has sellerName/createdAt directly — see
+  // adminFetchListingsByStatus/the duplicate scan below) or a local `listings` array entry
+  // (has firestoreId/id, seller info lives in the separate sellerData lookup, date is
+  // _createdAtMs — see data.js/auth.js).
+  function normalizeListingRow(source) {
+    const isLocalShape = !!source.firestoreId;
+    const fsId = source.fsId || source.firestoreId;
+    let sellerName, dateText;
+    if (isLocalShape) {
+      sellerName = (sellerData[source.id] && sellerData[source.id].name) || 'Тодорхойгүй';
+      dateText = source._createdAtMs ? new Date(source._createdAtMs).toLocaleDateString() : '—';
+    } else {
+      sellerName = source.sellerName || 'Тодорхойгүй';
+      dateText = source.createdAt?.toDate ? source.createdAt.toDate().toLocaleDateString() : (source.updatedAt?.toDate ? source.updatedAt.toDate().toLocaleDateString() : '—');
+    }
+    return {
+      fsId,
+      img: source.img || (source.images && source.images[0]) || '',
+      title: source.title || '',
+      sellerName, dateText,
+      price: source.price || 0,
+      status: source.status || 'active',
+      reportCount: source.reportCount || 0,
+      rejectionReason: source.rejectionReason || '',
+      ownerId: source.ownerId || null,
+      flagReasons: null, reportIds: null
+    };
+  }
+
+  async function buildFlaggedRows() {
     const reportsByListing = await fetchPendingReportsGrouped();
     const anomalies = computePriceAnomalies();
-
     const flagged = {};
+
     Object.keys(reportsByListing).forEach(fsId => {
-      const group = reportsByListing[fsId];
       const l = listings.find(x => x.firestoreId === fsId);
       if (!l) return;
-      flagged[fsId] = flagged[fsId] || { l, reasons: [], reportIds: [] };
-      flagged[fsId].reasons.push(...group.reasons.map(r => 'Мэдээлэгдсэн: ' + r));
-      flagged[fsId].reportIds = group.reportIds;
+      flagged[fsId] = flagged[fsId] || { source: l, reasons: [], reportIds: [] };
+      flagged[fsId].reasons.push(...reportsByListing[fsId].reasons.map(r => 'Мэдээлэгдсэн: ' + r));
+      flagged[fsId].reportIds = reportsByListing[fsId].reportIds;
     });
     anomalies.forEach(({ l, val }) => {
       if (!l.firestoreId) return;
-      flagged[l.firestoreId] = flagged[l.firestoreId] || { l, reasons: [], reportIds: [] };
+      flagged[l.firestoreId] = flagged[l.firestoreId] || { source: l, reasons: [], reportIds: [] };
       flagged[l.firestoreId].reasons.push(`Зах зээлийн дундаж үнээс ${Math.abs(Math.round(val.diffPct * 100))}% хямд (${val.basisText})`);
     });
+    try {
+      const groups = await adminFetchDuplicateGroups();
+      groups.forEach(group => group.forEach(d => {
+        flagged[d.fsId] = flagged[d.fsId] || { source: d, reasons: [], reportIds: [] };
+        flagged[d.fsId].reasons.push('Магадгүй давхардсан зар (ижил эзэмшигч/дүүрэг/талбай/үнэ)');
+      }));
+    } catch(e) { console.error('duplicate scan failed:', e.code, e.message); }
 
-    const items = Object.values(flagged).sort((a, b) => b.reasons.length - a.reasons.length);
-    _adminLoading = false;
-    renderAdminFlaggedList(items, Object.keys(reportsByListing).length, anomalies.length);
+    return Object.values(flagged)
+      .sort((a, b) => b.reasons.length - a.reasons.length)
+      .map(({ source, reasons, reportIds }) => Object.assign(normalizeListingRow(source), { flagReasons: reasons, reportIds }));
+  }
+
+  // Same real signal isDuplicateListing() (my-listings.js) uses at submit time — same owner,
+  // district, price, area — just run across every active/pending listing instead of one
+  // user's own. Shared by the Зарууд "Report авсан" tab and the Нүүр "Анхаарах зүйлс" count.
+  async function adminFetchDuplicateGroups() {
+    const snap = await db.collection('listings').where('status', 'in', ['active', 'pending']).get();
+    const groups = {};
+    snap.docs.forEach(doc => {
+      const d = Object.assign({ fsId: doc.id }, doc.data());
+      if (!d.ownerId || !d.district || !d.price || !d.area) return;
+      const key = [d.ownerId, d.district, d.price, d.area].join('|');
+      (groups[key] = groups[key] || []).push(d);
+    });
+    return Object.values(groups).filter(g => g.length > 1);
+  }
+  async function adminCountDuplicateGroups() {
+    try { return (await adminFetchDuplicateGroups()).length; } catch(e) { return 0; }
   }
 
   async function fetchPendingReportsGrouped() {
@@ -206,50 +416,73 @@
       .sort((a, b) => a.val.diffPct - b.val.diffPct);
   }
 
-  function renderAdminFlaggedList(items, reportedCount, anomalyCount) {
-    const summaryEl = document.getElementById('adminSummaryRow');
-    const el = adminSectionEl();
-    if (!el) return;
-    if (summaryEl) {
-      summaryEl.style.display = 'flex';
-      summaryEl.innerHTML = `
-        <div class="admin-summary-stat"><div class="num">${items.length}</div><div class="label">Сэжигтэй зар</div></div>
-        <div class="admin-summary-stat"><div class="num">${reportedCount}</div><div class="label">Мэдээлэгдсэн зар</div></div>
-        <div class="admin-summary-stat"><div class="num">${anomalyCount}</div><div class="label">Огцом хямд үнэтэй зар</div></div>
-      `;
+  // Fetched straight from Firestore rather than the local `listings` array, since that array
+  // only ever holds the current visitor's OWN listings plus whatever's publicly active — an
+  // admin needs to see every user's listing in every status. Returns null (not []) on a real
+  // fetch failure so the caller can tell "empty" apart from "couldn't load".
+  async function adminFetchListingsByStatus(statuses) {
+    try {
+      const results = [];
+      for (const st of statuses) {
+        const snap = await db.collection('listings').where('status', '==', st).get();
+        snap.forEach(doc => results.push(Object.assign({ fsId: doc.id }, doc.data())));
+      }
+      return results;
+    } catch(e) {
+      console.error('adminFetchListingsByStatus failed:', e.code, e.message);
+      return null;
     }
-    if (items.length === 0) {
-      el.innerHTML = adminEmptyState(
-        `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;margin:0 auto 12px;"><polyline points="20 6 9 17 4 12"/></svg>`,
-        'Сэжигтэй зар алга', 'Одоогоор мэдээлэгдсэн болон үнийн хэвийн бус зар олдсонгүй.'
-      );
-      return;
-    }
-    el.innerHTML = items.map(item => adminFlagCard(item)).join('');
   }
 
-  function adminFlagCard({ l, reasons, reportIds }) {
-    const seller = sellerData[l.id] || {};
-    const ownerVerified = !!l.sellerVerified;
-    const phoneOk = !!l.phoneVerified;
-    const listingOk = !!l.listingVerified;
-    const pill = (on, label) => `<span class="verify-pill ${on ? 'on' : 'off'}">${on ? '✓' : '○'} ${label}</span>`;
+  // The admin listings table is fetched straight from Firestore and only carries the real
+  // document's own fields — never the client-only numeric `id` that openListing() keys off
+  // (that id is assigned when a listing loads into the local `listings` array, see
+  // data.js/auth.js). Resolve it by firestoreId here instead of threading a numeric id
+  // through data that was never fetched that way.
+  function adminOpenListingByFsId(fsId) {
+    const l = listings.find(x => x.firestoreId === fsId);
+    if (!l) { showToast('Энэ зар одоогоор жагсаалтад олдсонгүй'); return; }
+    showPage('listings');
+    setTimeout(() => openListing(l.id), 150);
+  }
+
+  const LISTING_STATUS_LABELS = { pending: 'Хүлээгдэж буй', active: 'Нийтлэгдсэн', rejected: 'Татгалзсан', expired: 'Хугацаа дууссан', sold: 'Зарагдсан', rented: 'Түрээслэгдсэн' };
+
+  function adminListingRow(row) {
+    const menuActions = [];
+    if (row.flagReasons) menuActions.push({ label: 'Баталгаажуулах', onclick: `adminVerifyListing('${row.fsId}')` });
+    if (row.status === 'pending') {
+      menuActions.push({ label: 'Approve', onclick: `adminApproveListing('${row.fsId}')` });
+      menuActions.push({ label: 'Reject', onclick: `adminRejectListing('${row.fsId}')`, danger: true });
+      menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
+    } else if (row.status === 'rejected') {
+      menuActions.push({ label: 'Approve', onclick: `adminApproveListing('${row.fsId}')` });
+      menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
+    } else if (row.status === 'active') {
+      menuActions.push({ label: 'Нуух', onclick: `adminArchiveListing('${row.fsId}')` });
+      menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
+      if (row.ownerId) menuActions.push({ label: 'Хэрэглэгч блоклох', onclick: `adminBlockUser('${row.ownerId}')`, danger: true });
+    } else {
+      menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
+    }
+    if (row.flagReasons && row.reportIds && row.reportIds.length) {
+      menuActions.push({ label: 'Report хаах', onclick: `adminDismissReports('${row.fsId}', ${JSON.stringify(row.reportIds).replace(/"/g, '&quot;')})` });
+    }
     return `
-      <div class="admin-flag-card">
-        <img class="admin-flag-img" src="${esc(l.img || '')}" alt="" onerror="this.style.display='none';" />
-        <div style="flex:1;min-width:0;">
-          <div class="admin-flag-title">${esc(l.title)}</div>
-          <div class="admin-flag-meta">${esc(l.loc)} · ${fmtPrice(l.price)} · Эзэмшигч: ${esc(seller.name || 'Тодорхойгүй')} (${esc(seller.phone || '—')})</div>
-          <div class="verify-status-row" style="margin:0 0 10px;">
-            ${pill(ownerVerified, 'Эзэмшигч')}${pill(phoneOk, 'Утас')}${pill(listingOk, 'Зар')}
+      <div class="admin-row">
+        <img class="admin-row-img" src="${esc(row.img)}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
+        <div class="admin-row-body">
+          <div class="admin-row-title">${esc(row.title)}</div>
+          <div class="admin-row-meta">${esc(row.sellerName)} · ${fmtPrice(row.price)} · ${esc(row.dateText)}
+            ${row.reportCount ? ` · <span style="color:var(--danger);font-weight:700;">${row.reportCount} report</span>` : ''}
           </div>
-          <ul class="admin-flag-reasons">${reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
-          <div class="admin-flag-actions">
-            <button class="btn btn-blue" onclick="adminVerifyListing('${l.firestoreId}')">Баталгаажуулах</button>
-            <button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="adminArchiveListing('${l.firestoreId}')">Архивлах</button>
-            ${reportIds && reportIds.length ? `<button class="btn btn-ghost" onclick="adminDismissReports('${l.firestoreId}', ${JSON.stringify(reportIds).replace(/"/g, '&quot;')})">Мэдээллийг хаах</button>` : ''}
-            <button class="btn btn-ghost" onclick="showPage('listings'); setTimeout(()=>openListing(${l.id}), 150)">Дэлгэрэнгүй</button>
-          </div>
+          <span class="admin-status-pill status-${row.status === 'active' ? 'active' : (row.status === 'pending' ? 'pending' : 'rejected')}">${esc(LISTING_STATUS_LABELS[row.status] || row.status)}</span>
+          ${row.flagReasons ? `<div class="admin-row-flag" title="${esc(row.flagReasons.join('; '))}">⚠ ${row.flagReasons.length} шалтгаанаар анхаарал татаж байна</div>` : ''}
+          ${row.status === 'rejected' && row.rejectionReason ? `<div class="admin-row-reject-reason">Шалтгаан: ${esc(row.rejectionReason)}</div>` : ''}
+        </div>
+        <div class="admin-row-actions">
+          <button class="btn btn-ghost" onclick="adminOpenListingByFsId('${row.fsId}')">Харах</button>
+          ${adminActionMenu(row.fsId, menuActions)}
         </div>
       </div>
     `;
@@ -262,7 +495,7 @@
       if (l) l.listingVerified = true;
       logAdminAction('verify', 'listing', fsId, '');
       showToast('Зар баталгаажлаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminVerifyListing failed:', e.code, e.message);
@@ -275,83 +508,11 @@
       await Promise.all(reportIds.map(id => db.collection('reports').doc(id).update({ status: 'resolved' })));
       logAdminAction('dismiss_reports', 'listing', fsId, reportIds.length + ' report(s)');
       showToast('Мэдээллүүдийг хаалаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
     } catch(e) {
       console.error('adminDismissReports failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
-  }
-
-  // Fetched straight from Firestore rather than the local `listings` array, since that array
-  // only ever holds the current visitor's OWN listings plus whatever's publicly active — an
-  // admin needs to see every user's listing in every status.
-  async function adminFetchListingsByStatus(statuses) {
-    try {
-      const results = [];
-      for (const st of statuses) {
-        const snap = await db.collection('listings').where('status', '==', st).get();
-        snap.forEach(doc => results.push(Object.assign({ fsId: doc.id }, doc.data())));
-      }
-      return results;
-    } catch(e) {
-      console.error('adminFetchListingsByStatus failed:', e.code, e.message);
-      return [];
-    }
-  }
-
-  // The admin listings table is fetched straight from Firestore (adminFetchListingsByStatus)
-  // and only carries the real document's own fields — never the client-only numeric `id`
-  // that openListing() keys off (that id is assigned when a listing loads into the local
-  // `listings` array, see data.js/auth.js). Resolve it by firestoreId here instead of trying
-  // to thread a numeric id through data that was never fetched that way.
-  function adminOpenListingByFsId(fsId) {
-    const l = listings.find(x => x.firestoreId === fsId);
-    if (!l) { showToast('Энэ зар одоогоор жагсаалтад олдсонгүй'); return; }
-    showPage('listings');
-    setTimeout(() => openListing(l.id), 150);
-  }
-
-  function adminListingRow(d) {
-    const status = d.status || 'active';
-    const img = d.img || (d.images && d.images[0]) || '';
-    const statusLabels = { pending: 'Хүлээгдэж буй', active: 'Нийтлэгдсэн', rejected: 'Татгалзсан', expired: 'Хугацаа дууссан', sold: 'Зарагдсан', rented: 'Түрээслэгдсэн' };
-    let actions;
-    if (status === 'pending') {
-      actions = `
-        <button class="btn btn-blue" onclick="adminApproveListing('${d.fsId}')">Approve</button>
-        <button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="adminRejectListing('${d.fsId}')">Reject</button>
-        <button class="btn btn-ghost" onclick="adminDeleteListing('${d.fsId}')">Устгах</button>
-      `;
-    } else if (status === 'rejected') {
-      actions = `
-        <button class="btn btn-blue" onclick="adminApproveListing('${d.fsId}')">Approve</button>
-        <button class="btn btn-ghost" onclick="adminDeleteListing('${d.fsId}')">Устгах</button>
-      `;
-    } else if (status === 'active') {
-      actions = `
-        <button class="btn btn-ghost" onclick="adminOpenListingByFsId('${d.fsId}')">Харах</button>
-        <button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="adminArchiveListing('${d.fsId}')">Hide</button>
-        <button class="btn btn-ghost" onclick="adminDeleteListing('${d.fsId}')">Устгах</button>
-        ${d.ownerId ? `<button class="btn btn-ghost" onclick="adminBlockUser('${d.ownerId}')">Хэрэглэгч блоклох</button>` : ''}
-      `;
-    } else {
-      actions = `<button class="btn btn-ghost" onclick="adminDeleteListing('${d.fsId}')">Устгах</button>`;
-    }
-    const dateText = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleDateString() : (d.updatedAt?.toDate ? d.updatedAt.toDate().toLocaleDateString() : '—');
-    return `
-      <div class="admin-row">
-        <img class="admin-row-img" src="${esc(img)}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
-        <div class="admin-row-body">
-          <div class="admin-row-title">${esc(d.title || '')}</div>
-          <div class="admin-row-meta">${esc(d.sellerName || 'Тодорхойгүй')} · ${fmtPrice(d.price || 0)} · ${esc(dateText)}
-            ${d.reportCount ? ` · <span style="color:var(--danger);font-weight:700;">${d.reportCount} report</span>` : ''}
-          </div>
-          <span class="admin-status-pill status-${status}">${esc(statusLabels[status] || status)}</span>
-          ${status === 'rejected' && d.rejectionReason ? `<div style="font-size:12px;color:var(--danger);margin-top:6px;">Шалтгаан: ${esc(d.rejectionReason)}</div>` : ''}
-        </div>
-        <div class="admin-row-actions">${actions}</div>
-      </div>
-    `;
   }
 
   async function adminApproveListing(fsId) {
@@ -361,7 +522,7 @@
       if (l) { l.status = 'active'; l._inactive = false; l._expired = false; l.listingVerified = true; l.rejectionReason = ''; }
       logAdminAction('approve', 'listing', fsId, '');
       showToast('Зар батлагдлаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminApproveListing failed:', e.code, e.message);
@@ -379,7 +540,7 @@
       if (l) { l.status = 'rejected'; l._inactive = true; l.rejectionReason = reason.trim(); }
       logAdminAction('reject', 'listing', fsId, reason.trim());
       showToast('Зар татгалзагдлаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminRejectListing failed:', e.code, e.message);
@@ -387,8 +548,8 @@
     }
   }
 
-  // "Hide/Архивлах" files an active (or flagged) listing under Expired — same status a
-  // listing reaches on its own after 30 days, just admin/owner-triggered. Never a hard delete.
+  // "Нуух" files an active (or flagged) listing under Expired — same status a listing
+  // reaches on its own after 30 days, just admin/owner-triggered. Never a hard delete.
   async function adminArchiveListing(fsId) {
     const reason = prompt('Нуух шалтгаан (заавал):');
     if (reason === null) return;
@@ -399,7 +560,7 @@
       if (l) { l.status = 'expired'; l._inactive = true; l._expired = true; }
       logAdminAction('hide', 'listing', fsId, reason.trim());
       showToast('Зар нуугдлаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminArchiveListing failed:', e.code, e.message);
@@ -418,7 +579,7 @@
       if (idx > -1) listings.splice(idx, 1);
       logAdminAction('delete', 'listing', fsId, reason.trim());
       showToast('Зар устгагдлаа', 'success');
-      renderAdminDashboard();
+      renderAdminListingsSection();
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminDeleteListing failed:', e.code, e.message);
@@ -438,34 +599,34 @@
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
   }
-
   async function adminUnblockUser(uid) {
     if (!uid) return;
     try {
       await db.collection('users').doc(uid).set({ blocked: false }, { merge: true });
       logAdminAction('unblock_user', 'user', uid, '');
       showToast('Блок цуцлагдлаа', 'success');
-      renderAdminDashboard();
+      renderAdminUsersSection();
     } catch(e) {
       console.error('adminUnblockUser failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
   }
 
-  // ===== USERS (owner only) =====
+  // ===== USERS (Хэрэглэгчид, owner only) =====
   let _adminUsersCache = null;
   let _adminUsersSearch = '';
+  let _adminUsersRoleFilter = 'all';
 
   async function renderAdminUsersSection() {
     const el = adminSectionEl();
     if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
+    el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
     try {
       const snap = await db.collection('users').get();
       _adminUsersCache = snap.docs.map(d => Object.assign({ uid: d.id }, d.data()));
     } catch(e) {
       console.error('renderAdminUsersSection failed:', e.code, e.message);
-      el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Ачаалж чадсангүй', 'Хэрэглэгчдийн жагсаалт татахад алдаа гарлаа.');
+      el.innerHTML = adminErrorState('Хэрэглэгчдийн жагсаалт татахад алдаа гарлаа.', `renderAdminUsersSection()`);
       return;
     }
     // Listings-per-owner count — one pass over the public+own-visible local array is not
@@ -487,50 +648,54 @@
     if (!el || !_adminUsersCache) return;
     const q = _adminUsersSearch.trim().toLowerCase();
     const items = _adminUsersCache.filter(u => {
+      if (_adminUsersRoleFilter !== 'all' && (u.role || 'user') !== _adminUsersRoleFilter) return false;
       if (!q) return true;
       const name = ((u.lastName || '') + ' ' + (u.firstName || '')).toLowerCase();
       return name.includes(q) || (u.email || '').toLowerCase().includes(q);
     });
+    const roleFilters = [{ id: 'all', label: 'Бүгд' }, { id: 'owner', label: 'Owner' }, { id: 'admin', label: 'Admin' }, { id: 'user', label: 'User' }];
     el.innerHTML = `
       <div class="admin-search-row">
         <input type="text" class="form-input" id="adminUserSearch" placeholder="Нэр эсвэл email хайх" value="${esc(_adminUsersSearch)}" oninput="adminFilterUsers(this.value)" />
       </div>
+      <div class="admin-tabs">
+        ${roleFilters.map(r => `<button class="mytab ${_adminUsersRoleFilter === r.id ? 'active' : ''}" onclick="adminSetUsersRoleFilter('${r.id}')">${r.label}</button>`).join('')}
+      </div>
       <div class="admin-list-table">
-        ${items.length === 0 ? adminEmptyState(ADMIN_EMPTY_ICON, 'Хэрэглэгч олдсонгүй', 'Хайлтын нөхцлөө өөрчилж үзнэ үү.') : items.map(u => adminUserRow(u)).join('')}
+        ${items.length === 0 ? adminEmptyState('Хэрэглэгч олдсонгүй', 'Хайлтын нөхцлөө өөрчилж үзнэ үү.') : items.map(u => adminUserRow(u)).join('')}
       </div>
     `;
   }
 
-  function adminFilterUsers(val) {
-    _adminUsersSearch = val;
-    renderAdminUsersList();
-  }
+  function adminFilterUsers(val) { _adminUsersSearch = val; renderAdminUsersList(); }
+  function adminSetUsersRoleFilter(role) { _adminUsersRoleFilter = role; renderAdminUsersList(); }
 
   function adminUserRow(u) {
     const isSelf = currentUser && currentUser.uid === u.uid;
     const role = u.role || 'user';
+    const name = ((u.lastName || '') + ' ' + (u.firstName || '')).trim() || 'Нэргүй';
     const created = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString() : '—';
-    const status = u.blocked ? '<span class="admin-status-pill status-rejected">Блоклогдсон</span>' : '<span class="admin-status-pill status-active">Идэвхтэй</span>';
-    let actions = '';
+    const statusPill = u.blocked ? '<span class="admin-status-pill status-rejected">Блоклогдсон</span>' : '<span class="admin-status-pill status-active">Идэвхтэй</span>';
+    let primaryBtn = '';
+    const menuActions = [];
     if (!isSelf && role !== 'owner') {
-      if (role === 'admin') {
-        actions += `<button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="confirmRevokeAdmin('${u.uid}', '${esc((u.firstName || '') + ' ' + (u.lastName || '')).replace(/'/g, "\\'")}')">Admin эрх цуцлах</button>`;
-      } else {
-        actions += `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}', '${esc((u.firstName || '') + ' ' + (u.lastName || '')).replace(/'/g, "\\'")}')">Admin эрх өгөх</button>`;
-      }
-      actions += u.blocked
-        ? `<button class="btn btn-ghost" onclick="adminUnblockUser('${u.uid}')">Блок цуцлах</button>`
-        : `<button class="btn btn-ghost" onclick="adminBlockUser('${u.uid}')">Блоклох</button>`;
+      const nameJs = name.replace(/'/g, "\\'");
+      primaryBtn = role === 'admin'
+        ? `<button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="confirmRevokeAdmin('${u.uid}', '${nameJs}')">Admin эрх цуцлах</button>`
+        : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}', '${nameJs}')">Admin болгох</button>`;
+      menuActions.push(u.blocked
+        ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
+        : { label: 'Блоклох', onclick: `adminBlockUser('${u.uid}')`, danger: true });
     }
     return `
       <div class="admin-row">
         <div class="admin-user-avatar">${esc((u.firstName || u.email || '?')[0].toUpperCase())}</div>
         <div class="admin-row-body">
-          <div class="admin-row-title">${esc(((u.lastName || '') + ' ' + (u.firstName || '')).trim() || 'Нэргүй')} ${isSelf ? '<span style="color:var(--ink-3);font-weight:500;">(та)</span>' : ''}</div>
-          <div class="admin-row-meta">${esc(u.email || '—')} · UID: <code style="font-size:11px;">${esc(u.uid.slice(0, 10))}…</code> · ${esc(created)} · ${u._listingCount} зар</div>
-          <span class="admin-role-pill role-${role}">${roleLabel(role)}</span> ${status}
+          <div class="admin-row-title">${esc(name)} ${isSelf ? '<span style="color:var(--ink-3);font-weight:500;">(та)</span>' : ''}</div>
+          <div class="admin-row-meta">${esc(u.email || '—')} · ${esc(created)} · ${u._listingCount} зар</div>
+          <span class="admin-role-pill role-${role}">${roleLabel(role)}</span> ${statusPill}
         </div>
-        <div class="admin-row-actions">${actions}</div>
+        <div class="admin-row-actions">${primaryBtn}${adminActionMenu(u.uid, menuActions)}</div>
       </div>
     `;
   }
@@ -552,7 +717,7 @@
       await db.collection('users').doc(uid).update({ role: 'admin', updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       logAdminAction('grant_admin', 'user', uid, name || '');
       showToast((name || 'Хэрэглэгч') + ' Admin эрх авлаа', 'success');
-      renderAdminDashboard('users');
+      renderAdminUsersSection();
     } catch(e) {
       console.error('grantAdminRole failed:', e.code, e.message);
       showToast('Эрх өгөхөд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
@@ -563,49 +728,49 @@
       await db.collection('users').doc(uid).update({ role: 'user', updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       logAdminAction('revoke_admin', 'user', uid, name || '');
       showToast((name || 'Хэрэглэгч') + '-ийн Admin эрх цуцлагдлаа', 'success');
-      renderAdminDashboard('users');
+      renderAdminUsersSection();
     } catch(e) {
       console.error('revokeAdminRole failed:', e.code, e.message);
       showToast('Эрх цуцлахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
   }
 
-  // ===== NEW DEVELOPMENTS MODERATION =====
+  // ===== NEW DEVELOPMENTS (Шинэ орон сууц) =====
   async function renderAdminProjectsSection() {
     const el = adminSectionEl();
     if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
+    el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
     try {
       const snap = await db.collection('projects').get();
       const items = snap.docs.map(d => Object.assign({ fsId: d.id }, d.data()));
-      if (items.length === 0) {
-        el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Төсөл алга', 'Одоогоор нийтэлсэн барилгын төсөл алга байна.');
-        return;
-      }
+      if (items.length === 0) { el.innerHTML = adminEmptyState('Төсөл алга', 'Одоогоор нийтэлсэн барилгын төсөл алга байна.'); return; }
       el.innerHTML = `<div class="admin-list-table">${items.map(p => adminProjectRow(p)).join('')}</div>`;
     } catch(e) {
       console.error('renderAdminProjectsSection failed:', e.code, e.message);
-      el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Ачаалж чадсангүй', 'Дахин оролдоно уу.');
+      el.innerHTML = adminErrorState('Төслийн жагсаалт татахад алдаа гарлаа.', `renderAdminProjectsSection()`);
     }
   }
 
   function adminProjectRow(p) {
     const status = p.status || 'active';
     const img = (p.images && p.images[0]) || p.img || '';
+    const menuActions = [
+      status === 'active'
+        ? { label: 'Нуух', onclick: `adminHideProject('${p.fsId}')`, danger: true }
+        : { label: 'Дахин нийтлэх', onclick: `adminUnhideProject('${p.fsId}')` },
+      { label: 'Устгах', onclick: `adminDeleteProject('${p.fsId}')`, danger: true }
+    ];
     return `
       <div class="admin-row">
         <img class="admin-row-img" src="${esc(img)}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
         <div class="admin-row-body">
           <div class="admin-row-title">${esc(p.projectName || '')}</div>
-          <div class="admin-row-meta">${esc(p.company || 'Тодорхойгүй компани')} · ${esc(ndDistrictLabel ? ndDistrictLabel(p.district) : (p.district || ''))}</div>
+          <div class="admin-row-meta">${esc(p.company || 'Тодорхойгүй компани')} · ${esc(typeof ndDistrictLabel === 'function' ? ndDistrictLabel(p.district) : (p.district || ''))}</div>
           <span class="admin-status-pill status-${status === 'active' ? 'active' : 'rejected'}">${status === 'active' ? 'Идэвхтэй' : 'Нуугдсан'}</span>
         </div>
         <div class="admin-row-actions">
           <button class="btn btn-ghost" onclick="showPage('newdev'); setTimeout(()=>openProjectDetail('${p.fsId}'), 150)">Харах</button>
-          ${status === 'active'
-            ? `<button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="adminHideProject('${p.fsId}')">Нуух</button>`
-            : `<button class="btn btn-blue" onclick="adminUnhideProject('${p.fsId}')">Дахин нийтлэх</button>`}
-          <button class="btn btn-ghost" onclick="adminDeleteProject('${p.fsId}')">Устгах</button>
+          ${adminActionMenu('proj-' + p.fsId, menuActions)}
         </div>
       </div>
     `;
@@ -619,7 +784,7 @@
       await db.collection('projects').doc(fsId).update({ status: 'hidden' });
       logAdminAction('hide', 'project', fsId, reason.trim());
       showToast('Төсөл нуугдлаа', 'success');
-      renderAdminDashboard('projects');
+      renderAdminProjectsSection();
     } catch(e) {
       console.error('adminHideProject failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
@@ -630,7 +795,7 @@
       await db.collection('projects').doc(fsId).update({ status: 'active' });
       logAdminAction('unhide', 'project', fsId, '');
       showToast('Төсөл дахин нийтлэгдлээ', 'success');
-      renderAdminDashboard('projects');
+      renderAdminProjectsSection();
     } catch(e) {
       console.error('adminUnhideProject failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
@@ -645,25 +810,27 @@
       await db.collection('projects').doc(fsId).delete();
       logAdminAction('delete', 'project', fsId, reason.trim());
       showToast('Төсөл устгагдлаа', 'success');
-      renderAdminDashboard('projects');
+      renderAdminProjectsSection();
     } catch(e) {
       console.error('adminDeleteProject failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
   }
 
-  // ===== ADVERTISING =====
+  // ===== ADVERTISING (Сурталчилгаа) =====
   const AD_PLACEMENTS = {
     'home-banner': 'Homepage banner', 'listings': 'Listings хуудас',
     'search-results': 'Хайлтын үр дүн', 'featured': 'Featured listings'
   };
+  const AD_TABS = [{ id: 'active', label: 'Идэвхтэй' }, { id: 'scheduled', label: 'Товлогдсон' }, { id: 'expired', label: 'Дууссан' }];
   let _adminAdsCache = null;
-  let _adAddState = null;
+  let _adminAdsTab = 'active';
 
-  async function renderAdminAdsSection() {
+  async function renderAdminAdsSection(tab) {
+    if (tab) _adminAdsTab = tab;
     const el = adminSectionEl();
     if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
+    el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
     try {
       const snap = await db.collection('ads').orderBy('createdAt', 'desc').get();
       _adminAdsCache = snap.docs.map(d => Object.assign({ fsId: d.id }, d.data()));
@@ -671,18 +838,33 @@
       try {
         const snap = await db.collection('ads').get();
         _adminAdsCache = snap.docs.map(d => Object.assign({ fsId: d.id }, d.data()));
-      } catch(e2) { _adminAdsCache = []; }
+      } catch(e2) {
+        el.innerHTML = adminErrorState('Сурталчилгааны жагсаалт татахад алдаа гарлаа.', `renderAdminAdsSection()`);
+        return;
+      }
     }
+
+    const buckets = { active: [], scheduled: [], expired: [] };
+    _adminAdsCache.forEach(ad => {
+      if (isAdCurrentlyActive(ad)) buckets.active.push(ad);
+      else if (ad.active && ad.startDate && Date.now() < new Date(ad.startDate).getTime()) buckets.scheduled.push(ad);
+      else buckets.expired.push(ad);
+    });
+    const emptyMsgs = { active: 'Одоогоор идэвхтэй сурталчилгаа алга.', scheduled: 'Товлогдсон сурталчилгаа алга.', expired: 'Дууссан сурталчилгаа алга.' };
+
     el.innerHTML = `
-      <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <div class="admin-tabs" style="margin-bottom:0;">
+          ${AD_TABS.map(t => `<button class="mytab ${_adminAdsTab === t.id ? 'active' : ''}" onclick="renderAdminAdsSection('${t.id}')">${t.label} (${buckets[t.id].length})</button>`).join('')}
+        </div>
         <button class="btn btn-blue" onclick="openAdForm()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-          Шинэ сурталчилгаа нэмэх
+          Сурталчилгаа нэмэх
         </button>
       </div>
       <div id="adFormWrap"></div>
       <div class="admin-list-table" id="adListWrap">
-        ${_adminAdsCache.length === 0 ? adminEmptyState(ADMIN_EMPTY_ICON, 'Сурталчилгаа алга', 'Одоогоор идэвхтэй эсвэл идэвхгүй сурталчилгаа алга байна.') : _adminAdsCache.map(adminAdRow).join('')}
+        ${buckets[_adminAdsTab].length === 0 ? adminEmptyState('Сурталчилгаа алга', emptyMsgs[_adminAdsTab]) : buckets[_adminAdsTab].map(adminAdRow).join('')}
       </div>
     `;
   }
@@ -697,6 +879,10 @@
 
   function adminAdRow(ad) {
     const live = isAdCurrentlyActive(ad);
+    const menuActions = [
+      { label: ad.active ? 'Идэвхгүй болгох' : 'Идэвхжүүлэх', onclick: `adminToggleAd('${ad.fsId}', ${!ad.active})` },
+      { label: 'Устгах', onclick: `adminDeleteAd('${ad.fsId}')`, danger: true }
+    ];
     return `
       <div class="admin-row">
         <img class="admin-row-img" src="${esc(ad.image || '')}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
@@ -707,14 +893,14 @@
         </div>
         <div class="admin-row-actions">
           <button class="btn btn-ghost" onclick="openAdForm('${ad.fsId}')">Засах</button>
-          <button class="btn btn-ghost" onclick="adminToggleAd('${ad.fsId}', ${!ad.active})">${ad.active ? 'Идэвхгүй болгох' : 'Идэвхжүүлэх'}</button>
-          <button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="adminDeleteAd('${ad.fsId}')">Устгах</button>
+          ${adminActionMenu('ad-' + ad.fsId, menuActions)}
         </div>
       </div>
     `;
   }
 
   let _adEditingFsId = null;
+  let _adAddState = null;
 
   function openAdForm(fsId) {
     _adEditingFsId = fsId || null;
@@ -812,7 +998,7 @@
         logAdminAction('create_ad', 'ad', ref.id, title);
       }
       showToast('Сурталчилгаа хадгалагдлаа', 'success');
-      renderAdminDashboard('ads');
+      renderAdminAdsSection();
       if (typeof renderSiteAds === 'function') renderSiteAds();
     } catch(e) {
       console.error('saveAd failed:', e.code, e.message);
@@ -824,7 +1010,7 @@
     try {
       await db.collection('ads').doc(fsId).update({ active: newActive });
       logAdminAction(newActive ? 'activate_ad' : 'deactivate_ad', 'ad', fsId, '');
-      renderAdminDashboard('ads');
+      renderAdminAdsSection();
       if (typeof renderSiteAds === 'function') renderSiteAds();
     } catch(e) {
       console.error('adminToggleAd failed:', e.code, e.message);
@@ -837,7 +1023,7 @@
       await db.collection('ads').doc(fsId).delete();
       logAdminAction('delete_ad', 'ad', fsId, '');
       showToast('Сурталчилгаа устгагдлаа', 'success');
-      renderAdminDashboard('ads');
+      renderAdminAdsSection();
       if (typeof renderSiteAds === 'function') renderSiteAds();
     } catch(e) {
       console.error('adminDeleteAd failed:', e.code, e.message);
@@ -845,68 +1031,53 @@
     }
   }
 
-  // ===== MODERATION (suspicious + duplicate listings) =====
-  async function renderAdminModerationSection() {
+  // ===== SETTINGS (Тохиргоо) — detailed analytics + audit/history =====
+  async function renderAdminSettingsSection() {
     const el = adminSectionEl();
     if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
-    await renderAdminFlaggedTab();
-    // Append a real duplicate-listing scan below the existing flagged list — same signal
-    // isDuplicateListing() (my-listings.js) uses at submit time (same owner, district, price,
-    // area), just run across every active/pending listing instead of just the current user's.
-    try {
-      const snap = await db.collection('listings').where('status', 'in', ['active', 'pending']).get();
-      const all = snap.docs.map(d => Object.assign({ fsId: d.id }, d.data()));
-      const groups = {};
-      all.forEach(d => {
-        if (!d.ownerId || !d.district || !d.price || !d.area) return;
-        const key = [d.ownerId, d.district, d.price, d.area].join('|');
-        (groups[key] = groups[key] || []).push(d);
-      });
-      const dupGroups = Object.values(groups).filter(g => g.length > 1);
-      const dupWrap = document.createElement('div');
-      dupWrap.innerHTML = `
-        <div class="admin-panel-head" style="margin-top:24px;">Магадгүй давхардсан зар (${dupGroups.length} бүлэг)</div>
-        ${dupGroups.length === 0
-          ? `<div style="padding:20px;color:var(--ink-3);font-size:13px;">Ижил эзэмшигч, дүүрэг, талбай, үнэтэй давхардсан зар олдсонгүй.</div>`
-          : `<div class="admin-list-table">${dupGroups.map(g => g.map(d => adminListingRow(d)).join('')).join('<div style="height:2px;background:var(--line);margin:8px 0;"></div>')}</div>`}
-      `;
-      el.appendChild(dupWrap);
-    } catch(e) {
-      console.error('duplicate scan failed:', e.code, e.message);
-    }
+    const owner = isOwnerUser();
+    el.innerHTML = `
+      <div class="admin-panel">
+        <div class="admin-panel-head">Дэлгэрэнгүй тоон үзүүлэлт</div>
+        <div id="adminSettingsAnalytics" style="padding:16px;"><div class="admin-loading">Ачааллаж байна…</div></div>
+      </div>
+      <div class="admin-panel" style="margin-top:16px;">
+        <div class="admin-panel-head">${owner ? 'Үйлдлийн түүх' : 'Миний үйлдлийн түүх'}</div>
+        <div id="adminSettingsAuditLog"><div class="admin-loading">Ачааллаж байна…</div></div>
+      </div>
+    `;
+    loadSettingsAnalytics();
+    loadSettingsAuditLog(owner);
   }
 
-  // ===== ANALYTICS (real data only) =====
-  async function renderAdminAnalyticsSection() {
-    const el = adminSectionEl();
-    if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
-    let listingsSnap, projectsSnap, usersCount = null;
-    try { listingsSnap = await db.collection('listings').get(); } catch(e) { listingsSnap = null; }
-    try { projectsSnap = await db.collection('projects').get(); } catch(e) { projectsSnap = null; }
+  async function loadSettingsAnalytics() {
+    const wrap = document.getElementById('adminSettingsAnalytics');
+    if (!wrap) return;
+    let listingsSnap = null, projectsSnap = null, usersCount = null;
+    try { listingsSnap = await db.collection('listings').get(); } catch(e) {}
+    try { projectsSnap = await db.collection('projects').get(); } catch(e) {}
     try { if (isOwnerUser()) { const u = await db.collection('users').get(); usersCount = u.size; } } catch(e) {}
+
+    if (!listingsSnap) { wrap.innerHTML = adminErrorState('Тоон үзүүлэлт татахад алдаа гарлаа.', 'loadSettingsAnalytics()'); return; }
 
     let totalViews = 0, totalFavorites = 0, totalContacts = 0;
     const byCat = {};
-    if (listingsSnap) {
-      listingsSnap.forEach(doc => {
-        const d = doc.data();
-        totalViews += d.viewCount || 0;
-        totalFavorites += d.favoriteCount || 0;
-        totalContacts += d.contactCount || 0;
-        const cat = d.category || 'apartment';
-        byCat[cat] = (byCat[cat] || 0) + 1;
-      });
-    }
+    listingsSnap.forEach(doc => {
+      const d = doc.data();
+      totalViews += d.viewCount || 0;
+      totalFavorites += d.favoriteCount || 0;
+      totalContacts += d.contactCount || 0;
+      const cat = d.category || 'apartment';
+      byCat[cat] = (byCat[cat] || 0) + 1;
+    });
     let projectViews = 0, projectContacts = 0;
     if (projectsSnap) projectsSnap.forEach(doc => { const d = doc.data(); projectViews += d.viewCount || 0; projectContacts += d.contactCount || 0; });
-
     const catLabels = { apartment: 'Орон сууц', house: 'Хаус', land: 'Газар', office: 'Оффис', rent: 'Түрээс' };
-    el.innerHTML = `
+
+    wrap.innerHTML = `
       <div class="admin-stat-grid">
         ${usersCount != null ? `<div class="admin-stat-card"><div class="v">${usersCount}</div><div class="l">Хэрэглэгч</div></div>` : ''}
-        <div class="admin-stat-card"><div class="v">${listingsSnap ? listingsSnap.size : '—'}</div><div class="l">Зар</div></div>
+        <div class="admin-stat-card"><div class="v">${listingsSnap.size}</div><div class="l">Зар</div></div>
         <div class="admin-stat-card"><div class="v">${fmt(totalViews)}</div><div class="l">Зарын үзэлт</div></div>
         <div class="admin-stat-card"><div class="v">${fmt(totalFavorites)}</div><div class="l">Хадгалагдсан</div></div>
         <div class="admin-stat-card"><div class="v">${fmt(totalContacts)}</div><div class="l">Холбогдсон (зар)</div></div>
@@ -914,53 +1085,48 @@
         <div class="admin-stat-card"><div class="v">${fmt(projectViews)}</div><div class="l">Төслийн үзэлт</div></div>
         <div class="admin-stat-card"><div class="v">${fmt(projectContacts)}</div><div class="l">Холбогдсон (төсөл)</div></div>
       </div>
-      <div class="admin-panel" style="margin-top:20px;">
-        <div class="admin-panel-head">Ангилалаар</div>
-        <div style="padding:16px;display:flex;flex-direction:column;gap:8px;">
-          ${Object.keys(byCat).length === 0 ? '<div style="color:var(--ink-3);font-size:13px;">Дата алга.</div>' : Object.keys(byCat).map(c => `
-            <div style="display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line);">
-              <span>${esc(catLabels[c] || c)}</span><strong>${byCat[c]}</strong>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      <div class="admin-panel" style="margin-top:16px;">
-        <div class="admin-panel-head">Compare ашиглалт</div>
-        <div style="padding:16px;color:var(--ink-3);font-size:13px;line-height:1.6;">Одоогоор энэ үзүүлэлтийг хэмжиж хадгалдаг backend алга — Compare нь зөвхөн тухайн session дотор, browser санах ойд л ажилладаг тул бодит тоо гаргах боломжгүй. Fake тоо харуулахгүй байна.</div>
+      ${Object.keys(byCat).length ? `
+      <div style="margin-top:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:8px;">Ангилалаар</div>
+        ${Object.keys(byCat).map(c => `
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);">
+            <span>${esc(catLabels[c] || c)}</span><strong>${byCat[c]}</strong>
+          </div>
+        `).join('')}
+      </div>` : ''}
+      <div style="margin-top:16px;font-size:12.5px;color:var(--ink-3);line-height:1.6;">
+        <strong>Compare ашиглалт:</strong> одоогоор хэмжиж хадгалдаг backend алга — Compare зөвхөн session дотор, browser санах ойд л ажилладаг тул бодит тоо гаргах боломжгүй.
       </div>
     `;
   }
 
-  // ===== AUDIT LOG (owner only) =====
-  async function renderAdminAuditLogSection() {
-    const el = adminSectionEl();
-    if (!el) return;
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--ink-3);">Ачааллаж байна…</div>`;
+  async function loadSettingsAuditLog(owner) {
+    const wrap = document.getElementById('adminSettingsAuditLog');
+    if (!wrap) return;
     try {
-      const snap = await db.collection('adminAuditLogs').orderBy('timestamp', 'desc').limit(200).get();
-      const items = snap.docs.map(d => d.data());
-      if (items.length === 0) {
-        el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Түүх алга', 'Одоогоор бүртгэгдсэн admin/owner үйлдэл алга байна.');
-        return;
+      let docs;
+      if (owner) {
+        const snap = await db.collection('adminAuditLogs').orderBy('timestamp', 'desc').limit(200).get();
+        docs = snap.docs;
+      } else {
+        const snap = await db.collection('adminAuditLogs').where('actorUid', '==', currentUser.uid).limit(200).get();
+        docs = snap.docs.sort((a, b) => (b.data().timestamp?.toMillis?.() || 0) - (a.data().timestamp?.toMillis?.() || 0));
       }
-      const actionLabels = {
-        approve: 'Approve', reject: 'Reject', hide: 'Hide', delete: 'Устгах',
-        verify: 'Баталгаажуулах', dismiss_reports: 'Report хаах', block_user: 'Блоклох',
-        unblock_user: 'Блок цуцлах', grant_admin: 'Admin эрх өгсөн', revoke_admin: 'Admin эрх цуцалсан',
-        create_ad: 'Ad үүсгэсэн', update_ad: 'Ad засварласан', delete_ad: 'Ad устгасан',
-        activate_ad: 'Ad идэвхжүүлсэн', deactivate_ad: 'Ad идэвхгүй болгосон', unhide: 'Дахин нийтлэх'
-      };
-      el.innerHTML = `<div class="admin-list-table">${items.map(l => `
-        <div class="admin-row" style="align-items:flex-start;">
-          <div class="admin-row-body">
-            <div class="admin-row-title">${esc(actionLabels[l.action] || l.action)} <span style="color:var(--ink-3);font-weight:500;">· ${esc(l.targetType)} ${esc(l.targetId)}</span></div>
-            <div class="admin-row-meta">${esc(l.actorEmail)} (${esc(roleLabel(l.actorRole))}) · ${l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString() : '—'}</div>
-            ${l.reason ? `<div style="font-size:12.5px;color:var(--ink-2);margin-top:4px;">Шалтгаан: ${esc(l.reason)}</div>` : ''}
+      if (!docs.length) { wrap.innerHTML = adminEmptyState('Түүх алга', 'Одоогоор бүртгэгдсэн үйлдэл алга байна.'); return; }
+      wrap.innerHTML = `<div class="admin-list-table">${docs.map(d => {
+        const l = d.data();
+        return `
+          <div class="admin-row" style="align-items:flex-start;">
+            <div class="admin-row-body">
+              <div class="admin-row-title">${esc(ADMIN_ACTION_LABELS[l.action] || l.action)} <span style="color:var(--ink-3);font-weight:500;">· ${esc(l.targetType)} ${esc(l.targetId)}</span></div>
+              <div class="admin-row-meta">${esc(l.actorEmail)} (${esc(roleLabel(l.actorRole))}) · ${l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString() : '—'}</div>
+              ${l.reason ? `<div style="font-size:12px;color:var(--ink-2);margin-top:4px;">Шалтгаан: ${esc(l.reason)}</div>` : ''}
+            </div>
           </div>
-        </div>
-      `).join('')}</div>`;
+        `;
+      }).join('')}</div>`;
     } catch(e) {
-      console.error('renderAdminAuditLogSection failed:', e.code, e.message);
-      el.innerHTML = adminEmptyState(ADMIN_EMPTY_ICON, 'Ачаалж чадсангүй', 'Дахин оролдоно уу.');
+      console.error('loadSettingsAuditLog failed:', e.code, e.message);
+      wrap.innerHTML = adminErrorState('Үйлдлийн түүх татахад алдаа гарлаа.', `loadSettingsAuditLog(${owner})`);
     }
   }

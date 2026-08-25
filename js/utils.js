@@ -247,6 +247,10 @@
     const activeLink = document.querySelector(`.nav-links a[onclick*="'${target}'"]`);
     if (activeLink) activeLink.classList.add('active');
     window.scrollTo(0, 0);
+    // The compact admin-only chrome (see css .admin-mode rules) only ever applies while
+    // guardAdminRoute() below confirms access — leaving /admin for any other page always
+    // restores the normal site nav/footer immediately, not just on the next admin check.
+    if (target !== 'admin') document.body.classList.remove('admin-mode');
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()
         && typeof renderAdminDashboard === 'function') renderAdminDashboard();
