@@ -46,6 +46,17 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
 
+      // Owner self-heal: the create rule above only ever runs once, the moment a profile doc
+      // is first created — an owner account whose doc already existed before this role system
+      // shipped (e.g. they'd used the app previously under the old rules, which only ever
+      // allowed role:'user') would otherwise have no path to ever reach role:'owner', since
+      // the self-update rule right above explicitly forbids a role change. This is the one
+      // narrow exception: only the verified owner email, only on their own row, only landing
+      // on exactly 'owner' — it can't be used by anyone else, and can't set any other role.
+      allow update: if isOwner() && request.auth.uid == uid
+                    && request.resource.data.role == 'owner'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt']);
+
       // ===== PRIVILEGED ROLE MANAGEMENT — OWNER ONLY =====
       // The one and only path by which `role` may ever change to/from 'admin'. Scoped tightly:
       // - only the owner (verified token email) can call it

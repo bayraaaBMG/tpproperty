@@ -61,9 +61,18 @@
           // (js/admin.js grantAdminRole()), which writes through the one privileged
           // firestore.rules path for it — never settable by the user themselves.
           currentUser.role = data.role || 'user';
-          // Phone-auth accounts are always verified via their sign-in number even if this
-          // predates verifiedPhone being stored on the profile doc (older accounts).
-          currentUser.verifiedPhone = data.verifiedPhone || (isPhone ? normalizePhone(fbUser.phoneNumber) : null);
+          // Self-heal: the owner's profile doc may already have existed (role:'user' or no
+          // role at all) from before this permission system shipped — the create-time
+          // bootstrap in createAccount()/loginWithGoogle() only ever runs on a brand-new doc,
+          // so an existing one can otherwise never reach role:'owner'. firestore.rules carries
+          // one narrow update rule for exactly this (owner's own row, landing on exactly
+          // 'owner', nothing else touched) — runs here so it's checked on every session, not
+          // just a fresh Google-popup login.
+          if (isOwnerEmail(fbUser.email) && currentUser.role !== 'owner') {
+            db.collection('users').doc(fbUser.uid).update({ role: 'owner', updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+              .then(() => { currentUser.role = 'owner'; updateNavLoggedIn(); if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive(); })
+              .catch(e => console.error('Owner role self-heal failed:', e.code, e.message));
+          }
           updateNavLoggedIn();
           if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
         }

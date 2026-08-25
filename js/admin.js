@@ -147,27 +147,34 @@
   document.addEventListener('click', closeAllAdminMenus);
 
   // ===== OVERVIEW (Нүүр) =====
+  // Every KPI/attention figure below is tracked as { ok, value } rather than defaulting a
+  // failed fetch to 0 — a permission-denied or network error must never render as if it
+  // were a genuine zero. adminKpiCard()/adminAttentionRow() branch on `ok` to show an
+  // explicit "Ачаалж чадсангүй" in that one card instead of a number.
   async function renderAdminOverview() {
     const el = adminSectionEl();
     if (!el) return;
     el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
     const owner = isOwnerUser();
 
-    let listingsSnap = null, usersCount = null, reportsSnap = null, listingsFailed = false;
-    try { listingsSnap = await db.collection('listings').get(); } catch(e) { listingsFailed = true; }
-    try { if (owner) { const u = await db.collection('users').get(); usersCount = u.size; } } catch(e) {}
-    try { reportsSnap = await db.collection('reports').where('status', '==', 'pending').get(); } catch(e) {}
-
-    if (listingsFailed) {
-      el.innerHTML = adminErrorState('Зарын өгөгдөл татахад алдаа гарлаа.', `renderAdminOverview()`);
+    const listingsResult = await adminSafeFetch(() => db.collection('listings').get());
+    if (!listingsResult.ok) {
+      el.innerHTML = adminErrorState('Зарын өгөгдөл татахад алдаа гарлаа (' + (listingsResult.code || 'алдаа') + ').', `renderAdminOverview()`);
       return;
     }
+    const listingsSnap = listingsResult.value;
+
+    const usersResult = owner ? await adminSafeFetch(() => db.collection('users').get()) : null;
+    const reportsResult = await adminSafeFetch(() => db.collection('reports').where('status', '==', 'pending').get());
+    const dupGroupsResult = await adminSafeFetch(() => adminFetchDuplicateGroups());
 
     const byStatus = {};
     listingsSnap.forEach(doc => { const st = doc.data().status || 'active'; byStatus[st] = (byStatus[st] || 0) + 1; });
     const pendingCount = byStatus.pending || 0;
-    const reportedListingsCount = reportsSnap ? new Set(reportsSnap.docs.map(d => d.data().listingFsId).filter(Boolean)).size : 0;
-    const duplicateGroupCount = await adminCountDuplicateGroups();
+    const reportedCount = reportsResult.ok
+      ? { ok: true, value: new Set(reportsResult.value.docs.map(d => d.data().listingFsId).filter(Boolean)).size }
+      : { ok: false };
+    const dupGroupCount = dupGroupsResult.ok ? { ok: true, value: dupGroupsResult.value.length } : { ok: false };
 
     const quickActions = [
       { label: 'Зар шалгах', onclick: `adminGoToListingsTab('pending')` },
@@ -178,10 +185,10 @@
 
     el.innerHTML = `
       <div class="admin-kpi-grid">
-        <div class="admin-kpi-card"><div class="v">${listingsSnap.size}</div><div class="l">Нийт зар</div></div>
-        <div class="admin-kpi-card"><div class="v">${pendingCount}</div><div class="l">Хүлээгдэж буй</div></div>
-        ${owner ? `<div class="admin-kpi-card"><div class="v">${usersCount != null ? usersCount : '—'}</div><div class="l">Нийт хэрэглэгч</div></div>` : ''}
-        <div class="admin-kpi-card"><div class="v">${reportedListingsCount}</div><div class="l">Report авсан</div></div>
+        ${adminKpiCard('Нийт зар', { ok: true, value: listingsSnap.size })}
+        ${adminKpiCard('Хүлээгдэж буй', { ok: true, value: pendingCount })}
+        ${owner ? adminKpiCard('Нийт хэрэглэгч', usersResult.ok ? { ok: true, value: usersResult.value.size } : { ok: false }) : ''}
+        ${adminKpiCard('Report авсан', reportedCount)}
       </div>
 
       <div class="admin-panel" style="margin-top:16px;">
@@ -199,9 +206,9 @@
         <div class="admin-panel">
           <div class="admin-panel-head">Анхаарах зүйлс</div>
           <div>
-            ${adminAttentionRow('Хүлээгдэж буй зар', pendingCount, `adminGoToListingsTab('pending')`)}
-            ${adminAttentionRow('Report авсан зар', reportedListingsCount, `adminGoToListingsTab('flagged')`)}
-            ${adminAttentionRow('Магадгүй давхардсан бүлэг', duplicateGroupCount, `adminGoToListingsTab('flagged')`)}
+            ${adminAttentionRow('Хүлээгдэж буй зар', { ok: true, value: pendingCount }, `adminGoToListingsTab('pending')`)}
+            ${adminAttentionRow('Report авсан зар', reportedCount, `adminGoToListingsTab('flagged')`)}
+            ${adminAttentionRow('Магадгүй давхардсан бүлэг', dupGroupCount, `adminGoToListingsTab('flagged')`)}
           </div>
         </div>
       </div>
@@ -209,11 +216,34 @@
     loadRecentActions(owner);
   }
 
-  function adminAttentionRow(label, count, onclick) {
+  // Wraps any Firestore call into a uniform { ok, value } / { ok:false, code } result — the
+  // one place that decides "this genuinely returned data" vs "this threw", so nothing
+  // downstream has to guess from a bare try/catch whether a 0 is real.
+  async function adminSafeFetch(fn) {
+    try { return { ok: true, value: await fn() }; }
+    catch(e) { console.error('adminSafeFetch failed:', e.code, e.message); return { ok: false, code: e.code }; }
+  }
+
+  function adminKpiCard(label, result) {
+    if (!result.ok) {
+      return `<div class="admin-kpi-card"><div class="v" style="font-size:12.5px;color:var(--danger);">Ачаалж чадсангүй</div><div class="l">${esc(label)}</div></div>`;
+    }
+    return `<div class="admin-kpi-card"><div class="v">${result.value}</div><div class="l">${esc(label)}</div></div>`;
+  }
+
+  function adminAttentionRow(label, result, onclick) {
+    if (!result.ok) {
+      return `
+        <div class="admin-attention-row" style="cursor:default;">
+          <span class="admin-attention-label">${esc(label)}</span>
+          <span class="admin-attention-count" style="background:rgba(255,71,87,0.1);color:var(--danger);">Алдаа</span>
+        </div>
+      `;
+    }
     return `
       <button type="button" class="admin-attention-row" onclick="${onclick}">
         <span class="admin-attention-label">${esc(label)}</span>
-        <span class="admin-attention-count ${count > 0 ? 'has-items' : ''}">${count}</span>
+        <span class="admin-attention-count ${result.value > 0 ? 'has-items' : ''}">${result.value}</span>
       </button>
     `;
   }
@@ -380,9 +410,6 @@
       (groups[key] = groups[key] || []).push(d);
     });
     return Object.values(groups).filter(g => g.length > 1);
-  }
-  async function adminCountDuplicateGroups() {
-    try { return (await adminFetchDuplicateGroups()).length; } catch(e) { return 0; }
   }
 
   async function fetchPendingReportsGrouped() {
