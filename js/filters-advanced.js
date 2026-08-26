@@ -1,6 +1,19 @@
 ﻿  // ===== ADVANCED FILTER =====
   let activeFilterToggles = [];
 
+  // Ашиглалтад орсон он dropdowns are populated here (not hardcoded in index.html) so the
+  // top of the range always tracks the real current year instead of going stale.
+  function populateYearFilterSelects() {
+    const minSel = document.getElementById('fYearMin');
+    const maxSel = document.getElementById('fYearMax');
+    if (!minSel || !maxSel || minSel.options.length > 1) return;
+    const currentYear = new Date().getFullYear();
+    for (let y = 1950; y <= currentYear; y++) {
+      minSel.appendChild(new Option(String(y), String(y)));
+      maxSel.appendChild(new Option(String(y), String(y)));
+    }
+  }
+
   // Called after any code path that can set a sidebar filter field programmatically
   // (a synced home search, a saved search) so a filter someone set doesn't stay
   // invisible behind a collapsed <details> section. Generic over the sidebar's actual
@@ -36,6 +49,7 @@
     if (document.getElementById('fFloorTotalMax')?.value) n++;
     if (document.getElementById('fBuildingType')?.value) n++;
     if (document.getElementById('fConstructionProgress')?.value) n++;
+    if (document.getElementById('fElevator')?.value) n++;
     if (document.getElementById('fYearMin')?.value) n++;
     if (document.getElementById('fYearMax')?.value) n++;
     if (currentCat && currentCat !== 'all') n++;
@@ -150,6 +164,7 @@
     const floorTotalMin = parseInt(document.getElementById('fFloorTotalMin')?.value) || 0;
     const floorTotalMax = parseInt(document.getElementById('fFloorTotalMax')?.value) || 9999;
     const constructionProgress = document.getElementById('fConstructionProgress')?.value || '';
+    const elevatorFilter = document.getElementById('fElevator')?.value || '';
     const q = (searchText || (document.getElementById('fSearch')?.value) || '').trim().toLowerCase();
 
     if (q) {
@@ -242,12 +257,14 @@
       (Array.isArray(l._gallery) && l._gallery.length > 0) ||
       (l.img && l.img.startsWith('http'))
     );
-    // Same dual-path pattern as 'parking' above — demo data has free-text l.elevator,
-    // real submissions carry it in l.features[] instead.
-    if (activeFilterToggles.includes('elevator')) results = results.filter(l =>
-      (l.elevator && !l.elevator.includes('Байхгүй') && !l.elevator.includes('Хамаарахгүй')) ||
-      (Array.isArray(l.features) && l.features.includes('elevator'))
-    );
+    // Standalone Бүгд/Тийм/Үгүй select, not a toggle — same dual-path pattern as 'parking'
+    // above for the underlying signal (demo data has free-text l.elevator, real
+    // submissions carry it in l.features[] instead), just also filterable for "Үгүй".
+    if (elevatorFilter) {
+      const hasElevator = l => (l.elevator && !l.elevator.includes('Байхгүй') && !l.elevator.includes('Хамаарахгүй')) ||
+        (Array.isArray(l.features) && l.features.includes('elevator'));
+      results = results.filter(l => elevatorFilter === 'yes' ? hasElevator(l) : !hasElevator(l));
+    }
     // paymentTerms: string[] — new field (my-listings.js/data.js), missing on every
     // listing that predates it, so Array.isArray(...) && .includes(...) correctly excludes
     // old/unset listings rather than guessing or throwing. 'pt-loan' (not 'loan') is the
@@ -343,7 +360,7 @@
   function resetFilters() {
     ['fDistrict'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
     ['fRooms'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
-    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fFloorTotalMin','fFloorTotalMax','fConstructionProgress','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fFloorTotalMin','fFloorTotalMax','fConstructionProgress','fElevator','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
     const fSearch = document.getElementById('fSearch');
     if (fSearch) fSearch.value = '';
     searchText = '';

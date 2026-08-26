@@ -1,4 +1,5 @@
 ﻿  // ===== INIT =====
+  populateYearFilterSelects();
   checkExpiredListings();
   renderListings(listings);
   renderHomeListings();

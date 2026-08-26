@@ -970,58 +970,38 @@
               <div class="filter-range">
                 <select id="fPriceMin" aria-label="Үнэ, доод (сая ₮)">
                   <option value="">Доод</option>
+                  <option value="0.1">100,000 ₮</option>
+                  <option value="0.5">500,000 ₮</option>
+                  <option value="1">1 сая ₮</option>
+                  <option value="5">5 сая ₮</option>
+                  <option value="10">10 сая ₮</option>
                   <option value="20">20 сая ₮</option>
-                  <option value="30">30 сая ₮</option>
-                  <option value="40">40 сая ₮</option>
                   <option value="50">50 сая ₮</option>
-                  <option value="60">60 сая ₮</option>
-                  <option value="70">70 сая ₮</option>
-                  <option value="80">80 сая ₮</option>
-                  <option value="90">90 сая ₮</option>
                   <option value="100">100 сая ₮</option>
-                  <option value="120">120 сая ₮</option>
-                  <option value="150">150 сая ₮</option>
-                  <option value="180">180 сая ₮</option>
                   <option value="200">200 сая ₮</option>
-                  <option value="250">250 сая ₮</option>
                   <option value="300">300 сая ₮</option>
-                  <option value="350">350 сая ₮</option>
-                  <option value="400">400 сая ₮</option>
                   <option value="500">500 сая ₮</option>
-                  <option value="600">600 сая ₮</option>
-                  <option value="800">800 сая ₮</option>
-                  <option value="1000">1000 сая ₮</option>
-                  <option value="1500">1500 сая ₮</option>
-                  <option value="2000">2000 сая ₮</option>
-                  <option value="3000">3000 сая ₮</option>
+                  <option value="1000">1 тэрбум ₮</option>
+                  <option value="2000">2 тэрбум ₮</option>
+                  <option value="3000">3 тэрбум ₮</option>
                 </select>
                 <span>—</span>
                 <select id="fPriceMax" aria-label="Үнэ, дээд (сая ₮)">
                   <option value="">Дээд</option>
+                  <option value="0.1">100,000 ₮</option>
+                  <option value="0.5">500,000 ₮</option>
+                  <option value="1">1 сая ₮</option>
+                  <option value="5">5 сая ₮</option>
+                  <option value="10">10 сая ₮</option>
                   <option value="20">20 сая ₮</option>
-                  <option value="30">30 сая ₮</option>
-                  <option value="40">40 сая ₮</option>
                   <option value="50">50 сая ₮</option>
-                  <option value="60">60 сая ₮</option>
-                  <option value="70">70 сая ₮</option>
-                  <option value="80">80 сая ₮</option>
-                  <option value="90">90 сая ₮</option>
                   <option value="100">100 сая ₮</option>
-                  <option value="120">120 сая ₮</option>
-                  <option value="150">150 сая ₮</option>
-                  <option value="180">180 сая ₮</option>
                   <option value="200">200 сая ₮</option>
-                  <option value="250">250 сая ₮</option>
                   <option value="300">300 сая ₮</option>
-                  <option value="350">350 сая ₮</option>
-                  <option value="400">400 сая ₮</option>
                   <option value="500">500 сая ₮</option>
-                  <option value="600">600 сая ₮</option>
-                  <option value="800">800 сая ₮</option>
-                  <option value="1000">1000 сая ₮</option>
-                  <option value="1500">1500 сая ₮</option>
-                  <option value="2000">2000 сая ₮</option>
-                  <option value="3000">3000 сая ₮</option>
+                  <option value="1000">1 тэрбум ₮</option>
+                  <option value="2000">2 тэрбум ₮</option>
+                  <option value="3000">3 тэрбум ₮</option>
                 </select>
               </div>
             </div>
@@ -1033,6 +1013,8 @@
               <div class="filter-range">
                 <select id="fAreaMin" aria-label="Талбай, доод (м²)">
                   <option value="">Доод</option>
+                  <option value="5">5 м²</option>
+                  <option value="10">10 м²</option>
                   <option value="20">20 м²</option>
                   <option value="30">30 м²</option>
                   <option value="40">40 м²</option>
@@ -1058,6 +1040,8 @@
                 <span>—</span>
                 <select id="fAreaMax" aria-label="Талбай, дээд (м²)">
                   <option value="">Дээд</option>
+                  <option value="5">5 м²</option>
+                  <option value="10">10 м²</option>
                   <option value="20">20 м²</option>
                   <option value="30">30 м²</option>
                   <option value="40">40 м²</option>
@@ -1236,9 +1220,13 @@
             <div class="fs-quick-label">Ашиглалтад орсон он</div>
             <div class="filter-section-body">
               <div class="filter-range">
-                <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="1980" min="1950" max="2030" />
+                <select id="fYearMin" aria-label="Барилгын он, доод">
+                  <option value="">Доод</option>
+                </select>
                 <span>—</span>
-                <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2026" min="1950" max="2030" />
+                <select id="fYearMax" aria-label="Барилгын он, дээд">
+                  <option value="">Дээд</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1290,20 +1278,26 @@
             </div>
           </div>
 
-          <!-- Цахилгаан шаттай эсэх reuses the real features[]/free-text elevator signal
-               that already exists (no new field) — same dual-path pattern as parking below. -->
+          <!-- Standalone tri-state select (not a toggle) — reuses the real
+               features[]/free-text elevator signal that already exists, no new field. -->
           <div class="filter-section">
-            <div class="fs-quick-label">Тохижилт</div>
-            <div class="filter-section-body filter-toggles fs-payment-terms" style="margin-top:0; padding-top:0; border-top:none;">
-              <button class="filter-toggle filter-toggle-check" data-ftoggle="elevator">Цахилгаан шаттай</button>
-              <button class="filter-toggle filter-toggle-check" data-ftoggle="furnished">Тавилгатай</button>
-              <button class="filter-toggle filter-toggle-check" data-ftoggle="parking">Паркингтай</button>
+            <div class="fs-quick-label">Цахилгаан шаттай эсэх</div>
+            <div class="filter-section-body">
+              <div class="filter-field">
+                <select id="fElevator">
+                  <option value="">Бүгд</option>
+                  <option value="yes">Тийм</option>
+                  <option value="no">Үгүй</option>
+                </select>
+              </div>
             </div>
           </div>
 
           <div class="filter-section">
             <div class="fs-quick-label">Бусад</div>
             <div class="filter-section-body filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
+              <button class="filter-toggle" data-ftoggle="furnished">Тавилгатай</button>
+              <button class="filter-toggle" data-ftoggle="parking">Паркингтай</button>
               <button class="filter-toggle" data-ftoggle="new">Шинэ барилга</button>
               <button class="filter-toggle" data-ftoggle="verified">Баталгаажсан</button>
               <button class="filter-toggle" data-ftoggle="below">Зах зээлээс хямд</button>
