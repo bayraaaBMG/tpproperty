@@ -34,17 +34,47 @@
   let _crmClientsStageFilter = 'all';
   let _crmClientsAgentFilter = 'all';
 
-  function crmFollowUpBucket(ms) {
+  // Deal considered "stuck" in negotiation past this many days since it was opened —
+  // a plain constant (not a UI setting) so it's trivial to tune later without new UI.
+  const CRM_NEGOTIATION_STALE_DAYS = 14;
+
+  // Five-way date bucketing shared by follow-ups AND viewings, so "today"/"tomorrow"/
+  // "this week" can never mean something subtly different between the two features.
+  function crmDateBucket(ms) {
     if (!ms) return null;
     const now = new Date(); now.setHours(0, 0, 0, 0);
     const day = new Date(ms); day.setHours(0, 0, 0, 0);
     const diffDays = Math.round((day - now) / 86400000);
     if (diffDays < 0) return 'overdue';
     if (diffDays === 0) return 'today';
-    return 'upcoming';
+    if (diffDays === 1) return 'tomorrow';
+    if (diffDays <= 7) return 'week';
+    return 'later';
   }
   function crmMsFromTs(ts) {
     return ts?.toMillis?.() ?? (ts instanceof Date ? ts.getTime() : (typeof ts === 'number' ? ts : 0));
+  }
+
+  // The one place that turns a deal's commission fields into real numbers. Old deals only
+  // ever had a flat commissionAmount (no commissionType/commissionRate/agentCommissionRate)
+  // — with no commissionType set, this falls straight back to that original number, so
+  // nothing already saved changes. New deals default agentCommissionRate to 100 (the agent
+  // keeps it all unless someone explicitly sets a company split) — the same behavior a flat
+  // commissionAmount always implied, just made explicit.
+  function computeDealCommission(deal) {
+    const finalPrice = deal.finalPrice || deal.offeredPrice || 0;
+    let commissionAmount;
+    if (deal.commissionType === 'percent') {
+      commissionAmount = finalPrice * ((deal.commissionRate || 0) / 100);
+    } else {
+      // 'fixed', or no commissionType at all (backward-compat: old deals) — the flat
+      // amount that was actually entered, unchanged.
+      commissionAmount = deal.commissionAmount || 0;
+    }
+    const agentRate = deal.agentCommissionRate != null ? deal.agentCommissionRate : 100;
+    const agentCommissionAmount = commissionAmount * (agentRate / 100);
+    const companyCommissionAmount = commissionAmount - agentCommissionAmount;
+    return { commissionAmount, agentCommissionAmount, companyCommissionAmount };
   }
 
   // ===== DATA LOADING =====
@@ -108,47 +138,139 @@
     };
   }
 
-  // ===== FOLLOW-UP + UPCOMING-VIEWING WIDGETS (shared by dashboard.js and the admin CRM tab) =====
+  // ===== REMINDER BOARD (Хугацаа хэтэрсэн / Өнөөдөр / Маргааш / Дууссан) =====
+  // Shared by the Agent dashboard (#dashCrmFollowUp) and the Admin CRM "Reminder" tab —
+  // same function, same signature as before this feature, so every existing call site
+  // (dashboard.js, crmRenderTab) gets the richer board for free with no wiring change.
+  function crmFollowUpRow(c) {
+    const bucket = crmDateBucket(crmMsFromTs(c.nextFollowUpAt));
+    return `
+      <div class="crm-reminder-row">
+        <div class="crm-reminder-main" onclick="openClientDetailModal('${c.id}')">
+          <div class="crm-follow-name">${esc(c.name || 'Нэргүй')}</div>
+          <div class="crm-follow-note">${esc(c.phone || '—')} ${c.interestedListingTitle ? '· ' + esc(c.interestedListingTitle) : ''}</div>
+          ${c.followUpNote ? `<div class="crm-follow-note">${esc(c.followUpNote)}</div>` : ''}
+        </div>
+        <div class="crm-reminder-side">
+          <span class="admin-status-pill status-${bucket}">${new Date(crmMsFromTs(c.nextFollowUpAt)).toLocaleString('mn-MN', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px;" onclick="crmMarkFollowUpDone('${c.id}')">Хийсэн</button>
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px;" onclick="crmSetNextFollowUp('${c.id}')">Дараагийн follow-up</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  function crmFollowUpDoneRow(c) {
+    return `
+      <div class="crm-reminder-row">
+        <div class="crm-reminder-main" onclick="openClientDetailModal('${c.id}')">
+          <div class="crm-follow-name">${esc(c.name || 'Нэргүй')}</div>
+          <div class="crm-follow-note">${esc(c.phone || '—')} ${c.interestedListingTitle ? '· ' + esc(c.interestedListingTitle) : ''}</div>
+        </div>
+        <div class="crm-reminder-side">
+          <span class="admin-status-pill status-done">${fmtRelativeTime(c.lastFollowUpDoneAt)}</span>
+          <div style="margin-top:6px;">
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11.5px;" onclick="crmSetNextFollowUp('${c.id}')">Дараагийн follow-up</button>
+          </div>
+        </div>
+      </div>`;
+  }
   function renderCrmFollowUpWidgets(el, scopeUid) {
     if (!el) return;
-    const clients = scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients;
-    const viewings = scopeUid ? _crmViewings.filter(v => v.agentId === scopeUid) : _crmViewings;
-    const today = clients.filter(c => c.nextFollowUpAt && crmFollowUpBucket(crmMsFromTs(c.nextFollowUpAt)) === 'today' && !CRM_CLOSED_STAGES.includes(c.stage));
-    const overdue = clients.filter(c => c.nextFollowUpAt && crmFollowUpBucket(crmMsFromTs(c.nextFollowUpAt)) === 'overdue' && !CRM_CLOSED_STAGES.includes(c.stage));
-    const now = Date.now();
-    const upcomingViewings = viewings.filter(v => v.status === 'scheduled' && crmMsFromTs(v.scheduledAt) >= now)
-      .sort((a, b) => crmMsFromTs(a.scheduledAt) - crmMsFromTs(b.scheduledAt)).slice(0, 5);
+    const clients = (scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients)
+      .filter(c => !CRM_CLOSED_STAGES.includes(c.stage));
+    const pending = clients.filter(c => c.nextFollowUpAt);
+    const overdue = pending.filter(c => crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'overdue');
+    const today = pending.filter(c => crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'today');
+    const tomorrow = pending.filter(c => crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'tomorrow');
+    const weekAgoMs = Date.now() - 7 * 86400000;
+    const done = clients.filter(c => c.lastFollowUpDoneAt && crmMsFromTs(c.lastFollowUpDoneAt) >= weekAgoMs)
+      .sort((a, b) => crmMsFromTs(b.lastFollowUpDoneAt) - crmMsFromTs(a.lastFollowUpDoneAt));
 
-    const followRow = (c) => `
-      <div class="crm-follow-row" onclick="openClientDetailModal('${c.id}')">
-        <div>
-          <div class="crm-follow-name">${esc(c.name || 'Нэргүй')}</div>
-          <div class="crm-follow-note">${esc(c.followUpNote || '')}</div>
-        </div>
-        <span class="admin-status-pill status-${crmFollowUpBucket(crmMsFromTs(c.nextFollowUpAt))}">${new Date(crmMsFromTs(c.nextFollowUpAt)).toLocaleDateString('mn-MN')}</span>
+    const section = (label, items, rowFn, danger) => `
+      <div class="admin-panel" style="margin-bottom:14px;">
+        <div class="admin-panel-head">${label} ${items.length ? `<span class="crm-count-badge${danger ? ' danger' : ''}">${items.length}</span>` : ''}</div>
+        <div>${items.length ? items.map(rowFn).join('') : '<div class="crm-empty-row">Алга</div>'}</div>
       </div>`;
-    const viewingRow = (v) => `
-      <div class="crm-follow-row" onclick="openClientDetailModal('${v.clientId}')">
-        <div>
-          <div class="crm-follow-name">${esc(v.clientName || '—')} — ${esc(v.listingTitle || '')}</div>
-        </div>
-        <span class="admin-status-pill status-scheduled">${new Date(crmMsFromTs(v.scheduledAt)).toLocaleDateString('mn-MN')}</span>
-      </div>`;
-
     el.innerHTML = `
-      <div class="crm-followup-grid">
-        <div class="admin-panel">
-          <div class="admin-panel-head">Хугацаа хэтэрсэн follow-up ${overdue.length ? `<span class="crm-count-badge danger">${overdue.length}</span>` : ''}</div>
-          <div style="padding:6px 0;">${overdue.length ? overdue.map(followRow).join('') : '<div class="crm-empty-row">Алга</div>'}</div>
-        </div>
-        <div class="admin-panel">
-          <div class="admin-panel-head">Өнөөдрийн follow-up ${today.length ? `<span class="crm-count-badge">${today.length}</span>` : ''}</div>
-          <div style="padding:6px 0;">${today.length ? today.map(followRow).join('') : '<div class="crm-empty-row">Алга</div>'}</div>
-        </div>
-        <div class="admin-panel">
-          <div class="admin-panel-head">Удахгүй хийх үзлэг ${upcomingViewings.length ? `<span class="crm-count-badge">${upcomingViewings.length}</span>` : ''}</div>
-          <div style="padding:6px 0;">${upcomingViewings.length ? upcomingViewings.map(viewingRow).join('') : '<div class="crm-empty-row">Алга</div>'}</div>
-        </div>
+      <div class="crm-reminder-grid">
+        <div>${section('Хугацаа хэтэрсэн', overdue, crmFollowUpRow, true)}</div>
+        <div>${section('Өнөөдөр', today, crmFollowUpRow, false)}</div>
+        <div>${section('Маргааш', tomorrow, crmFollowUpRow, false)}</div>
+        <div>${section('Дууссан', done, crmFollowUpDoneRow, false)}</div>
+      </div>
+    `;
+  }
+  async function crmMarkFollowUpDone(clientId) {
+    try {
+      await db.collection('clients').doc(clientId).update({
+        nextFollowUpAt: null,
+        lastFollowUpDoneAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const c = crmClientById(clientId);
+      if (c) { c.nextFollowUpAt = null; c.lastFollowUpDoneAt = Date.now(); }
+      showToast('Follow-up хийгдсэн гэж тэмдэглэгдлээ', 'success');
+      crmRerenderCurrentView();
+    } catch(e) {
+      console.error('crmMarkFollowUpDone failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+  async function crmSetNextFollowUp(clientId) {
+    const dateVal = prompt('Дараагийн follow-up огноо (YYYY-MM-DD):', new Date().toISOString().slice(0, 10));
+    if (!dateVal) return;
+    const d = new Date(dateVal + 'T09:00:00');
+    if (isNaN(d.getTime())) { showToast('Огноо буруу форматтай байна'); return; }
+    const note = prompt('Follow-up тэмдэглэл (заавал биш):', '') || '';
+    try {
+      const ts = firebase.firestore.Timestamp.fromDate(d);
+      await db.collection('clients').doc(clientId).update({
+        nextFollowUpAt: ts, followUpNote: note,
+        lastFollowUpDoneAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const c = crmClientById(clientId);
+      if (c) { c.nextFollowUpAt = ts; c.followUpNote = note; c.lastFollowUpDoneAt = Date.now(); }
+      showToast('Дараагийн follow-up товлогдлоо', 'success');
+      crmRerenderCurrentView();
+    } catch(e) {
+      console.error('crmSetNextFollowUp failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+
+  // ===== TODAY'S TASK BOARD ("Өнөөдрийн ажил") =====
+  function crmTaskLine(label, count, onclick, danger) {
+    return `
+      <div class="crm-task-line" onclick="${onclick}">
+        <span>${esc(label)}</span>
+        <span class="crm-count-badge${danger && count > 0 ? ' danger' : ''}">${count}</span>
+      </div>`;
+  }
+  function renderCrmTodayTasks(el, scopeUid) {
+    if (!el) return;
+    const clients = (scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients);
+    const viewings = (scopeUid ? _crmViewings.filter(v => v.agentId === scopeUid) : _crmViewings);
+    const deals = (scopeUid ? _crmDeals.filter(d => d.agentId === scopeUid) : _crmDeals);
+    const activeClients = clients.filter(c => !CRM_CLOSED_STAGES.includes(c.stage));
+    const todayFollowUps = activeClients.filter(c => c.nextFollowUpAt && crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'today').length;
+    const overdueFollowUps = activeClients.filter(c => c.nextFollowUpAt && crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'overdue').length;
+    const todayViewings = viewings.filter(v => v.status === 'scheduled' && crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'today').length;
+    const weekViewings = viewings.filter(v => v.status === 'scheduled' && ['tomorrow', 'week'].includes(crmDateBucket(crmMsFromTs(v.scheduledAt)))).length;
+    const inNegotiation = clients.filter(c => c.stage === 'negotiation').length;
+    const dealsAwaitingContract = deals.filter(d => d.status === 'negotiating').length;
+    const goCrm = (tab) => `showPage('agent-crm'); renderAgentCrmPage('${tab}');`;
+    const goAdminCrm = (tab) => `renderAdminDashboard('crm'); setTimeout(()=>renderAdminCrmSection('${tab}'), 50);`;
+    const nav = scopeUid ? goCrm : goAdminCrm;
+    el.innerHTML = `
+      <div class="crm-task-list">
+        ${crmTaskLine('Өнөөдрийн follow-up', todayFollowUps, nav('reminder'), false)}
+        ${crmTaskLine('Хугацаа хэтэрсэн follow-up', overdueFollowUps, nav('reminder'), true)}
+        ${crmTaskLine('Өнөөдрийн үзлэг', todayViewings, nav('viewings'), false)}
+        ${crmTaskLine('Удахгүй хийх үзлэг', weekViewings, nav('viewings'), false)}
+        ${crmTaskLine('Хэлэлцээр дээр байгаа client', inNegotiation, nav('pipeline'), false)}
+        ${crmTaskLine('Гэрээ хүлээгдэж байгаа deal', dealsAwaitingContract, nav('deals'), false)}
       </div>
     `;
   }
@@ -166,7 +288,7 @@
     return u ? ((u.lastName || '') + ' ' + (u.firstName || '')).trim() : '';
   }
   function crmClientCard(c, showAgent) {
-    const bucket = c.nextFollowUpAt ? crmFollowUpBucket(crmMsFromTs(c.nextFollowUpAt)) : null;
+    const bucket = c.nextFollowUpAt ? crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) : null;
     return `
       <div class="crm-kanban-card" onclick="openClientDetailModal('${c.id}')">
         <div class="crm-kanban-card-name">${esc(c.name || 'Нэргүй')}</div>
@@ -244,7 +366,7 @@
     `;
   }
   function crmClientRow(c, showAgent) {
-    const bucket = c.nextFollowUpAt ? crmFollowUpBucket(crmMsFromTs(c.nextFollowUpAt)) : null;
+    const bucket = c.nextFollowUpAt ? crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) : null;
     const menuActions = [
       { label: 'Дэлгэрэнгүй', onclick: `openClientDetailModal('${c.id}')` },
       { label: 'Үзлэг товлох', onclick: `openScheduleViewingModal('${c.id}')` },
@@ -532,11 +654,13 @@
   function renderCrmViewingsList(el, scopeUid) {
     if (!el) return;
     const viewings = (scopeUid ? _crmViewings.filter(v => v.agentId === scopeUid) : _crmViewings.slice());
-    const now = Date.now();
+    const scheduled = viewings.filter(v => v.status === 'scheduled');
     const groups = [
-      { label: 'Хугацаа хэтэрсэн', items: viewings.filter(v => v.status === 'scheduled' && crmMsFromTs(v.scheduledAt) < now) },
-      { label: 'Өнөөдөр', items: viewings.filter(v => v.status === 'scheduled' && crmFollowUpBucket(crmMsFromTs(v.scheduledAt)) === 'today') },
-      { label: 'Удахгүй', items: viewings.filter(v => v.status === 'scheduled' && crmMsFromTs(v.scheduledAt) >= now && crmFollowUpBucket(crmMsFromTs(v.scheduledAt)) !== 'today') },
+      { label: 'Хугацаа өнгөрсөн', items: scheduled.filter(v => crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'overdue') },
+      { label: 'Өнөөдөр', items: scheduled.filter(v => crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'today') },
+      { label: 'Маргааш', items: scheduled.filter(v => crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'tomorrow') },
+      { label: 'Энэ 7 хоногт', items: scheduled.filter(v => crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'week') },
+      { label: 'Хожим', items: scheduled.filter(v => crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'later') },
       { label: 'Хийгдсэн / Цуцлагдсан', items: viewings.filter(v => v.status !== 'scheduled') }
     ];
     el.innerHTML = groups.map(g => `
@@ -645,15 +769,19 @@
       .sort((a, b) => crmMsFromTs(b.updatedAt || b.createdAt) - crmMsFromTs(a.updatedAt || a.createdAt));
     el.innerHTML = `
       <div class="admin-list-table">
-        ${deals.length === 0 ? adminEmptyState('Хэлэлцээр алга', 'Харилцагчийн дэлгэрэнгүйгээс "Гэрээ нээх" дарж эхлүүлнэ үү.') : deals.map(d => `
+        ${deals.length === 0 ? adminEmptyState('Хэлэлцээр алга', 'Харилцагчийн дэлгэрэнгүйгээс "Гэрээ нээх" дарж эхлүүлнэ үү.') : deals.map(d => {
+          const cm = computeDealCommission(d);
+          return `
           <div class="admin-row" onclick="openDealModal('${d.id}', '${d.clientId}')" style="cursor:pointer;">
             <div class="admin-row-body">
               <div class="admin-row-title">${esc(d.listingTitle || '—')} — ${esc(d.clientName || '')}</div>
               <div class="admin-row-meta">Санал: ${fmt(d.offeredPrice || 0)}₮ ${d.finalPrice ? '· Эцсийн: ' + fmt(d.finalPrice) + '₮' : ''} ${!scopeUid ? '· ' + esc(crmAgentName(d.agentId) || '') : ''}</div>
+              ${cm.commissionAmount ? `<div class="admin-row-meta">Шимтгэл: ${fmt(Math.round(cm.commissionAmount))}₮ (Agent: ${fmt(Math.round(cm.agentCommissionAmount))}₮)</div>` : ''}
               <span class="admin-status-pill status-${d.status}">${CRM_DEAL_STATUS_LABEL[d.status] || d.status}</span>
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     `;
   }
@@ -679,10 +807,32 @@
           <div><label class="form-label">Санал болгосон үнэ (₮)</label><input class="form-input" type="number" id="crmDlOffered" value="${d?.offeredPrice || ''}" /></div>
           <div><label class="form-label">Эцсийн үнэ (₮)</label><input class="form-input" type="number" id="crmDlFinal" value="${d?.finalPrice || ''}" /></div>
         </div>
-        <div class="form-grid-2">
-          <div><label class="form-label">Гэрээний огноо</label><input class="form-input" type="date" id="crmDlDate" value="${d?.contractDate ? new Date(crmMsFromTs(d.contractDate)).toISOString().slice(0, 10) : ''}" /></div>
-          <div><label class="form-label">Шимтгэл / Commission (₮)</label><input class="form-input" type="number" id="crmDlCommission" value="${d?.commissionAmount || ''}" /></div>
+        <div class="form-row"><label class="form-label">Гэрээний огноо</label><input class="form-input" type="date" id="crmDlDate" value="${d?.contractDate ? new Date(crmMsFromTs(d.contractDate)).toISOString().slice(0, 10) : ''}" /></div>
+
+        <div class="step-section-title" style="margin:16px 0 8px;">Commission</div>
+        <div class="form-row">
+          <label class="form-label">Шимтгэлийн төрөл</label>
+          <select class="form-select" id="crmDlCommissionType" onchange="crmToggleCommissionFields()">
+            <option value="fixed" ${(d?.commissionType || 'fixed') === 'fixed' ? 'selected' : ''}>Тогтмол дүн (₮)</option>
+            <option value="percent" ${d?.commissionType === 'percent' ? 'selected' : ''}>Эцсийн үнийн хувь (%)</option>
+          </select>
         </div>
+        <div class="form-grid-2">
+          <div id="crmDlCommissionFixedWrap">
+            <label class="form-label">Шимтгэлийн дүн (₮)</label>
+            <input class="form-input" type="number" id="crmDlCommission" value="${d?.commissionAmount || ''}" oninput="crmUpdateCommissionPreview()" />
+          </div>
+          <div id="crmDlCommissionRateWrap" style="display:none;">
+            <label class="form-label">Шимтгэлийн хувь (%)</label>
+            <input class="form-input" type="number" id="crmDlCommissionRate" value="${d?.commissionRate || ''}" oninput="crmUpdateCommissionPreview()" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Agent-ийн хувь <span class="hint">— нийт шимтгэлээс хэдэн хувь нь Agent-д ногдох</span></label>
+          <input class="form-input" type="number" id="crmDlAgentRate" value="${d?.agentCommissionRate != null ? d.agentCommissionRate : 100}" oninput="crmUpdateCommissionPreview()" />
+        </div>
+        <div id="crmDlCommissionPreview" class="crm-commission-preview"></div>
+
         <div class="form-row"><label class="form-label">Тэмдэглэл</label><textarea class="form-input" id="crmDlNotes" style="min-height:60px;">${esc(d?.notes || '')}</textarea></div>
         <button class="btn btn-ghost" style="width:100%;justify-content:center;border:1.5px solid var(--line-2);margin-bottom:16px;" onclick="crmSaveDeal(${d ? `'${d.id}'` : 'null'}, '${clientId}')">Хадгалах</button>
         <div style="display:flex;gap:8px;">
@@ -693,15 +843,56 @@
     `;
     document.getElementById('modal').classList.add('open');
     document.body.style.overflow = 'hidden';
+    crmToggleCommissionFields();
+  }
+  function crmToggleCommissionFields() {
+    const type = document.getElementById('crmDlCommissionType')?.value;
+    const fixedWrap = document.getElementById('crmDlCommissionFixedWrap');
+    const rateWrap = document.getElementById('crmDlCommissionRateWrap');
+    if (fixedWrap) fixedWrap.style.display = type === 'percent' ? 'none' : '';
+    if (rateWrap) rateWrap.style.display = type === 'percent' ? '' : 'none';
+    crmUpdateCommissionPreview();
+  }
+  // Live preview only — the authoritative computation (computeDealCommission) runs again,
+  // identically, at save time against whatever's actually persisted.
+  function crmUpdateCommissionPreview() {
+    const el = document.getElementById('crmDlCommissionPreview');
+    if (!el) return;
+    const draft = {
+      finalPrice: Number(document.getElementById('crmDlFinal')?.value) || Number(document.getElementById('crmDlOffered')?.value) || 0,
+      commissionType: document.getElementById('crmDlCommissionType')?.value,
+      commissionRate: Number(document.getElementById('crmDlCommissionRate')?.value) || 0,
+      commissionAmount: Number(document.getElementById('crmDlCommission')?.value) || 0,
+      agentCommissionRate: document.getElementById('crmDlAgentRate')?.value !== '' ? Number(document.getElementById('crmDlAgentRate').value) : 100
+    };
+    const c = computeDealCommission(draft);
+    el.innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3);padding:10px 0;">
+        <div>Нийт шимтгэл: <b style="color:var(--ink);">${fmt(Math.round(c.commissionAmount))}₮</b></div>
+        <div>Agent-д: <b style="color:var(--ink);">${fmt(Math.round(c.agentCommissionAmount))}₮</b></div>
+        <div>Компанид: <b style="color:var(--ink);">${fmt(Math.round(c.companyCommissionAmount))}₮</b></div>
+      </div>
+    `;
   }
   function crmReadDealForm() {
-    return {
+    const draft = {
       offeredPrice: Number(document.getElementById('crmDlOffered').value) || 0,
       finalPrice: Number(document.getElementById('crmDlFinal').value) || 0,
       contractDate: document.getElementById('crmDlDate').value ? firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('crmDlDate').value + 'T00:00:00')) : null,
+      commissionType: document.getElementById('crmDlCommissionType').value,
+      commissionRate: Number(document.getElementById('crmDlCommissionRate').value) || 0,
       commissionAmount: Number(document.getElementById('crmDlCommission').value) || 0,
+      agentCommissionRate: document.getElementById('crmDlAgentRate').value !== '' ? Number(document.getElementById('crmDlAgentRate').value) : 100,
       notes: document.getElementById('crmDlNotes').value.trim()
     };
+    // Persist the derived split alongside the raw inputs, computed by the one function
+    // (computeDealCommission) every read site also uses — so a saved deal's
+    // agentCommissionAmount/companyCommissionAmount always match what was actually shown.
+    const computed = computeDealCommission(draft);
+    draft.commissionAmount = computed.commissionAmount;
+    draft.agentCommissionAmount = computed.agentCommissionAmount;
+    draft.companyCommissionAmount = computed.companyCommissionAmount;
+    return draft;
   }
   async function crmSaveDeal(dealId, clientId) {
     const c = crmClientById(clientId);
@@ -784,6 +975,146 @@
     }
   }
 
+  // ===== MONTHLY REPORT =====
+  // One pure compute function, used identically by the Agent's own report, the Admin
+  // aggregate report, and the Admin per-agent breakdown table — scope (which
+  // clients/viewings/deals arrays get passed in) is the only thing that differs.
+  function computeCrmMonthlyReport(clients, viewings, deals, year, month) {
+    const start = new Date(year, month, 1).getTime();
+    const end = new Date(year, month + 1, 1).getTime();
+    const inMonth = (ms) => ms >= start && ms < end;
+    const newClients = clients.filter(c => inMonth(crmMsFromTs(c.createdAt))).length;
+    const followUpsDone = clients.filter(c => c.lastFollowUpDoneAt && inMonth(crmMsFromTs(c.lastFollowUpDoneAt))).length;
+    const monthViewings = viewings.filter(v => inMonth(crmMsFromTs(v.scheduledAt))).length;
+    const dealsOpened = deals.filter(d => inMonth(crmMsFromTs(d.createdAt))).length;
+    const closedThisMonth = deals.filter(d => (d.status === 'sold' || d.status === 'rented') && d.contractDate && inMonth(crmMsFromTs(d.contractDate)));
+    const sold = closedThisMonth.filter(d => d.status === 'sold').length;
+    const rented = closedThisMonth.filter(d => d.status === 'rented').length;
+    let totalDealValue = 0, totalCommission = 0, agentCommission = 0;
+    closedThisMonth.forEach(d => {
+      totalDealValue += d.finalPrice || d.offeredPrice || 0;
+      const cm = computeDealCommission(d);
+      totalCommission += cm.commissionAmount;
+      agentCommission += cm.agentCommissionAmount;
+    });
+    return {
+      newClients, followUpsDone, viewings: monthViewings, dealsOpened,
+      contracts: closedThisMonth.length, sold, rented, totalDealValue, totalCommission, agentCommission,
+      conversionRate: newClients > 0 ? Math.round((sold + rented) / newClients * 100) : 0
+    };
+  }
+  // Keyed by the container element's own DOM id (not a fixed prefix) — the same monthly
+  // report can be mounted in more than one place at once (the dashboard's #dashCrmMonthly
+  // AND the CRM page's #crmContent when its "Сарын тайлан" tab is active both stay in the
+  // DOM simultaneously, since showPage() only toggles a CSS class, never removes a
+  // section) — a fixed id would collide between them and the wrong picker would respond.
+  function crmMonthPickerHtml(containerId, year, month, onChangeCall) {
+    return `<input class="form-input" type="month" id="${containerId}__month" value="${year}-${String(month + 1).padStart(2, '0')}" style="width:auto;" onchange="${onChangeCall}" />`;
+  }
+  function crmReadMonthPicker(containerId) {
+    const val = document.getElementById(containerId + '__month')?.value;
+    if (val) { const [y, m] = val.split('-').map(Number); return { year: y, month: m - 1 }; }
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  }
+  function crmMonthlyKpiGrid(r) {
+    return `
+      <div class="admin-kpi-grid">
+        ${adminKpiCard('Шинэ clients', { ok: true, value: r.newClients })}
+        ${adminKpiCard('Follow-up хийсэн', { ok: true, value: r.followUpsDone })}
+        ${adminKpiCard('Үзлэг', { ok: true, value: r.viewings })}
+        ${adminKpiCard('Хэлэлцээр', { ok: true, value: r.dealsOpened })}
+        ${adminKpiCard('Гэрээ', { ok: true, value: r.contracts })}
+        ${adminKpiCard('Зарагдсан', { ok: true, value: r.sold })}
+        ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: r.rented })}
+        ${adminKpiCard('Нийт deal үнэ', { ok: true, value: fmt(Math.round(r.totalDealValue)) + '₮' })}
+        ${adminKpiCard('Нийт commission', { ok: true, value: fmt(Math.round(r.totalCommission)) + '₮' })}
+        ${adminKpiCard('Agent commission', { ok: true, value: fmt(Math.round(r.agentCommission)) + '₮' })}
+        ${adminKpiCard('Conversion rate', { ok: true, value: r.conversionRate + '%' })}
+      </div>
+    `;
+  }
+  function renderCrmMonthlyReport(el, scopeUid) {
+    if (!el) return;
+    const { year, month } = crmReadMonthPicker(el.id);
+    const clients = _crmClients.filter(c => c.assignedAgentId === scopeUid);
+    const viewings = _crmViewings.filter(v => v.agentId === scopeUid);
+    const deals = _crmDeals.filter(d => d.agentId === scopeUid);
+    const r = computeCrmMonthlyReport(clients, viewings, deals, year, month);
+    el.innerHTML = `
+      <div style="margin-bottom:14px;">${crmMonthPickerHtml(el.id, year, month, `renderCrmMonthlyReport(document.getElementById('${el.id}'), '${scopeUid}')`)}</div>
+      ${crmMonthlyKpiGrid(r)}
+    `;
+  }
+  function renderCrmAdminMonthlyReport(el) {
+    if (!el) return;
+    const { year, month } = crmReadMonthPicker(el.id);
+    const agents = (typeof _adminUsersCache !== 'undefined' && _adminUsersCache) ? _adminUsersCache.filter(u => (u.role || 'user') === 'user') : [];
+    const overall = computeCrmMonthlyReport(_crmClients, _crmViewings, _crmDeals, year, month);
+    el.innerHTML = `
+      <div style="margin-bottom:14px;">${crmMonthPickerHtml(el.id, year, month, `renderCrmAdminMonthlyReport(document.getElementById('${el.id}'))`)}</div>
+      ${crmMonthlyKpiGrid(overall)}
+      <div class="step-section-title" style="margin:20px 0 10px;">Agent бүрийн сарын тайлан</div>
+      <div class="admin-list-table">
+        ${agents.map(u => {
+          const r = computeCrmMonthlyReport(
+            _crmClients.filter(c => c.assignedAgentId === u.uid),
+            _crmViewings.filter(v => v.agentId === u.uid),
+            _crmDeals.filter(d => d.agentId === u.uid),
+            year, month
+          );
+          return `
+            <div class="admin-row">
+              <div class="admin-user-avatar">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || '?')[0].toUpperCase())}</div>
+              <div class="admin-row-body">
+                <div class="admin-row-title">${esc(((u.lastName || '') + ' ' + (u.firstName || '')).trim())}</div>
+                <div class="admin-row-meta">Clients: ${r.newClients} · Viewings: ${r.viewings} · Deals: ${r.dealsOpened} · Sold: ${r.sold} · Rented: ${r.rented}</div>
+                <div class="admin-row-meta">Deal үнэ: ${fmt(Math.round(r.totalDealValue))}₮ · Commission: ${fmt(Math.round(r.totalCommission))}₮ · Agent-д: ${fmt(Math.round(r.agentCommission))}₮ · Conversion: ${r.conversionRate}%</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // ===== QUICK ALERTS =====
+  function computeCrmAlerts(clients, viewings, deals) {
+    // Day-granularity everywhere (crmDateBucket), matching the Reminder board and Viewings
+    // list exactly — a follow-up/viewing due later *today* must never show as "overdue" here
+    // while the same item shows as "Өнөөдөр" there; a raw `< Date.now()` comparison would
+    // flip something due today to "overdue" the moment any time at all has passed since it
+    // was due, which is both wrong and inconsistent with the rest of the CRM.
+    const staleMs = Date.now() - CRM_NEGOTIATION_STALE_DAYS * 86400000;
+    return {
+      overdueFollowUps: clients.filter(c => c.nextFollowUpAt && crmDateBucket(crmMsFromTs(c.nextFollowUpAt)) === 'overdue' && !CRM_CLOSED_STAGES.includes(c.stage)),
+      overdueViewings: viewings.filter(v => v.status === 'scheduled' && crmDateBucket(crmMsFromTs(v.scheduledAt)) === 'overdue'),
+      staleNegotiations: clients.filter(c => c.stage === 'negotiation' && crmMsFromTs(c.updatedAt || c.createdAt) < staleMs),
+      overdueContracts: deals.filter(d => d.status === 'negotiating' && d.contractDate && crmDateBucket(crmMsFromTs(d.contractDate)) === 'overdue')
+    };
+  }
+  function renderCrmAlerts(el, scopeUid) {
+    if (!el) return;
+    const clients = scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients;
+    const viewings = scopeUid ? _crmViewings.filter(v => v.agentId === scopeUid) : _crmViewings;
+    const deals = scopeUid ? _crmDeals.filter(d => d.agentId === scopeUid) : _crmDeals;
+    const a = computeCrmAlerts(clients, viewings, deals);
+    const rows = [
+      { label: 'Хугацаа хэтэрсэн follow-up', count: a.overdueFollowUps.length, onclick: `renderAgentCrmPage('reminder')` },
+      { label: 'Хугацаа хэтэрсэн үзлэг', count: a.overdueViewings.length, onclick: `renderAgentCrmPage('viewings')` },
+      { label: `Хэлэлцээр дээр ${CRM_NEGOTIATION_STALE_DAYS}+ хоног удаж байгаа`, count: a.staleNegotiations.length, onclick: `renderAgentCrmPage('pipeline')` },
+      { label: 'Гэрээний огноо өнгөрсөн ч хаагдаагүй deal', count: a.overdueContracts.length, onclick: `renderAgentCrmPage('deals')` }
+    ];
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    if (total === 0) { el.innerHTML = `<div class="crm-empty-row">Анхаарах зүйл алга</div>`; return; }
+    el.innerHTML = rows.filter(r => r.count > 0).map(r => `
+      <div class="crm-alert-card" onclick="${scopeUid ? r.onclick : `renderAdminDashboard('crm'); setTimeout(()=>${r.onclick.replace('renderAgentCrmPage', 'renderAdminCrmSection')}, 50);`}">
+        <span>${esc(r.label)}</span>
+        <span class="crm-count-badge danger">${r.count}</span>
+      </div>
+    `).join('');
+  }
+
   // ===== PAGE MOUNTS =====
   // Agent's own CRM page (#agent-crm, index.html) — always scoped to currentUser.uid.
   async function renderAgentCrmPage(tab) {
@@ -791,7 +1122,7 @@
     const el = document.getElementById('crmContent');
     if (!el) return;
     if (tab) _crmTab = tab;
-    ['pipeline', 'clients', 'viewings', 'deals'].forEach(t => {
+    ['pipeline', 'clients', 'viewings', 'deals', 'reminder', 'today', 'monthly'].forEach(t => {
       const btn = document.getElementById('crmTab-' + t);
       if (btn) btn.classList.toggle('active', t === _crmTab);
     });
@@ -799,6 +1130,8 @@
       el.innerHTML = `<div class="admin-loading">Ачааллаж байна…</div>`;
       await crmLoadAll(currentUser.uid);
     }
+    const alertsEl = document.getElementById('crmAgentAlerts');
+    if (alertsEl) renderCrmAlerts(alertsEl, currentUser.uid);
     crmRenderTab(el, currentUser.uid);
   }
   // Admin CRM section (js/admin.js ADMIN_NAV 'crm') — scopeUid null = everything.
@@ -819,6 +1152,7 @@
     if (_crmScopeUid !== null) await crmLoadAll(null);
     const kpis = computeCrmKpis(_crmClients, _crmDeals);
     el.innerHTML = `
+      <div id="crmAdminAlerts" style="margin-bottom:16px;"></div>
       <div class="admin-kpi-grid" style="margin-bottom:16px;">
         ${adminKpiCard('Нийт харилцагч', { ok: true, value: kpis.totalClients })}
         ${adminKpiCard('Шинэ lead', { ok: true, value: kpis.newLeads })}
@@ -834,11 +1168,14 @@
         <button class="mytab ${_crmTab === 'clients' ? 'active' : ''}" onclick="renderAdminCrmSection('clients')">Харилцагчид</button>
         <button class="mytab ${_crmTab === 'viewings' ? 'active' : ''}" onclick="renderAdminCrmSection('viewings')">Үзлэгүүд</button>
         <button class="mytab ${_crmTab === 'deals' ? 'active' : ''}" onclick="renderAdminCrmSection('deals')">Хэлэлцээр/Гэрээ</button>
-        <button class="mytab ${_crmTab === 'followups' ? 'active' : ''}" onclick="renderAdminCrmSection('followups')">Follow-up</button>
+        <button class="mytab ${_crmTab === 'reminder' ? 'active' : ''}" onclick="renderAdminCrmSection('reminder')">Reminder</button>
+        <button class="mytab ${_crmTab === 'today' ? 'active' : ''}" onclick="renderAdminCrmSection('today')">Өнөөдрийн ажил</button>
+        <button class="mytab ${_crmTab === 'monthly' ? 'active' : ''}" onclick="renderAdminCrmSection('monthly')">Сарын тайлан</button>
         <button class="mytab ${_crmTab === 'byagent' ? 'active' : ''}" onclick="renderAdminCrmSection('byagent')">Agent-аар</button>
       </div>
       <div id="crmAdminBody"></div>
     `;
+    renderCrmAlerts(document.getElementById('crmAdminAlerts'), null);
     crmRenderTab(document.getElementById('crmAdminBody'), null);
   }
   function crmRenderTab(el, scopeUid) {
@@ -847,7 +1184,9 @@
     else if (_crmTab === 'clients') renderCrmClientsList(el, scopeUid);
     else if (_crmTab === 'viewings') renderCrmViewingsList(el, scopeUid);
     else if (_crmTab === 'deals') renderCrmDealsList(el, scopeUid);
-    else if (_crmTab === 'followups') renderCrmFollowUpWidgets(el, scopeUid);
+    else if (_crmTab === 'reminder') renderCrmFollowUpWidgets(el, scopeUid);
+    else if (_crmTab === 'today') renderCrmTodayTasks(el, scopeUid);
+    else if (_crmTab === 'monthly') { if (scopeUid) renderCrmMonthlyReport(el, scopeUid); else renderCrmAdminMonthlyReport(el); }
     else if (_crmTab === 'byagent') renderCrmByAgentTable(el);
     else renderCrmKanban(el, scopeUid);
   }

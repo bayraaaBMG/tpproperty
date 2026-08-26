@@ -68,8 +68,14 @@
     (async () => {
       if (typeof crmLoadAll !== 'function') return;
       if (typeof _crmScopeUid === 'undefined' || _crmScopeUid !== currentUser.uid) await crmLoadAll(currentUser.uid);
-      const el = document.getElementById('dashCrmFollowUp');
-      if (el && typeof renderCrmFollowUpWidgets === 'function') renderCrmFollowUpWidgets(el, currentUser.uid);
+      const followEl = document.getElementById('dashCrmFollowUp');
+      if (followEl && typeof renderCrmFollowUpWidgets === 'function') renderCrmFollowUpWidgets(followEl, currentUser.uid);
+      const alertsEl = document.getElementById('dashCrmAlerts');
+      if (alertsEl && typeof renderCrmAlerts === 'function') renderCrmAlerts(alertsEl, currentUser.uid);
+      const todayEl = document.getElementById('dashCrmToday');
+      if (todayEl && typeof renderCrmTodayTasks === 'function') renderCrmTodayTasks(todayEl, currentUser.uid);
+      const monthlyEl = document.getElementById('dashCrmMonthly');
+      if (monthlyEl && typeof renderCrmMonthlyReport === 'function') renderCrmMonthlyReport(monthlyEl, currentUser.uid);
     })();
 
     const list = document.getElementById('dashMyListingsList');

@@ -1606,6 +1606,15 @@
       </div>
     </div>
 
+    <!-- CRM alerts -->
+    <div id="dashCrmAlerts" style="margin-bottom:24px;"></div>
+
+    <!-- CRM today's task board -->
+    <div class="dash-panel" style="margin-bottom:24px;">
+      <div class="dash-panel-title">Өнөөдрийн ажил</div>
+      <div id="dashCrmToday"></div>
+    </div>
+
     <!-- CRM follow-up widgets -->
     <div class="dash-panel" style="margin-bottom:24px;">
       <div class="dash-panel-title" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1613,6 +1622,12 @@
         <a onclick="showPage('agent-crm'); renderAgentCrmPage('pipeline');" style="font-size:12.5px;font-weight:600;color:var(--primary);cursor:pointer;">Бүх харилцагч →</a>
       </div>
       <div id="dashCrmFollowUp"></div>
+    </div>
+
+    <!-- CRM monthly report -->
+    <div class="dash-panel" style="margin-bottom:24px;">
+      <div class="dash-panel-title">Monthly Report</div>
+      <div id="dashCrmMonthly"></div>
     </div>
 
     <!-- Main grid -->
@@ -1696,11 +1711,16 @@
       </button>
     </div>
 
+    <div id="crmAgentAlerts" style="margin-bottom:16px;"></div>
+
     <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
       <button class="mytab active" id="crmTab-pipeline" onclick="renderAgentCrmPage('pipeline')">Pipeline</button>
       <button class="mytab" id="crmTab-clients" onclick="renderAgentCrmPage('clients')">Харилцагчид</button>
       <button class="mytab" id="crmTab-viewings" onclick="renderAgentCrmPage('viewings')">Үзлэгүүд</button>
       <button class="mytab" id="crmTab-deals" onclick="renderAgentCrmPage('deals')">Хэлэлцээр/Гэрээ</button>
+      <button class="mytab" id="crmTab-reminder" onclick="renderAgentCrmPage('reminder')">Reminder</button>
+      <button class="mytab" id="crmTab-today" onclick="renderAgentCrmPage('today')">Өнөөдрийн ажил</button>
+      <button class="mytab" id="crmTab-monthly" onclick="renderAgentCrmPage('monthly')">Сарын тайлан</button>
     </div>
 
     <div id="crmContent"><div class="admin-loading">Ачааллаж байна…</div></div>
