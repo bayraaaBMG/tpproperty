@@ -16,6 +16,28 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
+    // CRM deal contracts/documents — path is scoped by the uploading agent's own uid, same
+    // shape as listing-images/{uid}/{fileName} above. Unlike listing photos, these are
+    // NEVER public: only the owning agent, or admin/owner (checked via a cross-service read
+    // into Firestore's users/{uid}.role — Storage rules can call firestore.get()/exists()
+    // the same way Firestore rules call get() on themselves; "(default)" is the correct
+    // literal here since this project uses Firestore's single default database, not a
+    // named one) can read, write, or delete. Size/type match the client-side guard in
+    // js/crm.js's document-upload flow.
+    match /deal-documents/{agentId}/{dealId}/{fileName} {
+      function isOwnerOrAdminStorage() {
+        return request.auth != null && (
+          request.auth.token.email == 'bbayraaa20@gmail.com' ||
+          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        );
+      }
+      allow read: if request.auth != null && (request.auth.uid == agentId || isOwnerOrAdminStorage());
+      allow write: if request.auth != null && request.auth.uid == agentId
+                   && request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('application/pdf|image/jpeg|image/jpg|image/png|application/msword|application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document');
+      allow delete: if request.auth != null && (request.auth.uid == agentId || isOwnerOrAdminStorage());
+    }
+
     // Everything else stays closed by default.
     match /{allPaths=**} {
       allow read, write: if false;

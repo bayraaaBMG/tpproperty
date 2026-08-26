@@ -25,6 +25,35 @@
   const CRM_VIEWING_STATUS_LABEL = { scheduled: 'Товлосон', done: 'Хийгдсэн', cancelled: 'Цуцлагдсан' };
   const CRM_DEAL_STATUS_LABEL = { negotiating: 'Хэлэлцэж байгаа', sold: 'Зарагдсан', rented: 'Түрээслэгдсэн', cancelled: 'Цуцлагдсан' };
 
+  const CRM_LEAD_SOURCES = [
+    { id: 'facebook', label: 'Facebook' },
+    { id: 'instagram', label: 'Instagram' },
+    { id: 'website', label: 'Website' },
+    { id: 'phone', label: 'Утас' },
+    { id: 'referral', label: 'Танилцуулга' },
+    { id: 'walkin', label: 'Биечлэн ирсэн' },
+    { id: 'other', label: 'Бусад' }
+  ];
+  const CRM_LEAD_SOURCE_LABEL = Object.fromEntries(CRM_LEAD_SOURCES.map(s => [s.id, s.label]));
+
+  const CRM_CONTRACT_STATUS_LABEL = { draft: 'Ноорог', signed: 'Гарын үсэг зурсан', cancelled: 'Цуцлагдсан' };
+
+  const CRM_ACTIVITY_LABEL = {
+    client_created: 'Харилцагч үүсгэсэн',
+    agent_assigned: 'Agent оноогдсон',
+    stage_changed: 'Pipeline шат өөрчлөгдсөн',
+    followup_done: 'Follow-up хийсэн',
+    followup_scheduled: 'Дараагийн follow-up товлосон',
+    viewing_scheduled: 'Үзлэг товлосон',
+    viewing_done: 'Үзлэг хийгдсэн',
+    viewing_cancelled: 'Үзлэг цуцлагдсан',
+    deal_created: 'Хэлэлцээр нээсэн',
+    deal_status_changed: 'Хэлэлцээрийн төлөв өөрчлөгдсөн',
+    contract_added: 'Гэрээ/баримт бичиг нэмсэн',
+    deal_closed_sold: 'Зарагдсан гэж хаасан',
+    deal_closed_rented: 'Түрээслэгдсэн гэж хаасан'
+  };
+
   let _crmScopeUid = undefined; // undefined = never loaded yet; null = admin (all); uid = agent
   let _crmClients = [];
   let _crmViewings = [];
@@ -33,6 +62,10 @@
   let _crmClientsSearch = '';
   let _crmClientsStageFilter = 'all';
   let _crmClientsAgentFilter = 'all';
+  // Whichever monthly-report picker last rendered (dashboard, CRM-page tab, or admin
+  // section) — the export buttons read this rather than re-deriving "which container
+  // triggered me", since a click on an export button carries no container context itself.
+  let _crmLastReportYear = null, _crmLastReportMonth = null;
 
   // Deal considered "stuck" in negotiation past this many days since it was opened —
   // a plain constant (not a UI setting) so it's trivial to tune later without new UI.
@@ -112,6 +145,27 @@
 
   function crmClientById(id) { return _crmClients.find(c => c.id === id); }
 
+  // ===== CLIENT ACTIVITY TIMELINE (append-only, see firestore.rules for the real gate) =====
+  // Fire-and-forget — same idiom as js/auth.js's lastActiveAt write: a logging failure must
+  // never block or surface an error on the primary action it's attached to.
+  function crmLogActivity(clientId, type, description) {
+    if (!currentUser || !clientId) return;
+    db.collection('clientActivities').add({
+      clientId, type, description: description || '',
+      actorUid: currentUser.uid, actorName: currentUser.name || currentUser.email || 'Хэрэглэгч',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e => console.error('crmLogActivity failed:', e.code, e.message));
+  }
+  async function crmLoadActivities(clientId) {
+    try {
+      const snap = await db.collection('clientActivities').where('clientId', '==', clientId).orderBy('createdAt', 'desc').get();
+      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    } catch(e) {
+      console.error('crmLoadActivities failed:', e.code, e.message);
+      return [];
+    }
+  }
+
   // ===== KPIs (shared by admin overview and per-agent performance) =====
   function computeCrmKpis(clients, deals) {
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
@@ -136,6 +190,45 @@
       conversionRate: clients.length > 0 ? Math.round((sold + rented) / clients.length * 100) : 0,
       byAgent
     };
+  }
+
+  // ===== LEAD SOURCE ANALYTICS =====
+  // Deals aren't tied to a source directly — "which source produced a won deal" is derived
+  // by joining a deal back to its client's leadSource (clients already carry that field).
+  function computeLeadSourceStats(clients, deals) {
+    const dealsByClient = {};
+    deals.forEach(d => {
+      if (d.status !== 'sold' && d.status !== 'rented') return;
+      dealsByClient[d.clientId] = (dealsByClient[d.clientId] || 0) + 1;
+    });
+    return CRM_LEAD_SOURCES.map(s => {
+      const leadsFromSource = clients.filter(c => (c.leadSource || 'other') === s.id);
+      const dealsFromSource = leadsFromSource.reduce((sum, c) => sum + (dealsByClient[c.id] || 0), 0);
+      return {
+        id: s.id, label: s.label,
+        leads: leadsFromSource.length,
+        deals: dealsFromSource,
+        conversionRate: leadsFromSource.length > 0 ? Math.round(dealsFromSource / leadsFromSource.length * 100) : 0
+      };
+    });
+  }
+  function renderCrmLeadSourceReport(el, scopeUid) {
+    if (!el) return;
+    const clients = scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients;
+    const deals = scopeUid ? _crmDeals.filter(d => d.agentId === scopeUid) : _crmDeals;
+    const stats = computeLeadSourceStats(clients, deals);
+    el.innerHTML = `
+      <div class="admin-list-table">
+        ${stats.map(s => `
+          <div class="admin-row">
+            <div class="admin-row-body">
+              <div class="admin-row-title">${esc(s.label)}</div>
+              <div class="admin-row-meta">${s.leads} lead · ${s.deals} deal · Conversion ${s.conversionRate}%</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
   }
 
   // ===== REMINDER BOARD (Хугацаа хэтэрсэн / Өнөөдөр / Маргааш / Дууссан) =====
@@ -210,6 +303,7 @@
       });
       const c = crmClientById(clientId);
       if (c) { c.nextFollowUpAt = null; c.lastFollowUpDoneAt = Date.now(); }
+      crmLogActivity(clientId, 'followup_done', '');
       showToast('Follow-up хийгдсэн гэж тэмдэглэгдлээ', 'success');
       crmRerenderCurrentView();
     } catch(e) {
@@ -232,6 +326,7 @@
       });
       const c = crmClientById(clientId);
       if (c) { c.nextFollowUpAt = ts; c.followUpNote = note; c.lastFollowUpDoneAt = Date.now(); }
+      crmLogActivity(clientId, 'followup_scheduled', note ? d.toLocaleDateString('mn-MN') + ' — ' + note : d.toLocaleDateString('mn-MN'));
       showToast('Дараагийн follow-up товлогдлоо', 'success');
       crmRerenderCurrentView();
     } catch(e) {
@@ -320,11 +415,14 @@
     `;
   }
   async function crmChangeClientStage(clientId, newStage) {
+    const c0 = crmClientById(clientId);
+    const oldStage = c0 ? c0.stage : null;
     try {
       await db.collection('clients').doc(clientId).update({ stage: newStage, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       const c = crmClientById(clientId);
       if (c) c.stage = newStage;
       if (typeof isAdminOrOwnerUser === 'function' && isAdminOrOwnerUser()) logAdminAction('crm_stage_change', 'client', clientId, newStage);
+      crmLogActivity(clientId, 'stage_changed', (CRM_STAGE_LABEL[oldStage] || oldStage || '—') + ' → ' + (CRM_STAGE_LABEL[newStage] || newStage));
       showToast('Шат шинэчлэгдлээ', 'success');
       crmRerenderCurrentView();
     } catch(e) {
@@ -447,6 +545,12 @@
           <div><label class="form-label">Төсөв (₮)</label><input class="form-input" type="number" id="crmCBudget" value="${c?.budget || ''}" /></div>
         </div>
         <div class="form-row"><label class="form-label">Байршлын сонирхол</label><input class="form-input" id="crmCLocation" value="${esc(c?.locationInterest || '')}" /></div>
+        <div class="form-row">
+          <label class="form-label">Lead source</label>
+          <select class="form-select" id="crmCLeadSource">
+            ${CRM_LEAD_SOURCES.map(s => `<option value="${s.id}" ${(c?.leadSource || 'other') === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}
+          </select>
+        </div>
         ${isOwnerOrAdmin ? `
         <div class="form-row">
           <label class="form-label">Хариуцах Agent</label>
@@ -476,14 +580,17 @@
       dealType: document.getElementById('crmCDealType').value,
       budget: Number(document.getElementById('crmCBudget').value) || 0,
       locationInterest: document.getElementById('crmCLocation').value.trim(),
+      leadSource: document.getElementById('crmCLeadSource').value,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     try {
       if (clientId) {
+        const prevAgent = crmClientById(clientId)?.assignedAgentId;
         if (isOwnerOrAdmin && agentSel) payload.assignedAgentId = agentSel.value;
         await db.collection('clients').doc(clientId).update(payload);
         Object.assign(crmClientById(clientId) || {}, payload);
         if (isOwnerOrAdmin) logAdminAction('crm_edit_client', 'client', clientId, '');
+        if (payload.assignedAgentId && payload.assignedAgentId !== prevAgent) crmLogActivity(clientId, 'agent_assigned', crmAgentName(payload.assignedAgentId));
       } else {
         payload.assignedAgentId = isOwnerOrAdmin && agentSel ? agentSel.value : currentUser.uid;
         payload.stage = 'new';
@@ -494,6 +601,8 @@
         const ref = await db.collection('clients').add(payload);
         _crmClients.push(Object.assign({ id: ref.id }, payload));
         if (isOwnerOrAdmin) logAdminAction('crm_add_client', 'client', ref.id, '');
+        crmLogActivity(ref.id, 'client_created', CRM_LEAD_SOURCE_LABEL[payload.leadSource] || '');
+        if (isOwnerOrAdmin && payload.assignedAgentId !== currentUser.uid) crmLogActivity(ref.id, 'agent_assigned', crmAgentName(payload.assignedAgentId));
       }
       showToast('Хадгалагдлаа', 'success');
       closeModal();
@@ -519,6 +628,7 @@
       const c = crmClientById(clientId);
       if (c) c.assignedAgentId = newAgentUid;
       logAdminAction('crm_reassign_client', 'client', clientId, newAgentUid);
+      crmLogActivity(clientId, 'agent_assigned', crmAgentName(newAgentUid));
       showToast('Agent солигдлоо', 'success');
       crmRerenderCurrentView();
     } catch(e) {
@@ -549,7 +659,8 @@
           ${c.budget ? `<span class="admin-role-pill role-user">${fmt(c.budget)}₮</span>` : ''}
         </div>
         <div style="font-size:13px;color:var(--ink-3);margin-bottom:6px;">Сонирхож буй зар: <b style="color:var(--ink);">${esc(c.interestedListingTitle || '—')}</b></div>
-        <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Байршил: ${esc(c.locationInterest || '—')}</div>
+        <div style="font-size:13px;color:var(--ink-3);margin-bottom:6px;">Байршил: ${esc(c.locationInterest || '—')}</div>
+        <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Lead source: ${esc(CRM_LEAD_SOURCE_LABEL[c.leadSource] || '—')}</div>
 
         <div class="form-row">
           <label class="form-label">Pipeline шат</label>
@@ -611,10 +722,31 @@
             </div>
           `).join('') : '<div class="crm-empty-row">Тэмдэглэл алга</div>'}
         </div>
+
+        <div class="step-section-title" style="margin:16px 0 8px;">Түүх</div>
+        <div id="crmActivityTimeline"><div class="crm-empty-row">Ачааллаж байна…</div></div>
       </div>
     `;
     document.getElementById('modal').classList.add('open');
     document.body.style.overflow = 'hidden';
+    crmLoadActivities(clientId).then(activities => {
+      const el = document.getElementById('crmActivityTimeline');
+      if (!el) return;
+      el.innerHTML = activities.length === 0 ? '<div class="crm-empty-row">Түүх алга</div>' : `
+        <div class="crm-timeline">
+          ${activities.map(a => `
+            <div class="crm-timeline-item">
+              <div class="crm-timeline-dot"></div>
+              <div class="crm-timeline-body">
+                <div class="crm-timeline-label">${esc(CRM_ACTIVITY_LABEL[a.type] || a.type)}</div>
+                ${a.description ? `<div class="crm-timeline-desc">${esc(a.description)}</div>` : ''}
+                <div class="crm-timeline-meta">${esc(a.actorName || '')} · ${fmtRelativeTime(a.createdAt)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    });
   }
   async function crmAddNote(clientId) {
     const text = document.getElementById('crmNoteInput').value.trim();
@@ -737,6 +869,7 @@
         await db.collection('clients').doc(clientId).update({ stage: 'viewing', updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         c.stage = 'viewing';
       }
+      crmLogActivity(clientId, 'viewing_scheduled', (listing ? listing.title : '') + ' — ' + new Date(dateVal + 'T' + timeVal + ':00').toLocaleString('mn-MN'));
       showToast('Үзлэг товлогдлоо', 'success');
       closeModal();
       crmRerenderCurrentView();
@@ -754,6 +887,7 @@
       await db.collection('viewings').doc(viewingId).update(payload);
       const v = _crmViewings.find(x => x.id === viewingId);
       if (v) Object.assign(v, payload);
+      if (v) crmLogActivity(v.clientId, status === 'done' ? 'viewing_done' : 'viewing_cancelled', (v.listingTitle || '') + (notesAfter ? ' — ' + notesAfter : ''));
       showToast('Шинэчлэгдлээ', 'success');
       crmRerenderCurrentView();
     } catch(e) {
@@ -808,6 +942,25 @@
           <div><label class="form-label">Эцсийн үнэ (₮)</label><input class="form-input" type="number" id="crmDlFinal" value="${d?.finalPrice || ''}" /></div>
         </div>
         <div class="form-row"><label class="form-label">Гэрээний огноо</label><input class="form-input" type="date" id="crmDlDate" value="${d?.contractDate ? new Date(crmMsFromTs(d.contractDate)).toISOString().slice(0, 10) : ''}" /></div>
+
+        <div class="step-section-title" style="margin:16px 0 8px;">Гэрээ / Contract</div>
+        <div class="form-grid-2">
+          <div><label class="form-label">Гэрээний дугаар</label><input class="form-input" id="crmDlContractNumber" value="${esc(d?.contractNumber || '')}" /></div>
+          <div>
+            <label class="form-label">Гэрээний төлөв</label>
+            <select class="form-select" id="crmDlContractStatus">
+              ${Object.keys(CRM_CONTRACT_STATUS_LABEL).map(k => `<option value="${k}" ${(d?.contractStatus || 'draft') === k ? 'selected' : ''}>${CRM_CONTRACT_STATUS_LABEL[k]}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row"><label class="form-label">Гэрээний тэмдэглэл</label><input class="form-input" id="crmDlContractNote" value="${esc(d?.contractNote || '')}" /></div>
+
+        <div class="step-section-title" style="margin:16px 0 8px;">Баримт бичиг</div>
+        ${d ? `
+        <div id="crmDlDocsList">${crmDealDocumentsListHtml(d)}</div>
+        <input type="file" id="crmDlFileInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" onchange="crmUploadDealDocument('${d.id}', this.files[0])" />
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;border:1.5px solid var(--line-2);margin-bottom:16px;" onclick="document.getElementById('crmDlFileInput').click()">Файл нэмэх (PDF/JPG/PNG/DOC/DOCX, 15MB хүртэл)</button>
+        ` : `<div class="crm-empty-row">Эхлээд хэлэлцээрээ хадгалснаар баримт бичиг хавсаргах боломжтой болно.</div>`}
 
         <div class="step-section-title" style="margin:16px 0 8px;">Commission</div>
         <div class="form-row">
@@ -874,11 +1027,66 @@
       </div>
     `;
   }
+  // ===== DEAL DOCUMENTS (Firebase Storage: deal-documents/{agentId}/{dealId}/{fileName}) =====
+  const CRM_DOC_ACCEPT_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const CRM_DOC_MAX_BYTES = 15 * 1024 * 1024;
+  function crmDealDocumentsListHtml(d) {
+    const docs = d.documents || [];
+    if (!docs.length) return '<div class="crm-empty-row">Баримт бичиг алга</div>';
+    return docs.map(doc => `
+      <div class="crm-doc-row">
+        <div>
+          <div class="crm-doc-name">${esc(doc.name)}</div>
+          <div class="crm-doc-meta">${esc(doc.uploadedByName || '')} · ${fmtRelativeTime(doc.uploadedAt)} · ${((doc.size || 0) / 1024 / 1024).toFixed(1)}MB</div>
+        </div>
+        <a class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" href="${esc(doc.url)}" target="_blank" rel="noopener">Татах</a>
+      </div>
+    `).join('');
+  }
+  async function crmUploadDealDocument(dealId, file) {
+    if (!file) return;
+    if (!CRM_DOC_ACCEPT_TYPES.includes(file.type)) { showToast('Зөвшөөрөгдөөгүй файлын төрөл (PDF/JPG/PNG/DOC/DOCX сонгоно уу)'); return; }
+    if (file.size >= CRM_DOC_MAX_BYTES) { showToast('Файл 15MB-аас бага байх ёстой'); return; }
+    const d = _crmDeals.find(x => x.id === dealId);
+    if (!d) return;
+    showToast('Файл хуулж байна…');
+    let timedOut = false, timeoutId = null;
+    try {
+      const path = 'deal-documents/' + d.agentId + '/' + dealId + '/' + Date.now() + '-' + file.name;
+      const uploadTask = storage.ref(path).put(file, { contentType: file.type });
+      timeoutId = setTimeout(() => { timedOut = true; uploadTask.cancel(); }, 18000);
+      await uploadTask;
+      clearTimeout(timeoutId);
+      const url = await uploadTask.snapshot.ref.getDownloadURL();
+      const entry = {
+        name: file.name, url, storagePath: path, type: file.type, size: file.size,
+        uploadedBy: currentUser.uid, uploadedByName: currentUser.name || currentUser.email || 'Agent', uploadedAt: Date.now()
+      };
+      await db.collection('deals').doc(dealId).update({
+        documents: firebase.firestore.FieldValue.arrayUnion(entry),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      d.documents = d.documents || []; d.documents.push(entry);
+      crmLogActivity(d.clientId, 'contract_added', file.name);
+      showToast('Файл хавсаргагдлаа', 'success');
+      const listEl = document.getElementById('crmDlDocsList');
+      if (listEl) listEl.innerHTML = crmDealDocumentsListHtml(d);
+      const fileInput = document.getElementById('crmDlFileInput');
+      if (fileInput) fileInput.value = '';
+    } catch(e) {
+      clearTimeout(timeoutId);
+      console.error('crmUploadDealDocument failed:', e.code, e.message);
+      showToast(timedOut ? 'Файл хуулах хугацаа хэтэрлээ' : 'Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
   function crmReadDealForm() {
     const draft = {
       offeredPrice: Number(document.getElementById('crmDlOffered').value) || 0,
       finalPrice: Number(document.getElementById('crmDlFinal').value) || 0,
       contractDate: document.getElementById('crmDlDate').value ? firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('crmDlDate').value + 'T00:00:00')) : null,
+      contractNumber: document.getElementById('crmDlContractNumber').value.trim(),
+      contractStatus: document.getElementById('crmDlContractStatus').value,
+      contractNote: document.getElementById('crmDlContractNote').value.trim(),
       commissionType: document.getElementById('crmDlCommissionType').value,
       commissionRate: Number(document.getElementById('crmDlCommissionRate').value) || 0,
       commissionAmount: Number(document.getElementById('crmDlCommission').value) || 0,
@@ -899,6 +1107,9 @@
     const form = crmReadDealForm();
     try {
       if (dealId) {
+        // crmSaveDeal() only ever touches contract/commission/notes fields, never `status`
+        // (that's crmCloseDeal()'s job, logged separately below) — nothing status-related
+        // to log here.
         await db.collection('deals').doc(dealId).update(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, form));
         Object.assign(_crmDeals.find(x => x.id === dealId) || {}, form);
       } else {
@@ -906,11 +1117,12 @@
         const listing = crmActiveListingOptions().find(l => l.firestoreId === listingSel.value);
         const payload = Object.assign({
           listingId: listingSel.value, clientId, agentId: c.assignedAgentId, status: 'negotiating',
-          listingTitle: listing ? listing.title : '', clientName: c.name,
+          listingTitle: listing ? listing.title : '', clientName: c.name, documents: [],
           createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, form);
         const ref = await db.collection('deals').add(payload);
         _crmDeals.push(Object.assign({ id: ref.id }, payload));
+        crmLogActivity(clientId, 'deal_created', payload.listingTitle || '');
         // Opening a real deal is forward progress — same non-regressing advance as scheduling a viewing.
         const stageOrder = CRM_STAGES.map(s => s.id);
         if (c && stageOrder.indexOf(c.stage) < stageOrder.indexOf('negotiation')) {
@@ -949,11 +1161,12 @@
         const listing = crmActiveListingOptions().find(l => l.firestoreId === listingId);
         const payload = Object.assign({
           listingId, clientId, agentId: c.assignedAgentId, status: kind,
-          listingTitle: listing ? listing.title : '', clientName: c.name,
+          listingTitle: listing ? listing.title : '', clientName: c.name, documents: [],
           createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, form);
         const added = await db.collection('deals').add(payload);
         _crmDeals.push(Object.assign({ id: added.id }, payload));
+        dealId = added.id;
       }
       if (listingId) {
         await db.collection('listings').doc(listingId).update({ status: kind });
@@ -966,6 +1179,7 @@
       await db.collection('clients').doc(clientId).update({ stage: closedStage, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       if (c) c.stage = closedStage;
       if (typeof isAdminOrOwnerUser === 'function' && isAdminOrOwnerUser()) logAdminAction('crm_close_deal', 'deal', dealId || listingId, kind);
+      crmLogActivity(clientId, kind === 'sold' ? 'deal_closed_sold' : 'deal_closed_rented', '');
       showToast(kind === 'sold' ? 'Зарагдсан гэж хаагдлаа' : 'Түрээслэгдсэн гэж хаагдлаа', 'success');
       closeModal();
       crmRerenderCurrentView();
@@ -1037,22 +1251,32 @@
   function renderCrmMonthlyReport(el, scopeUid) {
     if (!el) return;
     const { year, month } = crmReadMonthPicker(el.id);
+    _crmLastReportYear = year; _crmLastReportMonth = month;
     const clients = _crmClients.filter(c => c.assignedAgentId === scopeUid);
     const viewings = _crmViewings.filter(v => v.agentId === scopeUid);
     const deals = _crmDeals.filter(d => d.agentId === scopeUid);
     const r = computeCrmMonthlyReport(clients, viewings, deals, year, month);
     el.innerHTML = `
-      <div style="margin-bottom:14px;">${crmMonthPickerHtml(el.id, year, month, `renderCrmMonthlyReport(document.getElementById('${el.id}'), '${scopeUid}')`)}</div>
+      <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        ${crmMonthPickerHtml(el.id, year, month, `renderCrmMonthlyReport(document.getElementById('${el.id}'), '${scopeUid}')`)}
+        <button class="btn btn-ghost" style="border:1.5px solid var(--line-2);" onclick="crmExportReportExcel('${scopeUid}')">Excel export</button>
+        <button class="btn btn-ghost" style="border:1.5px solid var(--line-2);" onclick="crmExportReportPdf('${scopeUid}')">PDF export</button>
+      </div>
       ${crmMonthlyKpiGrid(r)}
     `;
   }
   function renderCrmAdminMonthlyReport(el) {
     if (!el) return;
     const { year, month } = crmReadMonthPicker(el.id);
+    _crmLastReportYear = year; _crmLastReportMonth = month;
     const agents = (typeof _adminUsersCache !== 'undefined' && _adminUsersCache) ? _adminUsersCache.filter(u => (u.role || 'user') === 'user') : [];
     const overall = computeCrmMonthlyReport(_crmClients, _crmViewings, _crmDeals, year, month);
     el.innerHTML = `
-      <div style="margin-bottom:14px;">${crmMonthPickerHtml(el.id, year, month, `renderCrmAdminMonthlyReport(document.getElementById('${el.id}'))`)}</div>
+      <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        ${crmMonthPickerHtml(el.id, year, month, `renderCrmAdminMonthlyReport(document.getElementById('${el.id}'))`)}
+        <button class="btn btn-ghost" style="border:1.5px solid var(--line-2);" onclick="crmExportReportExcel(null)">Excel export</button>
+        <button class="btn btn-ghost" style="border:1.5px solid var(--line-2);" onclick="crmExportReportPdf(null)">PDF export</button>
+      </div>
       ${crmMonthlyKpiGrid(overall)}
       <div class="step-section-title" style="margin:20px 0 10px;">Agent бүрийн сарын тайлан</div>
       <div class="admin-list-table">
@@ -1076,6 +1300,145 @@
         }).join('')}
       </div>
     `;
+  }
+
+  // ===== EXPORT (Excel via SheetJS, PDF via jsPDF+autotable — both loaded via CDN in
+  // index.html, same pattern as the existing Leaflet include) =====
+  // scopeUid: an agent's own uid (their export can only ever contain their own rows), or
+  // null for admin/owner (aggregate + a "By Agent" sheet/table, reusing the exact same
+  // per-agent loop the on-screen "Agent бүрийн сарын тайлан" table already uses).
+  function crmExportScopedData(scopeUid) {
+    const year = _crmLastReportYear != null ? _crmLastReportYear : new Date().getFullYear();
+    const month = _crmLastReportMonth != null ? _crmLastReportMonth : new Date().getMonth();
+    const clients = scopeUid ? _crmClients.filter(c => c.assignedAgentId === scopeUid) : _crmClients;
+    const viewings = scopeUid ? _crmViewings.filter(v => v.agentId === scopeUid) : _crmViewings;
+    const deals = scopeUid ? _crmDeals.filter(d => d.agentId === scopeUid) : _crmDeals;
+    const report = computeCrmMonthlyReport(clients, viewings, deals, year, month);
+    const leadSources = computeLeadSourceStats(clients, deals);
+    const rangeStart = new Date(year, month, 1);
+    const rangeEnd = new Date(year, month + 1, 0);
+    const rangeLabel = rangeStart.toLocaleDateString('mn-MN') + ' — ' + rangeEnd.toLocaleDateString('mn-MN');
+    let byAgent = null;
+    if (!scopeUid && typeof _adminUsersCache !== 'undefined' && _adminUsersCache) {
+      byAgent = _adminUsersCache.filter(u => (u.role || 'user') === 'user').map(u => {
+        const r = computeCrmMonthlyReport(
+          _crmClients.filter(c => c.assignedAgentId === u.uid),
+          _crmViewings.filter(v => v.agentId === u.uid),
+          _crmDeals.filter(d => d.agentId === u.uid),
+          year, month
+        );
+        return Object.assign({ agentName: ((u.lastName || '') + ' ' + (u.firstName || '')).trim() }, r);
+      });
+    }
+    return { year, month, rangeLabel, clients, viewings, deals, report, leadSources, byAgent };
+  }
+  function crmExportReportExcel(scopeUid) {
+    if (typeof XLSX === 'undefined') { showToast('Excel сан ачаалагдаагүй байна'); return; }
+    scopeUid = scopeUid === 'null' ? null : scopeUid;
+    const data = crmExportScopedData(scopeUid);
+    const wb = XLSX.utils.book_new();
+
+    const summaryRows = [
+      ['Тайлангийн хугацаа', data.rangeLabel],
+      [],
+      ['Шинэ clients', data.report.newClients],
+      ['Follow-up хийсэн', data.report.followUpsDone],
+      ['Үзлэг', data.report.viewings],
+      ['Хэлэлцээр', data.report.dealsOpened],
+      ['Гэрээ', data.report.contracts],
+      ['Зарагдсан', data.report.sold],
+      ['Түрээслэгдсэн', data.report.rented],
+      ['Нийт deal үнэ (₮)', Math.round(data.report.totalDealValue)],
+      ['Нийт commission (₮)', Math.round(data.report.totalCommission)],
+      ['Agent commission (₮)', Math.round(data.report.agentCommission)],
+      ['Company commission (₮)', Math.round(data.report.totalCommission - data.report.agentCommission)],
+      ['Conversion rate (%)', data.report.conversionRate],
+      [],
+      ['Lead source', 'Leads', 'Deals', 'Conversion (%)'],
+      ...data.leadSources.map(s => [s.label, s.leads, s.deals, s.conversionRate])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.clients.map(c => ({
+      Нэр: c.name, Утас: c.phone, Имэйл: c.email, Stage: CRM_STAGE_LABEL[c.stage] || c.stage,
+      'Lead source': CRM_LEAD_SOURCE_LABEL[c.leadSource] || '', Төсөв: c.budget || 0
+    }))), 'Clients');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.viewings.map(v => ({
+      Client: v.clientName, Listing: v.listingTitle, Огноо: v.scheduledAt ? new Date(crmMsFromTs(v.scheduledAt)).toLocaleString('mn-MN') : '', Status: CRM_VIEWING_STATUS_LABEL[v.status] || v.status
+    }))), 'Viewings');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.deals.map(d => {
+      const cm = computeDealCommission(d);
+      return {
+        Listing: d.listingTitle, Client: d.clientName, Status: CRM_DEAL_STATUS_LABEL[d.status] || d.status,
+        'Санал (₮)': d.offeredPrice || 0, 'Эцсийн (₮)': d.finalPrice || 0,
+        'Commission (₮)': Math.round(cm.commissionAmount), 'Agent commission (₮)': Math.round(cm.agentCommissionAmount),
+        'Company commission (₮)': Math.round(cm.companyCommissionAmount)
+      };
+    })), 'Deals');
+
+    if (data.byAgent) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.byAgent.map(r => ({
+        Agent: r.agentName, Clients: r.newClients, Viewings: r.viewings, Deals: r.dealsOpened,
+        Sold: r.sold, Rented: r.rented, 'Deal үнэ (₮)': Math.round(r.totalDealValue),
+        'Commission (₮)': Math.round(r.totalCommission), 'Agent commission (₮)': Math.round(r.agentCommission),
+        'Conversion (%)': r.conversionRate
+      }))), 'By Agent');
+    }
+
+    XLSX.writeFile(wb, `tp-property-crm-report-${data.year}-${String(data.month + 1).padStart(2, '0')}.xlsx`);
+  }
+  function crmExportReportPdf(scopeUid) {
+    if (typeof window.jspdf === 'undefined') { showToast('PDF сан ачаалагдаагүй байна'); return; }
+    scopeUid = scopeUid === 'null' ? null : scopeUid;
+    const data = crmExportScopedData(scopeUid);
+    const doc = new window.jspdf.jsPDF();
+    doc.setFontSize(14);
+    doc.text('TP Property CRM — Monthly Report', 14, 16);
+    doc.setFontSize(10);
+    doc.text(data.rangeLabel, 14, 23);
+
+    doc.autoTable({
+      startY: 28,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Шинэ clients', data.report.newClients],
+        ['Follow-up хийсэн', data.report.followUpsDone],
+        ['Үзлэг', data.report.viewings],
+        ['Хэлэлцээр', data.report.dealsOpened],
+        ['Гэрээ', data.report.contracts],
+        ['Зарагдсан', data.report.sold],
+        ['Түрээслэгдсэн', data.report.rented],
+        ['Нийт deal үнэ (₮)', fmt(Math.round(data.report.totalDealValue))],
+        ['Нийт commission (₮)', fmt(Math.round(data.report.totalCommission))],
+        ['Agent commission (₮)', fmt(Math.round(data.report.agentCommission))],
+        ['Company commission (₮)', fmt(Math.round(data.report.totalCommission - data.report.agentCommission))],
+        ['Conversion rate (%)', data.report.conversionRate]
+      ]
+    });
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [['Lead source', 'Leads', 'Deals', 'Conversion %']],
+      body: data.leadSources.map(s => [s.label, s.leads, s.deals, s.conversionRate])
+    });
+
+    const dealRows = data.deals.map(d => {
+      const cm = computeDealCommission(d);
+      return [d.listingTitle || '', d.clientName || '', CRM_DEAL_STATUS_LABEL[d.status] || d.status, fmt(d.finalPrice || d.offeredPrice || 0), fmt(Math.round(cm.commissionAmount))];
+    });
+    if (dealRows.length) {
+      doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [['Listing', 'Client', 'Status', 'Үнэ', 'Commission']], body: dealRows });
+    }
+
+    if (data.byAgent) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Agent', 'Clients', 'Viewings', 'Deals', 'Sold', 'Rented', 'Commission', 'Agent commission', 'Conversion %']],
+        body: data.byAgent.map(r => [r.agentName, r.newClients, r.viewings, r.dealsOpened, r.sold, r.rented, fmt(Math.round(r.totalCommission)), fmt(Math.round(r.agentCommission)), r.conversionRate])
+      });
+    }
+
+    doc.save(`tp-property-crm-report-${data.year}-${String(data.month + 1).padStart(2, '0')}.pdf`);
   }
 
   // ===== QUICK ALERTS =====
@@ -1122,7 +1485,7 @@
     const el = document.getElementById('crmContent');
     if (!el) return;
     if (tab) _crmTab = tab;
-    ['pipeline', 'clients', 'viewings', 'deals', 'reminder', 'today', 'monthly'].forEach(t => {
+    ['pipeline', 'clients', 'viewings', 'deals', 'reminder', 'today', 'monthly', 'leadsource'].forEach(t => {
       const btn = document.getElementById('crmTab-' + t);
       if (btn) btn.classList.toggle('active', t === _crmTab);
     });
@@ -1171,6 +1534,7 @@
         <button class="mytab ${_crmTab === 'reminder' ? 'active' : ''}" onclick="renderAdminCrmSection('reminder')">Reminder</button>
         <button class="mytab ${_crmTab === 'today' ? 'active' : ''}" onclick="renderAdminCrmSection('today')">Өнөөдрийн ажил</button>
         <button class="mytab ${_crmTab === 'monthly' ? 'active' : ''}" onclick="renderAdminCrmSection('monthly')">Сарын тайлан</button>
+        <button class="mytab ${_crmTab === 'leadsource' ? 'active' : ''}" onclick="renderAdminCrmSection('leadsource')">Lead Source</button>
         <button class="mytab ${_crmTab === 'byagent' ? 'active' : ''}" onclick="renderAdminCrmSection('byagent')">Agent-аар</button>
       </div>
       <div id="crmAdminBody"></div>
@@ -1187,6 +1551,7 @@
     else if (_crmTab === 'reminder') renderCrmFollowUpWidgets(el, scopeUid);
     else if (_crmTab === 'today') renderCrmTodayTasks(el, scopeUid);
     else if (_crmTab === 'monthly') { if (scopeUid) renderCrmMonthlyReport(el, scopeUid); else renderCrmAdminMonthlyReport(el); }
+    else if (_crmTab === 'leadsource') renderCrmLeadSourceReport(el, scopeUid);
     else if (_crmTab === 'byagent') renderCrmByAgentTable(el);
     else renderCrmKanban(el, scopeUid);
   }

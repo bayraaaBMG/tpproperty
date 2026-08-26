@@ -373,5 +373,41 @@ service cloud.firestore {
 
       allow delete: if isAdminOrOwner();
     }
+
+    // ===== CRM: CLIENT ACTIVITIES (append-only audit timeline) =====
+    // One entry per event on a client's journey (created, reassigned, stage changed,
+    // follow-up done/scheduled, viewing scheduled/done/cancelled, deal created/status
+    // changed, contract added, closed sold/rented). Deliberately carries NO agentId field
+    // of its own — access is decided by a LIVE lookup of the referenced client's CURRENT
+    // clients/{clientId}.assignedAgentId, not a snapshot taken when each entry was
+    // written. That's what makes a reassigned client's full history (including entries
+    // the previous agent wrote) immediately visible to whoever is assigned now, instead of
+    // only entries written after the handoff. Queried as
+    // .where('clientId','==',id).orderBy('createdAt','desc') — a single equality filter,
+    // which the rules engine can prove invariant across the whole result set since every
+    // returned doc resolves the same get() target for a given clientId.
+    match /clientActivities/{activityId} {
+      allow read: if isSignedIn() && (
+        isAdminOrOwner() ||
+        (exists(/databases/$(database)/documents/clients/$(resource.data.clientId))
+          && get(/databases/$(database)/documents/clients/$(resource.data.clientId)).data.assignedAgentId == request.auth.uid)
+      );
+
+      allow create: if isSignedIn() && !isBlocked() && isApprovedAgent()
+                    && request.resource.data.actorUid == request.auth.uid
+                    && exists(/databases/$(database)/documents/clients/$(request.resource.data.clientId))
+                    && (
+                         isAdminOrOwner() ||
+                         get(/databases/$(database)/documents/clients/$(request.resource.data.clientId)).data.assignedAgentId == request.auth.uid
+                       );
+
+      // A real audit log — nobody, not even admin/owner, can edit or erase history once
+      // written. If a referenced client is later deleted, its activity entries become
+      // permanently orphaned (readable only by admin/owner via the isAdminOrOwner()
+      // branch above, since the exists() check then fails for everyone else) — there's no
+      // backend here to cascade-delete them, and leaving them in place (rather than
+      // silently vanishing) is the more honest audit-trail behavior.
+      allow update, delete: if false;
+    }
   }
 }

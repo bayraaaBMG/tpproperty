@@ -1318,6 +1318,33 @@
   .crm-alert-card:last-child { margin-bottom: 0; }
   .crm-alert-card:hover { background: rgba(255, 71, 87, 0.1); }
 
+  /* Client activity timeline — a left dot-and-line rail, newest entry first */
+  .crm-timeline { display: flex; flex-direction: column; }
+  .crm-timeline-item { display: flex; gap: 12px; padding: 10px 2px; border-top: 1px solid var(--line); }
+  .crm-timeline-item:first-child { border-top: none; }
+  .crm-timeline-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 5px;
+  }
+  .crm-timeline-body { min-width: 0; flex: 1; }
+  .crm-timeline-label { font-size: 13px; font-weight: 700; }
+  .crm-timeline-desc { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; word-break: break-word; }
+  .crm-timeline-meta { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; }
+
+  /* Deal contract documents — one row per uploaded file, with a download link */
+  .crm-doc-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px;
+  }
+  .crm-doc-row:last-child { margin-bottom: 0; }
+  .crm-doc-name { font-size: 13px; font-weight: 700; word-break: break-word; }
+  .crm-doc-meta { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  /* Live commission preview shown while filling out the deal form */
+  .crm-commission-preview {
+    font-size: 12.5px; color: var(--ink-2); background: var(--paper-2); border-radius: 8px;
+    padding: 10px 12px; margin-top: 4px;
+  }
+
   @media (max-width: 900px) {
     .crm-reminder-grid { grid-template-columns: 1fr; }
     .crm-kanban-col { flex: 0 0 78vw; }
@@ -1325,6 +1352,7 @@
   @media (max-width: 640px) {
     .crm-reminder-row { flex-direction: column; align-items: flex-start; }
     .crm-reminder-side { text-align: left; }
+    .crm-doc-row { flex-direction: column; align-items: flex-start; }
   }
 
   /* Compact "⋮" action menu — used on every admin table row so a row with several
