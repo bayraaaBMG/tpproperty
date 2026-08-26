@@ -8,15 +8,15 @@
     const btn = document.getElementById('mapToggleBtn');
     if (mapViewOn) {
       mapView.style.display = 'block';
-      label.textContent = 'Жагсаалт';
+      if (label) label.textContent = 'Жагсаалтаар харах';
       if (icon) icon.innerHTML = '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>';
-      if (btn) { btn.style.background = 'var(--primary-soft)'; btn.style.color = 'var(--primary)'; }
+      if (btn) { btn.style.background = 'var(--primary)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--primary)'; }
       renderMiniMap(getFilteredListings());
     } else {
       mapView.style.display = 'none';
-      label.textContent = 'Газрын зураг';
+      if (label) label.textContent = 'Газрын зураг дээр харах';
       if (icon) icon.innerHTML = '<path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/>';
-      if (btn) { btn.style.background = ''; btn.style.color = ''; }
+      if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
     }
   }
 

@@ -908,21 +908,44 @@
           </div>
         </div>
         <div class="ls-sidebar-scroll">
+          <div class="filter-section fs-quick">
+            <label class="fs-quick-label" for="sortSelect">Эрэмбэлэх</label>
+            <div class="filter-field">
+              <select id="sortSelect" onchange="setSorting(this.value)" aria-label="Эрэмбэлэх">
+                <option value="default">Шинэ зар</option>
+                <option value="price-asc">Үнэ өсөх</option>
+                <option value="price-desc">Үнэ буурах</option>
+                <option value="area-desc">Талбай</option>
+                <option value="vip-first">⭐ VIP эхэндээ</option>
+                <option value="date-asc">Хуучин эхэлсэн</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="filter-section fs-quick">
+            <button class="btn btn-ghost fs-map-btn" id="mapToggleBtn" onclick="toggleMapView()">
+              <svg id="mapToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              <span id="mapToggleLabel">Газрын зураг дээр харах</span>
+            </button>
+          </div>
+
           <details class="filter-section" open>
             <summary>Байршил</summary>
             <div class="filter-section-body">
-              <select id="fDistrict">
-                <option value="all">Бүх дүүрэг</option>
-                <option value="khan-uul">Хан-Уул</option>
-                <option value="sukhbaatar">Сүхбаатар</option>
-                <option value="chingeltei">Чингэлтэй</option>
-                <option value="bayanzurkh">Баянзүрх</option>
-                <option value="bayangol">Баянгол</option>
-                <option value="songinokhairkhan">Сонгинохайрхан</option>
-                <option value="nalaikh">Налайх</option>
-                <option value="bagakhangai">Багахангай</option>
-                <option value="baganuur">Багануур</option>
-              </select>
+              <div class="filter-field">
+                <select id="fDistrict">
+                  <option value="all">Бүх дүүрэг</option>
+                  <option value="khan-uul">Хан-Уул</option>
+                  <option value="sukhbaatar">Сүхбаатар</option>
+                  <option value="chingeltei">Чингэлтэй</option>
+                  <option value="bayanzurkh">Баянзүрх</option>
+                  <option value="bayangol">Баянгол</option>
+                  <option value="songinokhairkhan">Сонгинохайрхан</option>
+                  <option value="nalaikh">Налайх</option>
+                  <option value="bagakhangai">Багахангай</option>
+                  <option value="baganuur">Багануур</option>
+                </select>
+              </div>
               <input type="text" id="fComplex" class="form-input" aria-label="Хотхон" placeholder="Хотхон (жнь: Зайсан Тольт)" />
               <input type="number" id="fKhoroo" class="form-input" aria-label="Хороо" placeholder="Хороо (жнь: 11)" min="1" />
               <div id="radiusMapWrap" style="display:none;">
@@ -938,18 +961,6 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 Газрын зураг дээр бүсээр хайх
               </button>
-            </div>
-          </details>
-
-          <details class="filter-section" open>
-            <summary>Үл хөдлөхийн төрөл</summary>
-            <div class="filter-section-body fs-cat-list">
-              <button class="filter-pill active" data-cat="all">Бүгд</button>
-              <button class="filter-pill" data-cat="apartment">Орон сууц</button>
-              <button class="filter-pill" data-cat="house">Хаус</button>
-              <button class="filter-pill" data-cat="land">Газар</button>
-              <button class="filter-pill" data-cat="office">Оффис</button>
-              <button class="filter-pill" data-cat="rent">Түрээс</button>
             </div>
           </details>
 
@@ -1076,38 +1087,148 @@
           <details class="filter-section">
             <summary>Өрөө</summary>
             <div class="filter-section-body">
-              <select id="fRooms">
-                <option value="all">Бүгд</option>
-                <option value="1">1 өрөө</option>
-                <option value="2">2 өрөө</option>
-                <option value="3">3 өрөө</option>
-                <option value="4">4+ өрөө</option>
-              </select>
-            </div>
-          </details>
-
-          <details class="filter-section">
-            <summary>Давхар</summary>
-            <div class="filter-section-body">
-              <div class="filter-range">
-                <input type="number" id="fFloorMin" aria-label="Давхар, доод" placeholder="Доод" min="1" />
-                <span>—</span>
-                <input type="number" id="fFloorMax" aria-label="Давхар, дээд" placeholder="Дээд" min="1" />
+              <div class="filter-field">
+                <select id="fRooms">
+                  <option value="all">Бүгд</option>
+                  <option value="1">1 өрөө</option>
+                  <option value="2">2 өрөө</option>
+                  <option value="3">3 өрөө</option>
+                  <option value="4">4+ өрөө</option>
+                </select>
               </div>
             </div>
           </details>
 
           <details class="filter-section">
-            <summary>Барилгын төрөл</summary>
+            <summary>Барилгын давхар</summary>
             <div class="filter-section-body">
-              <select id="fBuildingType">
-                <option value="">Бүгд</option>
-                <option value="reinforced-concrete">Цутгамал төмөр бетон</option>
-                <option value="brick">Хийц өрлөгийн (керамзитбетон)</option>
-                <option value="panel">Угсармал панель</option>
-                <option value="frame">Каркасан хийц</option>
-                <option value="wooden">Модон</option>
-              </select>
+              <div class="filter-range">
+                <select id="fFloorMin" aria-label="Барилгын давхар, доод">
+                  <option value="">Доод</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25+</option>
+                </select>
+                <span>—</span>
+                <select id="fFloorMax" aria-label="Барилгын давхар, дээд">
+                  <option value="">Дээд</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25+</option>
+                </select>
+              </div>
+            </div>
+          </details>
+
+          <!-- l.floor is stored "unit/total" (e.g. "8/14"); the range above filters the
+               unit's own floor (split[0]), this one filters the building's total floor
+               count (split[1]) — a real, independently useful filter, not a duplicate. -->
+          <details class="filter-section">
+            <summary>Хэдэн давхарт</summary>
+            <div class="filter-section-body">
+              <div class="filter-range">
+                <select id="fFloorTotalMin" aria-label="Барилгын нийт давхар, доод">
+                  <option value="">Доод</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25+</option>
+                </select>
+                <span>—</span>
+                <select id="fFloorTotalMax" aria-label="Барилгын нийт давхар, дээд">
+                  <option value="">Дээд</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25+</option>
+                </select>
+              </div>
             </div>
           </details>
 
@@ -1115,10 +1236,37 @@
             <summary>Ашиглалтад орсон он</summary>
             <div class="filter-section-body">
               <div class="filter-range">
-                <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="2000" min="1950" max="2030" />
+                <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="1980" min="1950" max="2030" />
                 <span>—</span>
-                <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2025" min="1950" max="2030" />
+                <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2026" min="1950" max="2030" />
               </div>
+            </div>
+          </details>
+
+          <details class="filter-section">
+            <summary>Барилгын төрөл</summary>
+            <div class="filter-section-body">
+              <div class="filter-field">
+                <select id="fBuildingType">
+                  <option value="">Бүгд</option>
+                  <option value="reinforced-concrete">Цутгамал төмөр бетон</option>
+                  <option value="brick">Хийц өрлөгийн (керамзитбетон)</option>
+                  <option value="panel">Угсармал панель</option>
+                  <option value="frame">Каркасан хийц</option>
+                  <option value="wooden">Модон</option>
+                </select>
+              </div>
+            </div>
+          </details>
+
+          <!-- Only the 2 toggles with a real underlying data field (loan/barter) are
+               surfaced here — a full 4-option payment-terms set would need a listing data
+               field ("cash"/"leasing") that doesn't exist yet, so it isn't faked. -->
+          <details class="filter-section">
+            <summary>Төлбөрийн нөхцөл</summary>
+            <div class="filter-section-body filter-toggles fs-payment-terms" style="margin-top:0; padding-top:0; border-top:none;">
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="loan">Банкны зээлээр</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="barter">Бартер сонирхоно</button>
             </div>
           </details>
 
@@ -1127,8 +1275,6 @@
             <div class="filter-section-body filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
               <button class="filter-toggle" data-ftoggle="furnished">Тавилгатай</button>
               <button class="filter-toggle" data-ftoggle="new">Шинэ барилга</button>
-              <button class="filter-toggle" data-ftoggle="barter">Бартер</button>
-              <button class="filter-toggle" data-ftoggle="loan">Зээлд хамрагдана</button>
               <button class="filter-toggle" data-ftoggle="verified">Баталгаажсан</button>
               <button class="filter-toggle" data-ftoggle="below">Зах зээлээс хямд</button>
               <button class="filter-toggle" data-ftoggle="parking">Паркингтай</button>
@@ -1141,10 +1287,6 @@
           <button class="btn btn-ghost" onclick="saveCurrentSearch()" title="Хайлтыг хадгалах" style="font-size:12px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Хадгалах
-          </button>
-          <button class="btn btn-ghost" id="mapToggleBtn" onclick="toggleMapView()" style="font-size:12px;">
-            <svg id="mapToggleIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-            <span id="mapToggleLabel">Газрын зураг</span>
           </button>
           <button type="button" class="btn btn-blue ls-apply-btn" onclick="applyFilters(); closeMobileFilterSheet();">Хайх</button>
         </div>
@@ -1161,19 +1303,11 @@
         <div class="listings-results-header">
           <div class="lrh-count"><strong id="filterCount">0</strong> зар олдлоо</div>
           <div class="lrh-actions">
-            <select id="sortSelect" onchange="setSorting(this.value)" aria-label="Эрэмбэлэх">
-              <option value="default">Шинэ зар</option>
-              <option value="price-asc">Үнэ өсөх</option>
-              <option value="price-desc">Үнэ буурах</option>
-              <option value="area-desc">Талбай</option>
-              <option value="vip-first">⭐ VIP эхэндээ</option>
-              <option value="date-asc">Хуучин эхэлсэн</option>
-            </select>
             <div class="lrh-view-toggle">
-              <button type="button" class="lrh-view-btn active" data-view="grid" onclick="setListingsView('grid')" title="Grid харагдац" aria-label="Grid харагдац">
+              <button type="button" class="lrh-view-btn" data-view="grid" onclick="setListingsView('grid')" title="Grid харагдац" aria-label="Grid харагдац">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
               </button>
-              <button type="button" class="lrh-view-btn" data-view="list" onclick="setListingsView('list')" title="List харагдац" aria-label="List харагдац">
+              <button type="button" class="lrh-view-btn active" data-view="list" onclick="setListingsView('list')" title="List харагдац" aria-label="List харагдац">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
             </div>
@@ -1182,7 +1316,7 @@
 
         <div id="activeFilterTags" style="display:none; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px;"></div>
 
-        <div class="listings-browse-grid" id="listingsGrid">
+        <div class="listings-browse-grid view-list" id="listingsGrid">
           <!-- Cards will be rendered here by JS -->
         </div>
 

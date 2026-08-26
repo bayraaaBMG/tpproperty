@@ -32,6 +32,8 @@
     if ((document.getElementById('fRooms')?.value || 'all') !== 'all') n++;
     if (document.getElementById('fFloorMin')?.value) n++;
     if (document.getElementById('fFloorMax')?.value) n++;
+    if (document.getElementById('fFloorTotalMin')?.value) n++;
+    if (document.getElementById('fFloorTotalMax')?.value) n++;
     if (document.getElementById('fBuildingType')?.value) n++;
     if (document.getElementById('fYearMin')?.value) n++;
     if (document.getElementById('fYearMax')?.value) n++;
@@ -144,6 +146,8 @@
     const yearMax = parseInt(document.getElementById('fYearMax')?.value) || 9999;
     const floorMin = parseInt(document.getElementById('fFloorMin')?.value) || 0;
     const floorMax = parseInt(document.getElementById('fFloorMax')?.value) || 9999;
+    const floorTotalMin = parseInt(document.getElementById('fFloorTotalMin')?.value) || 0;
+    const floorTotalMax = parseInt(document.getElementById('fFloorTotalMax')?.value) || 9999;
     const q = (searchText || (document.getElementById('fSearch')?.value) || '').trim().toLowerCase();
 
     if (q) {
@@ -193,6 +197,16 @@
       results = results.filter(l => {
         const f = parseInt(String(l.floor).split('/')[0]);
         return isNaN(f) || (f >= floorMin && f <= floorMax);
+      });
+    }
+    // Total-floors-in-building filter (second half of the same "unit/total" floor
+    // string). Listings whose l.floor isn't in that shape (land: "0.06 га", house:
+    // "2 давхар", etc.) parse to NaN and pass through unfiltered — same "can't be judged
+    // on this dimension, so don't exclude it" behavior as the unit-floor filter above.
+    if (floorTotalMin > 0 || floorTotalMax < 9999) {
+      results = results.filter(l => {
+        const ft = parseInt(String(l.floor).split('/')[1]);
+        return isNaN(ft) || (ft >= floorTotalMin && ft <= floorTotalMax);
       });
     }
     // Toggles
@@ -308,7 +322,7 @@
   function resetFilters() {
     ['fDistrict'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
     ['fRooms'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
-    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fFloorTotalMin','fFloorTotalMax','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
     const fSearch = document.getElementById('fSearch');
     if (fSearch) fSearch.value = '';
     searchText = '';

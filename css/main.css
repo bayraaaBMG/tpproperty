@@ -477,9 +477,39 @@
   }
   .filter-section[open] summary::after { transform: rotate(-135deg); }
   .filter-section-body { padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .fs-cat-list { flex-direction: column; gap: 4px; }
-  .fs-cat-list .filter-pill { justify-content: flex-start; width: 100%; border-radius: 8px; padding: 8px 10px; }
-  .fs-cat-list .filter-pill.active { background: var(--primary-soft); color: var(--primary-deep); }
+
+  /* Эрэмбэлэх / Газрын зураг — plain, always-visible sidebar blocks (no <details>
+     chevron) sitting above the collapsible filter sections, matching the reference's
+     "quick controls first" ordering. */
+  .fs-quick-label {
+    display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px;
+  }
+  .fs-map-btn {
+    width: 100%; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600;
+    padding: 10px 14px; border: 1.5px solid var(--primary-soft);
+    background: var(--primary-soft); color: var(--primary-deep);
+  }
+  .fs-map-btn:hover { border-color: var(--primary); }
+
+  /* Checkbox-look variant of .filter-toggle for "Төлбөрийн нөхцөл" — same underlying
+     .filter-toggle/.active class + click handler as every other toggle pill, just a
+     different visual (square checkbox instead of a rounded pill). */
+  .fs-payment-terms { flex-direction: column; gap: 4px; }
+  .filter-toggle-check {
+    display: flex; align-items: center; gap: 10px; width: 100%; justify-content: flex-start;
+    background: none; border: none; border-radius: 8px; padding: 8px 6px; font-size: 13px;
+    font-weight: 500; color: var(--ink-2);
+  }
+  .filter-toggle-check::before {
+    content: ''; width: 17px; height: 17px; flex-shrink: 0; border-radius: 5px;
+    border: 1.5px solid var(--line-2); transition: all 0.15s; background: white;
+  }
+  .filter-toggle-check.active { color: var(--ink); font-weight: 600; }
+  .filter-toggle-check.active::before {
+    background: var(--primary); border-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    background-size: 12px; background-repeat: no-repeat; background-position: center;
+  }
 
   .listings-main { flex: 1; min-width: 0; }
   .listings-results-header {
@@ -538,12 +568,23 @@
   .listings-browse-grid .listing-card:active { transform: scale(0.98); }
 
   /* List view — same card DOM, just laid out as a horizontal row instead of restyling
-     the grid into a separate component. */
+     the grid into a separate component. This is now the Listings page's DEFAULT view
+     (see index.html's #listingsGrid initial class) — Unegui.mn-style wide horizontal
+     cards, not the small grid tiles. The grid layout above stays available via the
+     view-toggle buttons for anyone who prefers it. */
   .listings-browse-grid.view-list { grid-template-columns: 1fr; gap: 10px; }
   .listings-browse-grid.view-list .listing-card { display: flex; flex-direction: row; align-items: stretch; }
   .listings-browse-grid.view-list .listing-img { width: 220px; flex-shrink: 0; aspect-ratio: auto; }
   .listings-browse-grid.view-list .listing-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
   .listings-browse-grid.view-list .listing-card:hover { transform: none; }
+
+  /* Desktop: widen the image to ~62/38 (image/info), matching the reference's wide
+     horizontal card proportions — mobile's narrower fixed-width override below (640px)
+     is untouched, it's already tuned for small screens. */
+  @media (min-width: 900px) {
+    .listings-browse-grid.view-list .listing-img { width: auto; flex: 0 0 62%; aspect-ratio: 16/10; }
+    .listings-browse-grid.view-list .listing-body { justify-content: flex-start; padding-top: 20px; }
+  }
 
   @media (max-width: 1280px) {
     .listings-browse-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

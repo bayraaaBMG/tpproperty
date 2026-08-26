@@ -24,6 +24,8 @@
     else if (type === 'yearMax') { const el=document.getElementById('fYearMax'); if(el)el.value=''; }
     else if (type === 'floorMin') { const el=document.getElementById('fFloorMin'); if(el)el.value=''; }
     else if (type === 'floorMax') { const el=document.getElementById('fFloorMax'); if(el)el.value=''; }
+    else if (type === 'floorTotalMin') { const el=document.getElementById('fFloorTotalMin'); if(el)el.value=''; }
+    else if (type === 'floorTotalMax') { const el=document.getElementById('fFloorTotalMax'); if(el)el.value=''; }
     applyListingFilter();
   }
 
@@ -56,6 +58,10 @@
     const floorMax = document.getElementById('fFloorMax')?.value;
     if (floorMin) tags.push({ label: floorMin + '+давхар', onclick: `clearFilterTag('floorMin','')` });
     if (floorMax) tags.push({ label: '≤' + floorMax + 'давхар', onclick: `clearFilterTag('floorMax','')` });
+    const floorTotalMin = document.getElementById('fFloorTotalMin')?.value;
+    const floorTotalMax = document.getElementById('fFloorTotalMax')?.value;
+    if (floorTotalMin) tags.push({ label: floorTotalMin + '+нийт давхар', onclick: `clearFilterTag('floorTotalMin','')` });
+    if (floorTotalMax) tags.push({ label: '≤' + floorTotalMax + 'нийт давхар', onclick: `clearFilterTag('floorTotalMax','')` });
     const toggleLabels = {new:'Шинэ барилга',verified:'Баталгаажсан',below:'Зах зээлийн хямд',loan:'Зээлд хамрагдах',parking:'Паркингтай',furnished:'Тавилгатай',vip:'⭐ VIP',withphoto:'Зурагтай',renovated:'Засвар хийсэн',barter:'Бартер сонсоно'};
     activeFilterToggles.forEach(t => tags.push({ label: toggleLabels[t]||t, onclick: `clearFilterTag('toggle','${t}')` }));
     if (tags.length === 0) { wrap.style.display = 'none'; return; }
