@@ -4,8 +4,31 @@
     if (el) el.textContent = val;
   }
 
+  // Shown instead of the real seller dashboard for a signed-in account that isn't yet an
+  // approved agent (js/permissions.js isApprovedAgent()) — closed brokerage system, so
+  // logging in alone no longer grants access to the listing-management dashboard.
+  function renderAgentRestrictedDashboard() {
+    return `
+      <div style="text-align:center;padding:100px 20px;max-width:440px;margin:0 auto;">
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin-bottom:10px;">
+          Таны бүртгэл Agent эрхээр батлагдаагүй байна
+        </div>
+        <div style="color:var(--ink-3);font-size:14px;line-height:1.6;margin-bottom:20px;">
+          Зар нэмэх, удирдах боломжийг ашиглахын тулд TP Property-ийн админтай холбогдож
+          Agent эрх аваарай.
+        </div>
+        <button class="btn btn-blue btn-lg" onclick="showPage('home')">Нүүр хуудас руу буцах</button>
+      </div>
+    `;
+  }
+
   function renderDashboard() {
     if (!currentUser) return;
+    if (typeof isApprovedAgent === 'function' && !isApprovedAgent(currentUser)) {
+      const root = document.querySelector('#dashboard > .section-inner');
+      if (root) root.innerHTML = renderAgentRestrictedDashboard();
+      return;
+    }
     const myListings = listings.filter(l => l.userSubmitted && l.ownerId === currentUser.uid);
     const activeListings = myListings.filter(l => !l._inactive);
     const totalViews = myListings.reduce((s, l) => s + (l.viewCount || 0), 0);

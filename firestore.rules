@@ -27,6 +27,20 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('blocked', false) == true;
     }
 
+    // ===== AGENTS (closed brokerage system) =====
+    // TP Property is no longer an open marketplace: signing in no longer grants the ability
+    // to create/manage listings by itself. `agentActive` is a new, orthogonal boolean on
+    // users/{uid} (default false) — an admin/owner explicitly flips it on via the Agents
+    // admin section (or it's set at signup time when a matching agentInvites/{email} doc
+    // exists, see the users/{uid} create rule below). `role` itself is untouched — a plain
+    // 'user' role is displayed as "Agent" client-side (js/permissions.js roleLabel()), but the
+    // real, server-enforced gate for listing authorship is this flag, not the role string.
+    // Admin/owner always count as an approved agent too — they don't need the flag set.
+    function isActiveAgent() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('agentActive', false) == true;
+    }
+    function isApprovedAgent() { return isActiveAgent() || isAdminOrOwner(); }
+
     // ===== USERS =====
     match /users/{uid} {
       // Everyone reads their own profile; admin/owner can read any profile (Users management
@@ -36,9 +50,18 @@ service cloud.firestore {
       // Bootstrap on first sign-in. The owner's own email is the only address ever allowed
       // to create itself as role:'owner' — everyone else can only ever create themselves as
       // 'user' (or omit the field entirely). Nobody can hand themselves 'admin' at signup.
+      //
+      // agentActive at signup: a brand-new account can only ever land with agentActive:true
+      // if a matching agentInvites/{email} doc already exists (an admin/owner pre-authorized
+      // that exact email before this signup happened) — checked against the verified token
+      // email, not anything client-supplied, so a client can't just self-grant agent access
+      // by setting the field. Everyone else bootstraps with agentActive:false (or omitted).
       allow create: if isSignedIn() && request.auth.uid == uid && (
         (isOwner() && request.resource.data.role == 'owner') ||
         (!isOwner() && (!('role' in request.resource.data) || request.resource.data.role == 'user'))
+      ) && (
+        request.resource.data.get('agentActive', false) == false ||
+        exists(/databases/$(database)/documents/agentInvites/$(request.auth.token.email))
       );
 
       // Self-update: every field is free to edit except `role`, which must stay exactly what
@@ -88,6 +111,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ===== AGENT INVITES =====
+    // How an admin/owner grants agent access to someone who has never signed in yet (there's
+    // no backend/Admin SDK here, so a Firestore Auth account can't be created server-side —
+    // the client has to bootstrap its own users/{uid} doc on first sign-in). An admin/owner
+    // pre-authorizes an exact email address by writing a doc keyed by that email; the users/
+    // {uid} create rule above cross-checks this collection via exists() before ever letting a
+    // brand-new signup set agentActive:true on itself. `get` is scoped to the invitee's own
+    // verified token email so this doesn't need to be publicly listable to do its job.
+    match /agentInvites/{email} {
+      allow get: if isSignedIn() && request.auth.token.email == email;
+      allow list: if isAdminOrOwner();
+      allow create, update, delete: if isAdminOrOwner();
+    }
+
     // ===== LISTINGS =====
     // Lifecycle: pending (just submitted/edited, awaiting review) -> active (admin/owner-
     // approved, public) -> sold/rented (owner marks complete) or expired (30 days, auto) ->
@@ -100,8 +137,10 @@ service cloud.firestore {
 
       // A brand-new listing can't already be admin-verified or start out publicly visible —
       // otherwise a malicious owner could just set listingVerified/status themselves. Blocked
-      // users can't create listings at all.
+      // users can't create listings at all. Only an approved agent (or admin/owner) may author
+      // a listing — a merely-signed-in account with no agentActive flag cannot.
       allow create: if isSignedIn()
+                    && isApprovedAgent()
                     && request.resource.data.ownerId == request.auth.uid
                     && request.resource.data.get('listingVerified', false) == false
                     && request.resource.data.get('status', 'pending') == 'pending'
@@ -115,7 +154,9 @@ service cloud.firestore {
       // be renewed straight back to 'active' (content didn't change), and an active listing
       // can be marked sold/rented/expired by its own owner. Only an admin/owner can move
       // something INTO 'active' from 'pending'/'rejected', or move it INTO 'rejected' at all.
-      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid
+      // A deactivated agent (agentActive:false) loses this self-edit path entirely — their
+      // existing listings stay live/public, but only admin/owner can touch them going forward.
+      allow update: if isSignedIn() && isApprovedAgent() && resource.data.ownerId == request.auth.uid
                     && !isBlocked()
                     && !(request.resource.data.get('listingVerified', false) == true
                          && resource.data.get('listingVerified', false) != true)
@@ -126,7 +167,7 @@ service cloud.firestore {
                          (resource.data.status == 'expired' && request.resource.data.status == 'active') ||
                          (resource.data.status == 'active' && request.resource.data.status in ['sold', 'rented', 'expired'])
                        );
-      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && isApprovedAgent() && resource.data.ownerId == request.auth.uid;
 
       // Anyone (including logged-out viewers) may bump viewCount by exactly 1, nothing else.
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])

@@ -48,7 +48,7 @@
       <a onclick="showPage('newdev')">Шинэ орон сууц</a>
       <a onclick="showPage('calc')">Тооцоолуур</a>
       <a onclick="showPage('resources')">Зөвлөгөө</a>
-      <a onclick="currentUser ? showPage('dashboard') : openAuth()">Миний самбар</a>
+      <a class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth()">Миний самбар</a>
     </div>
     <div class="nav-actions">
       <button class="notif-trigger nav-fav-btn" onclick="openFavorites()" style="margin-right:-2px;" aria-label="Хадгалсан зарууд">
@@ -100,7 +100,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
             Хадгалсан хайлтууд
           </a>
-          <a onclick="openAddListing(); toggleUserMenu(null)">
+          <a class="agent-cta" onclick="openAddListing(); toggleUserMenu(null)">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
             Зар нэмэх
           </a>
@@ -114,7 +114,7 @@
           </a>
         </div>
       </div>
-      <a class="btn btn-blue" id="addListingBtn" onclick="openAddListing()">Зар нэмэх</a>
+      <a class="btn btn-blue agent-cta" id="addListingBtn" onclick="openAddListing()">Зар нэмэх</a>
       <button class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Цэс нээх">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
       </button>
@@ -127,7 +127,7 @@
     <a onclick="showPage('compare'); toggleMobileMenu()">Авах vs Түрээслэх</a>
     <a onclick="showPage('calc'); toggleMobileMenu()">Зээл тооцоолуур</a>
     <a onclick="showPage('resources'); toggleMobileMenu()">Зөвлөгөө</a>
-    <a onclick="currentUser ? showPage('dashboard') : openAuth(); toggleMobileMenu()">Миний самбар</a>
+    <a class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth(); toggleMobileMenu()">Миний самбар</a>
   </div>
 </nav>
 
@@ -786,7 +786,7 @@
             <button class="compose-trigger" onclick="openComposePost('text')">Та юу бодож байна? Зах зээлийн тухай хуваалцаарай...</button>
           </div>
           <div class="compose-actions">
-            <button class="compose-action" onclick="openAddListing()">
+            <button class="compose-action agent-cta" onclick="openAddListing()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00D4AA" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
               Зураг бүхий зар
             </button>
@@ -1542,7 +1542,7 @@
           <div class="dash-greeting" id="dashGreeting">Сайн байна уу!</div>
           <div class="dash-sub" id="dashSub">Ачааллаж байна…</div>
         </div>
-        <button class="btn btn-blue btn-lg" onclick="openAddListing()">
+        <button class="btn btn-blue btn-lg agent-cta" onclick="openAddListing()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           Шинэ зар нэмэх
         </button>
@@ -1618,7 +1618,7 @@
         <span class="section-eyebrow">Миний зарууд</span>
         <h2 class="section-title display">Өөрийн нийтэлсэн <em>зарууд</em></h2>
       </div>
-      <button class="btn btn-blue" onclick="openAddListing()">
+      <button class="btn btn-blue agent-cta" onclick="openAddListing()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         Шинэ зар нэмэх
       </button>
@@ -2139,7 +2139,7 @@
         <h5>Платформ</h5>
         <ul>
           <li><a onclick="scrollToSection('listings')">Зар үзэх</a></li>
-          <li><a onclick="openInfoPage('addListing')">Зар нэмэх</a></li>
+          <li><a class="agent-cta" onclick="openInfoPage('addListing')">Зар нэмэх</a></li>
           <li><a onclick="openInfoPage('map')">Газрын зураг</a></li>
           <li><a onclick="openInfoPage('topPicks')">Шилдэг сонголт</a></li>
         </ul>
@@ -2291,7 +2291,10 @@
       <div class="auth-forgot-link" onclick="startForgotPassword()">Нууц үгээ мартсан уу?</div>
 
       <button class="btn btn-blue auth-submit-btn" onclick="loginWithEmail()">Нэвтрэх</button>
-      <div class="auth-forgot-link" style="margin-top:14px;" onclick="goToAuthRegisterFromLogin()">Энэ имэйлээр анх удаа орж байна уу? Бүртгүүлэх</div>
+      <!-- Self-registration is no longer a public path (closed brokerage system) — the
+           escape-hatch into authStep3Register is hidden. createAccount()/goToAuthRegisterFromLogin()
+           stay intact in auth.js for an admin to point a specific person at directly if ever needed. -->
+      <div class="auth-forgot-link" style="margin-top:14px;display:none;" onclick="goToAuthRegisterFromLogin()">Энэ имэйлээр анх удаа орж байна уу? Бүртгүүлэх</div>
     </div>
 
     <!-- STEP 3B: Шинэ бүртгэл -->
@@ -2424,7 +2427,7 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
       Хайх
     </button>
-    <button class="mbn-btn mbn-add" onclick="openAddListing()" style="color:var(--primary);">
+    <button class="mbn-btn mbn-add agent-cta" onclick="openAddListing()" style="color:var(--primary);">
       <div style="width:42px;height:42px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:2px;box-shadow:0 4px 14px rgba(30,91,255,0.4);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
       </div>
@@ -2435,7 +2438,7 @@
       <span class="mbn-fav-badge" id="mbnFavCount">0</span>
       Хадгалсан
     </button>
-    <button class="mbn-btn" id="mbn-me" onclick="currentUser ? showPage('dashboard') : openAuth()">
+    <button class="mbn-btn authed-cta" id="mbn-me" onclick="currentUser ? showPage('dashboard') : openAuth()">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       Миний
     </button>

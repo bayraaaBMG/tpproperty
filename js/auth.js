@@ -2,6 +2,19 @@
   let currentUser = null;
   let authCurrentEmail = '';
 
+  // Closed-brokerage bootstrap check: does an admin/owner already know this email is an
+  // approved agent (js/admin.js submitAgentInvite())? Checked before every first-sign-in
+  // profile-doc write below — firestore.rules' users/{uid} create rule independently
+  // verifies the same agentInvites/{email} doc exists before accepting agentActive:true, so
+  // this can't be spoofed by skipping/faking the check client-side.
+  async function checkAgentInvite(email) {
+    if (!email) return false;
+    try {
+      const doc = await db.collection('agentInvites').doc(email.toLowerCase()).get();
+      return doc.exists;
+    } catch(e) { return false; }
+  }
+
   // onAuthStateChanged — page load болгонд Firebase session сэргээнэ
   auth.onAuthStateChanged(async (fbUser) => {
     if (fbUser) {
@@ -25,6 +38,8 @@
         accountType: 'owner',
         companyName: '',
         role: 'user',
+        agentActive: false,
+        blocked: false,
         verifiedPhone: isPhone ? normalizePhone(fbUser.phoneNumber) : null,
         isGoogle,
         isPhone
@@ -35,6 +50,7 @@
       // immediately instead of waiting on that fetch; a plain admin still needs it, and gets
       // the second refreshAdminPageIfActive() call further down once role loads.
       if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
+      if (typeof refreshAgentUI === 'function') refreshAgentUI();
 
       // Email verify banner (not applicable to phone-only accounts, which have no email)
       const banner = document.getElementById('emailVerifyBanner');
@@ -61,6 +77,11 @@
           // (js/admin.js grantAdminRole()), which writes through the one privileged
           // firestore.rules path for it — never settable by the user themselves.
           currentUser.role = data.role || 'user';
+          // Approved-agent capability (js/permissions.js isApprovedAgent()) — a real,
+          // Firestore-rules-enforced flag, separate from role. blocked mirrors the rules'
+          // isBlocked() the same way.
+          currentUser.agentActive = data.agentActive === true;
+          currentUser.blocked = data.blocked === true;
           // Self-heal: the owner's profile doc may already have existed (role:'user' or no
           // role at all) from before this permission system shipped — the create-time
           // bootstrap in createAccount()/loginWithGoogle() only ever runs on a brand-new doc,
@@ -70,11 +91,12 @@
           // just a fresh Google-popup login.
           if (isOwnerEmail(fbUser.email) && currentUser.role !== 'owner') {
             db.collection('users').doc(fbUser.uid).update({ role: 'owner', updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-              .then(() => { currentUser.role = 'owner'; updateNavLoggedIn(); if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive(); })
+              .then(() => { currentUser.role = 'owner'; updateNavLoggedIn(); if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive(); if (typeof refreshAgentUI === 'function') refreshAgentUI(); })
               .catch(e => console.error('Owner role self-heal failed:', e.code, e.message));
           }
           updateNavLoggedIn();
           if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
+          if (typeof refreshAgentUI === 'function') refreshAgentUI();
         }
       } catch(e) {
         showToast('Профайл мэдээлэл татахад алдаа гарлаа (Firestore зөвшөөрөл шалгана уу)');
@@ -163,6 +185,7 @@
       if (typeof renderAccountSidebar === 'function') renderAccountSidebar();
       if (typeof subscribeNotifications === 'function') subscribeNotifications();
       if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
+      if (typeof refreshAgentUI === 'function') refreshAgentUI();
     }
   });
 
@@ -262,6 +285,9 @@
     try {
       const userDoc = await db.collection('users').doc(fbUser.uid).get();
       if (!userDoc.exists) {
+        // Phone-only signup has no email, so it can never match an agentInvites/{email} doc
+        // — always bootstraps agentActive:false. An admin has to activate these manually
+        // (Agents section) after the person's first sign-in.
         await db.collection('users').doc(fbUser.uid).set({
           uid: fbUser.uid,
           firstName: 'Хэрэглэгч',
@@ -271,6 +297,7 @@
           // verification step needed for phone-auth accounts.
           verifiedPhone: normalizePhone(fbUser.phoneNumber),
           role: 'user',
+          agentActive: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       }
@@ -375,6 +402,7 @@
     // this exact email (isOwner(), checked off the verified ID token) and only 'user' from
     // anyone else, so this line can't be used to self-elevate under any other address.
     const bootstrapRole = isOwnerEmail(authCurrentEmail) ? 'owner' : 'user';
+    const agentActive = await checkAgentInvite(authCurrentEmail);
     try {
       await cred.user.updateProfile({ displayName: firstName + ' ' + lastName });
       await db.collection('users').doc(cred.user.uid).set({
@@ -383,6 +411,7 @@
         lastName,
         email: authCurrentEmail,
         role: bootstrapRole,
+        agentActive,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       // onAuthStateChanged (top of this file) already ran by this point, off the Auth user
@@ -394,7 +423,9 @@
         currentUser.lastName = lastName;
         currentUser.letter = firstName[0] || 'Х';
         currentUser.role = bootstrapRole;
+        currentUser.agentActive = agentActive;
         updateNavLoggedIn();
+        if (typeof refreshAgentUI === 'function') refreshAgentUI();
       }
     } catch(e) {
       console.error('createAccount profile write failed:', e.code, e.message);
@@ -427,17 +458,21 @@
         // See the matching comment in createAccount() above — this is the one address
         // firestore.rules will accept role:'owner' from at doc-creation time.
         const bootstrapRole = isOwnerEmail(fbUser.email) ? 'owner' : 'user';
+        const agentActive = await checkAgentInvite(fbUser.email);
         await db.collection('users').doc(fbUser.uid).set({
           uid: fbUser.uid,
           firstName: parts[0] || 'Хэрэглэгч',
           lastName: parts.slice(1).join(' ') || '',
           email: fbUser.email,
           role: bootstrapRole,
+          agentActive,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         if (currentUser && currentUser.uid === fbUser.uid) {
           currentUser.role = bootstrapRole;
+          currentUser.agentActive = agentActive;
           updateNavLoggedIn();
+          if (typeof refreshAgentUI === 'function') refreshAgentUI();
         }
       }
     } catch(e) {

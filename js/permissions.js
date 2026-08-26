@@ -27,7 +27,29 @@
     return isOwnerUser(u) || isAdminUser(u);
   }
   function roleLabel(role) {
-    return { owner: 'Owner', admin: 'Admin', user: 'Хэрэглэгч' }[role] || 'Хэрэглэгч';
+    return { owner: 'Owner', admin: 'Admin', user: 'Agent' }[role] || 'Agent';
+  }
+
+  // ===== AGENTS (closed brokerage system) =====
+  // Mirrors firestore.rules' isApprovedAgent() exactly (see the "AGENTS" section there for
+  // the full rationale): a plain 'user'-role account only counts as an approved agent once an
+  // admin/owner has explicitly flipped agentActive:true on their profile — signing in alone
+  // is no longer enough. Admin/owner always pass, without needing the flag. UI-only, same
+  // caveat as every other check in this file: the real gate is the Firestore rule.
+  function isApprovedAgent(u) {
+    u = u || (typeof currentUser !== 'undefined' ? currentUser : null);
+    if (!u) return false;
+    return isAdminOrOwnerUser(u) || u.agentActive === true;
+  }
+
+  // Toggles the two body classes every "agent-only"/"logged-in-only" CTA in index.html is
+  // hidden behind by default (see the .agent-cta/.authed-cta rules in css/main.css) — the
+  // single place that decides whether "Зар нэмэх" and "Миний самбар" are visible anywhere on
+  // the public site. Called from auth.js next to every refreshAdminPageIfActive() call, so
+  // both stay in sync with every sign-in/sign-out/role/agentActive change.
+  function refreshAgentUI() {
+    document.body.classList.toggle('is-authed', !!currentUser);
+    document.body.classList.toggle('is-agent', isApprovedAgent(currentUser));
   }
 
   // ===== ADMIN AUDIT LOG =====

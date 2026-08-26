@@ -172,6 +172,14 @@
   };
 
   function openAddListing() {
+    // Closed brokerage system: only an approved agent (or admin/owner) may open this form —
+    // enforced for real by firestore.rules' listings/{listingId} create rule (isApprovedAgent()),
+    // this is the defense-in-depth UI gate so a stray/missed CTA can't even open it.
+    if (!currentUser) { openAuth(); return; }
+    if (typeof isApprovedAgent === 'function' && !isApprovedAgent(currentUser)) {
+      showToast('Зөвхөн зөвшөөрөгдсөн Agent эрхтэй хэрэглэгч зар нэмэх боломжтой');
+      return;
+    }
     addListingState.step = 1;
     // Default the "Та хэн вэ?" role to the account's saved identity (Миний тохиргоо) so
     // it stays consistent across listings instead of resetting to "owner" every time —
@@ -2087,7 +2095,7 @@
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
         <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px;">Зар байхгүй</div>
         <div style="font-size:13px;margin-bottom:20px;">${MY_LISTINGS_EMPTY_MSG[myListingsTab] || 'Одоогоор энэ хэсэгт зар байхгүй байна.'}</div>
-        <button class="btn btn-blue" onclick="openAddListing()">Зар нэмэх</button>
+        <button class="btn btn-blue agent-cta" onclick="openAddListing()">Зар нэмэх</button>
       </div>`;
       return;
     }

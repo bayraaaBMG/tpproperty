@@ -1120,6 +1120,15 @@
      height — moot once it's hidden above, but that padding rule isn't itself admin-mode-
      scoped, so cancel it here or admin pages get a dead 58px gap at the bottom on mobile. */
   body.admin-mode { padding-bottom: 0 !important; }
+
+  /* ============ AGENT-ONLY / LOGGED-IN-ONLY CTAs ============ */
+  /* Closed brokerage system: "Зар нэмэх" and "Миний самбар" are only ever shown to a visitor
+     the JS has actually recognized as authed/an approved agent — js/permissions.js
+     refreshAgentUI() is the single place that toggles these two classes, run on every
+     sign-in/sign-out/role/agentActive change. Neither class is present at page load before
+     JS runs, so anonymous visitors never see a flash of a CTA they can't use. */
+  body:not(.is-agent) .agent-cta { display: none !important; }
+  body:not(.is-authed) .authed-cta { display: none !important; }
   .admin-page-section { background: var(--paper); padding: 0; }
   .admin-body-wrap { max-width: 1360px; margin: 0 auto; padding: 24px 28px 60px; }
 

@@ -15,7 +15,7 @@
   const ADMIN_NAV = [
     { id: 'overview', label: 'Нүүр' },
     { id: 'listings', label: 'Зарууд' },
-    { id: 'users', label: 'Хэрэглэгчид', ownerOnly: true },
+    { id: 'users', label: 'Agent-ууд', ownerOnly: true },
     { id: 'projects', label: 'Шинэ орон сууц' },
     { id: 'ads', label: 'Сурталчилгаа' },
     { id: 'settings', label: 'Тохиргоо' }
@@ -26,7 +26,10 @@
     verify: 'Баталгаажуулах', dismiss_reports: 'Report хаах', block_user: 'Блоклох',
     unblock_user: 'Блок цуцлах', grant_admin: 'Admin эрх өгсөн', revoke_admin: 'Admin эрх цуцалсан',
     create_ad: 'Ad үүсгэсэн', update_ad: 'Ad засварласан', delete_ad: 'Ad устгасан',
-    activate_ad: 'Ad идэвхжүүлсэн', deactivate_ad: 'Ad идэвхгүй болгосон'
+    activate_ad: 'Ad идэвхжүүлсэн', deactivate_ad: 'Ad идэвхгүй болгосон',
+    activate_agent: 'Agent идэвхжүүлсэн', deactivate_agent: 'Agent идэвхгүй болгосон',
+    revoke_agent: 'Agent цуцалсан', invite_agent: 'Agent урьсан',
+    mark_sold: 'Зарагдсан болгосон', mark_rented: 'Түрээслэгдсэн болгосон'
   };
 
   let _adminSection = 'overview';
@@ -169,12 +172,28 @@
     const dupGroupsResult = await adminSafeFetch(() => adminFetchDuplicateGroups());
 
     const byStatus = {};
-    listingsSnap.forEach(doc => { const st = doc.data().status || 'active'; byStatus[st] = (byStatus[st] || 0) + 1; });
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    let newThisMonth = 0;
+    listingsSnap.forEach(doc => {
+      const d = doc.data();
+      const st = d.status || 'active';
+      byStatus[st] = (byStatus[st] || 0) + 1;
+      const createdAt = d.createdAt?.toDate?.();
+      if (createdAt && createdAt >= monthStart) newThisMonth++;
+    });
     const pendingCount = byStatus.pending || 0;
     const reportedCount = reportsResult.ok
       ? { ok: true, value: new Set(reportsResult.value.docs.map(d => d.data().listingFsId).filter(Boolean)).size }
       : { ok: false };
     const dupGroupCount = dupGroupsResult.ok ? { ok: true, value: dupGroupsResult.value.length } : { ok: false };
+    // Total agents = anyone with agentActive:true, plus every admin/owner (they always count
+    // as an approved agent too, per isApprovedAgent()) — same single users.get() fetch above.
+    const agentCount = usersResult && usersResult.ok
+      ? { ok: true, value: usersResult.value.docs.filter(d => {
+          const u = d.data();
+          return u.agentActive === true || u.role === 'admin' || u.role === 'owner';
+        }).length }
+      : { ok: false };
 
     const quickActions = [
       { label: 'Зар шалгах', onclick: `adminGoToListingsTab('pending')` },
@@ -186,7 +205,12 @@
     el.innerHTML = `
       <div class="admin-kpi-grid">
         ${adminKpiCard('Нийт зар', { ok: true, value: listingsSnap.size })}
+        ${adminKpiCard('Идэвхтэй зар', { ok: true, value: byStatus.active || 0 })}
+        ${adminKpiCard('Зарагдсан', { ok: true, value: byStatus.sold || 0 })}
+        ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: byStatus.rented || 0 })}
+        ${adminKpiCard('Энэ сарын шинэ зар', { ok: true, value: newThisMonth })}
         ${adminKpiCard('Хүлээгдэж буй', { ok: true, value: pendingCount })}
+        ${owner ? adminKpiCard('Нийт Agent', agentCount) : ''}
         ${owner ? adminKpiCard('Нийт хэрэглэгч', usersResult.ok ? { ok: true, value: usersResult.value.size } : { ok: false }) : ''}
         ${adminKpiCard('Report авсан', reportedCount)}
       </div>
@@ -486,6 +510,8 @@
       menuActions.push({ label: 'Approve', onclick: `adminApproveListing('${row.fsId}')` });
       menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
     } else if (row.status === 'active') {
+      menuActions.push({ label: 'Зарагдсан болгох', onclick: `adminMarkListingStatus('${row.fsId}', 'sold')` });
+      menuActions.push({ label: 'Түрээслэгдсэн болгох', onclick: `adminMarkListingStatus('${row.fsId}', 'rented')` });
       menuActions.push({ label: 'Нуух', onclick: `adminArchiveListing('${row.fsId}')` });
       menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
       if (row.ownerId) menuActions.push({ label: 'Хэрэглэгч блоклох', onclick: `adminBlockUser('${row.ownerId}')`, danger: true });
@@ -595,6 +621,25 @@
     }
   }
 
+  // Marks a listing sold/rented from the admin side (the owning agent can already do this
+  // themselves via firestore.rules' owner self-update rule — this is the same status value,
+  // just admin/owner-triggered). No rules change needed: the moderation update rule already
+  // permits any status value within ['status','listingVerified','rejectionReason'].
+  async function adminMarkListingStatus(fsId, status) {
+    try {
+      await db.collection('listings').doc(fsId).update({ status });
+      const l = listings.find(x => x.firestoreId === fsId);
+      if (l) { l.status = status; l._inactive = true; }
+      logAdminAction(status === 'sold' ? 'mark_sold' : 'mark_rented', 'listing', fsId, '');
+      showToast(status === 'sold' ? 'Зарагдсан болголоо' : 'Түрээслэгдсэн болголоо', 'success');
+      renderAdminListingsSection();
+      renderListings(getFilteredListings()); renderHomeListings();
+    } catch(e) {
+      console.error('adminMarkListingStatus failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+
   async function adminDeleteListing(fsId) {
     const reason = prompt('Устгах шалтгаан (заавал):');
     if (reason === null) return;
@@ -639,6 +684,83 @@
     }
   }
 
+  // ===== AGENTS (closed brokerage system) =====
+  // agentActive is the real, firestore.rules-enforced gate for "can this account create/edit/
+  // delete listings" — see firestore.rules' isApprovedAgent() and js/permissions.js's client
+  // mirror of the same check. These three mirror adminBlockUser/adminUnblockUser exactly.
+  async function adminActivateAgent(uid) {
+    if (!uid) return;
+    try {
+      await db.collection('users').doc(uid).set({ agentActive: true }, { merge: true });
+      logAdminAction('activate_agent', 'user', uid, '');
+      showToast('Agent идэвхжлээ', 'success');
+      renderAdminUsersSection();
+    } catch(e) {
+      console.error('adminActivateAgent failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+  async function adminDeactivateAgent(uid) {
+    if (!uid) return;
+    try {
+      await db.collection('users').doc(uid).set({ agentActive: false }, { merge: true });
+      logAdminAction('deactivate_agent', 'user', uid, '');
+      showToast('Agent идэвхгүй боллоо', 'success');
+      renderAdminUsersSection();
+    } catch(e) {
+      console.error('adminDeactivateAgent failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+  // "Устгах" — there's no backend/Admin SDK here, so a real Firebase Auth account can't be
+  // deleted from the client. Full revocation (agentActive off + blocked) is the closest
+  // equivalent: the person can no longer sign in to do anything meaningful, but their
+  // historical listings and audit-log entries are preserved rather than orphaned/erased.
+  async function adminRevokeAgent(uid, name) {
+    if (!uid) return;
+    if (!confirm(`${name || 'Энэ агент'}-ийг бүрмөсөн цуцлах уу? Цаашид нэвтэрч зар нэмэх, засах боломжгүй болно.`)) return;
+    try {
+      await db.collection('users').doc(uid).set({ agentActive: false, blocked: true }, { merge: true });
+      logAdminAction('revoke_agent', 'user', uid, name || '');
+      showToast('Agent цуцлагдлаа', 'success');
+      renderAdminUsersSection();
+    } catch(e) {
+      console.error('adminRevokeAgent failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+
+  // "Agent нэмэх" — works whether or not the person has ever signed in yet. If a users/{uid}
+  // doc with this email already exists, activate it directly (same as the row action). If
+  // not, pre-authorize the email via agentInvites/{email} — firestore.rules' users/{uid}
+  // create rule checks this collection and lets that person's very first sign-in bootstrap
+  // straight into agentActive:true (see js/auth.js checkAgentInvite()).
+  function openAgentInviteModal() {
+    const email = (prompt('Agent-ийн имэйл хаягийг оруулна уу:') || '').trim().toLowerCase();
+    if (!email) return;
+    submitAgentInvite(email);
+  }
+  async function submitAgentInvite(email) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Зөв имэйл хаяг оруулна уу'); return; }
+    try {
+      const existing = await db.collection('users').where('email', '==', email).limit(1).get();
+      if (!existing.empty) {
+        await adminActivateAgent(existing.docs[0].id);
+        return;
+      }
+      await db.collection('agentInvites').doc(email).set({
+        email,
+        invitedBy: currentUser.uid,
+        invitedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      logAdminAction('invite_agent', 'agentInvite', email, '');
+      showToast('Урилга бүртгэгдлээ. Тухайн хүн анх удаа нэвтрэх үедээ Agent болно.', 'success');
+    } catch(e) {
+      console.error('submitAgentInvite failed:', e.code, e.message);
+      showToast('Урилга илгээхэд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+
   // ===== USERS (Хэрэглэгчид, owner only) =====
   let _adminUsersCache = null;
   let _adminUsersSearch = '';
@@ -680,10 +802,11 @@
       const name = ((u.lastName || '') + ' ' + (u.firstName || '')).toLowerCase();
       return name.includes(q) || (u.email || '').toLowerCase().includes(q);
     });
-    const roleFilters = [{ id: 'all', label: 'Бүгд' }, { id: 'owner', label: 'Owner' }, { id: 'admin', label: 'Admin' }, { id: 'user', label: 'User' }];
+    const roleFilters = [{ id: 'all', label: 'Бүгд' }, { id: 'owner', label: 'Owner' }, { id: 'admin', label: 'Admin' }, { id: 'user', label: 'Agent' }];
     el.innerHTML = `
-      <div class="admin-search-row">
-        <input type="text" class="form-input" id="adminUserSearch" placeholder="Нэр эсвэл email хайх" value="${esc(_adminUsersSearch)}" oninput="adminFilterUsers(this.value)" />
+      <div class="admin-search-row" style="display:flex;gap:10px;max-width:520px;">
+        <input type="text" class="form-input" id="adminUserSearch" placeholder="Нэр эсвэл email хайх" value="${esc(_adminUsersSearch)}" oninput="adminFilterUsers(this.value)" style="flex:1;" />
+        <button class="btn btn-blue" style="white-space:nowrap;" onclick="openAgentInviteModal()">Agent нэмэх</button>
       </div>
       <div class="admin-tabs">
         ${roleFilters.map(r => `<button class="mytab ${_adminUsersRoleFilter === r.id ? 'active' : ''}" onclick="adminSetUsersRoleFilter('${r.id}')">${r.label}</button>`).join('')}
@@ -703,6 +826,12 @@
     const name = ((u.lastName || '') + ' ' + (u.firstName || '')).trim() || 'Нэргүй';
     const created = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString() : '—';
     const statusPill = u.blocked ? '<span class="admin-status-pill status-rejected">Блоклогдсон</span>' : '<span class="admin-status-pill status-active">Идэвхтэй</span>';
+    const agentActive = u.agentActive === true;
+    const agentPill = role === 'user'
+      ? (agentActive
+          ? '<span class="admin-role-pill" style="background:rgba(0,200,120,.12);color:#0a8a52;">Active Agent</span>'
+          : '<span class="admin-role-pill" style="background:rgba(0,0,0,.06);color:var(--ink-3);">Agent идэвхгүй</span>')
+      : '';
     let primaryBtn = '';
     const menuActions = [];
     if (!isSelf && role !== 'owner') {
@@ -713,6 +842,14 @@
       menuActions.push(u.blocked
         ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
         : { label: 'Блоклох', onclick: `adminBlockUser('${u.uid}')`, danger: true });
+      // Agent activate/deactivate/revoke only makes sense on a plain 'user' row — admin/owner
+      // already always count as an approved agent (isApprovedAgent()), no flag needed.
+      if (role === 'user') {
+        menuActions.push(agentActive
+          ? { label: 'Agent идэвхгүй болгох', onclick: `adminDeactivateAgent('${u.uid}')`, danger: true }
+          : { label: 'Agent идэвхжүүлэх', onclick: `adminActivateAgent('${u.uid}')` });
+        menuActions.push({ label: 'Agent устгах', onclick: `adminRevokeAgent('${u.uid}', '${nameJs}')`, danger: true });
+      }
     }
     return `
       <div class="admin-row">
@@ -720,7 +857,7 @@
         <div class="admin-row-body">
           <div class="admin-row-title">${esc(name)} ${isSelf ? '<span style="color:var(--ink-3);font-weight:500;">(та)</span>' : ''}</div>
           <div class="admin-row-meta">${esc(u.email || '—')} · ${esc(created)} · ${u._listingCount} зар</div>
-          <span class="admin-role-pill role-${role}">${roleLabel(role)}</span> ${statusPill}
+          <span class="admin-role-pill role-${role}">${roleLabel(role)}</span> ${agentPill} ${statusPill}
         </div>
         <div class="admin-row-actions">${primaryBtn}${adminActionMenu(u.uid, menuActions)}</div>
       </div>
