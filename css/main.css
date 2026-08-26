@@ -449,7 +449,7 @@
   .listings-layout { display: flex; align-items: flex-start; gap: 24px; }
 
   .listings-sidebar {
-    flex: 0 0 240px; width: 240px; background: white; border: 1px solid var(--line);
+    flex: 0 0 260px; width: 260px; background: white; border: 1px solid var(--line);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
     position: sticky; top: 16px; max-height: calc(100vh - 32px);
     display: flex; flex-direction: column; overflow: hidden;
@@ -2044,8 +2044,8 @@
     text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
   }
   .filter-field select, .filter-field input {
-    width: 100%; padding: 10px 12px; border: 1.5px solid var(--line-2);
-    border-radius: 8px; font-family: inherit; font-size: 13.5px; background: var(--paper);
+    width: 100%; padding: 8px 10px; border: 1.5px solid var(--line-2);
+    border-radius: 7px; font-family: inherit; font-size: 12.5px; background: var(--paper);
     color: var(--ink); transition: all 0.18s;
   }
   .filter-field select:focus, .filter-field input:focus {
@@ -2054,8 +2054,8 @@
   .filter-range { display: flex; gap: 6px; align-items: center; }
   .filter-range span { color: var(--ink-3); font-size: 12px; }
   .filter-range input, .filter-range select {
-    flex: 1; min-width: 0; width: 100%; padding: 9px 10px; border: 1.5px solid var(--line-2);
-    border-radius: 8px; font-family: inherit; font-size: 13px; background: var(--paper);
+    flex: 1; min-width: 0; width: 100%; padding: 8px 6px; border: 1.5px solid var(--line-2);
+    border-radius: 7px; font-family: inherit; font-size: 12.5px; background: var(--paper);
     color: var(--ink); cursor: pointer; transition: all 0.18s;
   }
   .filter-range input:focus, .filter-range select:focus {
