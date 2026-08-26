@@ -494,7 +494,11 @@
   /* Checkbox-look variant of .filter-toggle for "Төлбөрийн нөхцөл" — same underlying
      .filter-toggle/.active class + click handler as every other toggle pill, just a
      different visual (square checkbox instead of a rounded pill). */
-  .filter-toggles.fs-payment-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+  /* minmax(0, 1fr) — not plain 1fr — because grid items default to min-width:auto, which
+     for text content means "at least as wide as my longest unbreakable word." With 2-word
+     labels like "Банкны зээлээр" that refused to shrink below that, silently overflowing
+     the sidebar (clipped by .listings-sidebar's overflow:hidden) instead of wrapping. */
+  .filter-toggles.fs-payment-terms { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 10px; }
   .filter-toggle-check {
     display: flex; align-items: center; gap: 10px; width: 100%; justify-content: flex-start;
     background: none; border: none; border-radius: 8px; padding: 8px 6px; font-size: 13px;
@@ -2044,7 +2048,7 @@
     text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
   }
   .filter-field select, .filter-field input {
-    width: 100%; padding: 8px 10px; border: 1.5px solid var(--line-2);
+    width: 100%; padding: 6px 10px; border: 1.5px solid var(--line-2);
     border-radius: 7px; font-family: inherit; font-size: 12.5px; background: var(--paper);
     color: var(--ink); transition: all 0.18s;
   }
@@ -2054,12 +2058,18 @@
   .filter-range { display: flex; gap: 6px; align-items: center; }
   .filter-range span { color: var(--ink-3); font-size: 12px; }
   .filter-range input, .filter-range select {
-    flex: 1; min-width: 0; width: 100%; padding: 8px 6px; border: 1.5px solid var(--line-2);
+    flex: 1; min-width: 0; width: 100%; padding: 6px 6px; border: 1.5px solid var(--line-2);
     border-radius: 7px; font-family: inherit; font-size: 12.5px; background: var(--paper);
     color: var(--ink); cursor: pointer; transition: all 0.18s;
   }
   .filter-range input:focus, .filter-range select:focus {
     outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+  /* Хотхон/Хороо reuse the site-wide .form-input class (used on every other form across
+     the app, so that class itself must stay untouched) — scoped override here so these two
+     fields match the sidebar's compact ~33px control height instead of the taller default. */
+  #listingsSidebar .filter-section-body .form-input {
+    padding: 6px 10px; font-size: 12.5px; border-radius: 7px;
   }
   .filter-toggles {
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
