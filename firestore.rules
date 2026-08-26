@@ -299,5 +299,79 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // ===== CRM: CLIENTS =====
+    // A sales lead/contact tracked through the pipeline (stage: new -> contacted -> viewing ->
+    // negotiation -> contract -> closed_sold/closed_rented). assignedAgentId is the single
+    // field that scopes an agent's access — an agent only ever sees/edits clients where they
+    // are the assigned agent; admin/owner see and edit everything. Only admin/owner can ever
+    // reassign a client to a different agent, or create one pre-assigned to someone else.
+    match /clients/{clientId} {
+      allow read: if isSignedIn() && (isAdminOrOwner() || resource.data.assignedAgentId == request.auth.uid);
+
+      // An approved agent may create a client, but only self-assigned — they can't hand a new
+      // lead to a colleague. Admin/owner may create a client assigned to anyone (including
+      // themselves).
+      allow create: if isSignedIn() && !isBlocked() && isApprovedAgent()
+                    && (request.resource.data.assignedAgentId == request.auth.uid || isAdminOrOwner());
+
+      // Agent branch: can only touch their own assigned client, and assignedAgentId must stay
+      // exactly what it already was — reassignment is admin/owner only (second branch, no such
+      // restriction). isActiveAgent() (not isApprovedAgent()) deliberately here: a deactivated
+      // agent loses this self-edit path entirely, same precedent as the listings self-edit rule
+      // — read stays open above so their history remains visible.
+      allow update: if isSignedIn() && !isBlocked() && (
+                      (isActiveAgent()
+                        && resource.data.assignedAgentId == request.auth.uid
+                        && request.resource.data.assignedAgentId == resource.data.assignedAgentId)
+                      || isAdminOrOwner()
+                    );
+
+      allow delete: if isAdminOrOwner();
+    }
+
+    // ===== CRM: VIEWINGS =====
+    // A scheduled/completed showing, linked to a client and a listing. agentId is denormalized
+    // straight onto this doc (copied from clients/{clientId}.assignedAgentId by the app at
+    // write time) specifically so this collection's rules can scope on it directly, without a
+    // get() lookup into clients on every read/write.
+    match /viewings/{viewingId} {
+      allow read: if isSignedIn() && (isAdminOrOwner() || resource.data.agentId == request.auth.uid);
+
+      allow create: if isSignedIn() && !isBlocked() && isApprovedAgent()
+                    && (request.resource.data.agentId == request.auth.uid || isAdminOrOwner());
+
+      allow update: if isSignedIn() && !isBlocked() && (
+                      (isActiveAgent()
+                        && resource.data.agentId == request.auth.uid
+                        && request.resource.data.agentId == resource.data.agentId)
+                      || isAdminOrOwner()
+                    );
+
+      allow delete: if isAdminOrOwner();
+    }
+
+    // ===== CRM: DEALS =====
+    // A deal in progress or closed, linked to a client and a listing. agentId is denormalized
+    // the same way as viewings.agentId, same reason. Closing a deal (status -> 'sold'/'rented')
+    // does NOT itself touch listings/{id} — the app performs that as a second, separate write
+    // using the listing's own existing {status}-only update path (my-listings.js
+    // markSoldRented() for the owning agent, admin.js adminMarkListingStatus() for admin/owner)
+    // — no listings rule changes needed or made here.
+    match /deals/{dealId} {
+      allow read: if isSignedIn() && (isAdminOrOwner() || resource.data.agentId == request.auth.uid);
+
+      allow create: if isSignedIn() && !isBlocked() && isApprovedAgent()
+                    && (request.resource.data.agentId == request.auth.uid || isAdminOrOwner());
+
+      allow update: if isSignedIn() && !isBlocked() && (
+                      (isActiveAgent()
+                        && resource.data.agentId == request.auth.uid
+                        && request.resource.data.agentId == resource.data.agentId)
+                      || isAdminOrOwner()
+                    );
+
+      allow delete: if isAdminOrOwner();
+    }
   }
 }

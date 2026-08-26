@@ -295,6 +295,7 @@
     // restores the normal site nav/footer immediately, not just on the next admin check.
     if (target !== 'admin') document.body.classList.remove('admin-mode');
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
+    if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()
         && typeof renderAdminDashboard === 'function') renderAdminDashboard();
   }

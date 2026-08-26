@@ -63,6 +63,15 @@
 
     renderDashProfileCard();
 
+    // CRM follow-up widgets — loads (once per session) the same clients/viewings cache the
+    // Харилцагчид page uses, scoped to this agent, so both surfaces stay consistent.
+    (async () => {
+      if (typeof crmLoadAll !== 'function') return;
+      if (typeof _crmScopeUid === 'undefined' || _crmScopeUid !== currentUser.uid) await crmLoadAll(currentUser.uid);
+      const el = document.getElementById('dashCrmFollowUp');
+      if (el && typeof renderCrmFollowUpWidgets === 'function') renderCrmFollowUpWidgets(el, currentUser.uid);
+    })();
+
     const list = document.getElementById('dashMyListingsList');
     if (list) {
       if (myListings.length === 0) {

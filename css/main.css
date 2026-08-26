@@ -1240,6 +1240,22 @@
   .admin-status-pill.status-pending { background: #FFF4DC; color: #8A5A00; }
   .admin-status-pill.status-active { background: rgba(0, 212, 170, 0.12); color: #009878; }
   .admin-status-pill.status-rejected { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+  /* CRM pipeline stages */
+  .admin-status-pill.status-new { background: var(--paper-2); color: var(--ink-3); }
+  .admin-status-pill.status-contacted { background: var(--primary-soft); color: var(--primary-deep); }
+  .admin-status-pill.status-viewing { background: rgba(255, 176, 32, 0.15); color: #C77700; }
+  .admin-status-pill.status-negotiation, .admin-status-pill.status-negotiating { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
+  .admin-status-pill.status-contract { background: rgba(30, 91, 255, 0.12); color: var(--primary-deep); }
+  .admin-status-pill.status-closed_sold, .admin-status-pill.status-sold { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-closed_rented, .admin-status-pill.status-rented { background: rgba(0, 152, 120, 0.12); color: #007a5e; }
+  /* CRM viewings */
+  .admin-status-pill.status-scheduled { background: var(--primary-soft); color: var(--primary-deep); }
+  .admin-status-pill.status-done { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-cancelled { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+  /* CRM follow-up urgency */
+  .admin-status-pill.status-overdue { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
+  .admin-status-pill.status-today { background: rgba(255, 176, 32, 0.15); color: #C77700; }
+  .admin-status-pill.status-upcoming { background: var(--paper-2); color: var(--ink-3); }
   .admin-role-pill {
     display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px;
     text-transform: uppercase; letter-spacing: 0.03em; margin-right: 4px;
@@ -1247,6 +1263,45 @@
   .admin-role-pill.role-owner { background: #FFF4DC; color: #8A5A00; }
   .admin-role-pill.role-admin { background: var(--primary-soft); color: var(--primary-deep); }
   .admin-role-pill.role-user { background: var(--paper-2); color: var(--ink-3); }
+
+  /* ============ CRM ============ */
+  .crm-count-badge {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 100px; background: var(--paper-2); color: var(--ink-3);
+    font-size: 10.5px; font-weight: 700; margin-left: 6px;
+  }
+  .crm-count-badge.danger { background: rgba(255, 71, 87, 0.12); color: var(--danger); }
+  .crm-empty-row { padding: 16px; text-align: center; color: var(--ink-3); font-size: 12.5px; }
+
+  /* Kanban board — no drag-and-drop (none needed, none loaded): each card carries a stage
+     <select> instead, far more reliable on mobile touch than real drag targets. Columns
+     scroll horizontally as a set rather than wrapping, same idiom as a real Kanban board. */
+  .crm-kanban { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+  .crm-kanban-col { flex: 0 0 260px; background: var(--paper-2); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; max-height: 70vh; }
+  .crm-kanban-col-head { font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 10px; display: flex; align-items: center; padding: 0 2px; }
+  .crm-kanban-col-body { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  .crm-kanban-card {
+    background: white; border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+    cursor: pointer; box-shadow: var(--shadow-sm);
+  }
+  .crm-kanban-card-name { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
+  .crm-kanban-card-meta { font-size: 11.5px; color: var(--ink-3); margin-bottom: 2px; }
+  .crm-stage-select { width: 100%; margin-top: 8px; font-size: 11.5px; padding: 5px 8px; }
+
+  .crm-followup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .crm-follow-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 16px; cursor: pointer; border-top: 1px solid var(--line);
+  }
+  .crm-follow-row:first-child { border-top: none; }
+  .crm-follow-row:hover { background: var(--paper-2); }
+  .crm-follow-name { font-size: 13px; font-weight: 700; }
+  .crm-follow-note { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  @media (max-width: 900px) {
+    .crm-followup-grid { grid-template-columns: 1fr; }
+    .crm-kanban-col { flex: 0 0 78vw; }
+  }
 
   /* Compact "⋮" action menu — used on every admin table row so a row with several
      possible actions doesn't have to show every button inline. */

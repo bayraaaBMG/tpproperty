@@ -104,6 +104,10 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
             Зар нэмэх
           </a>
+          <a class="agent-cta" onclick="showPage('agent-crm'); renderAgentCrmPage('pipeline'); toggleUserMenu(null)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Харилцагчид
+          </a>
           <a id="adminNavLink" onclick="showPage('admin'); toggleUserMenu(null)" style="display:none;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             Удирдлага
@@ -1602,6 +1606,15 @@
       </div>
     </div>
 
+    <!-- CRM follow-up widgets -->
+    <div class="dash-panel" style="margin-bottom:24px;">
+      <div class="dash-panel-title" style="display:flex;align-items:center;justify-content:space-between;">
+        Харилцагчийн follow-up
+        <a onclick="showPage('agent-crm'); renderAgentCrmPage('pipeline');" style="font-size:12.5px;font-weight:600;color:var(--primary);cursor:pointer;">Бүх харилцагч →</a>
+      </div>
+      <div id="dashCrmFollowUp"></div>
+    </div>
+
     <!-- Main grid -->
     <div class="dash-main-grid">
       <div class="dash-panel">
@@ -1666,6 +1679,31 @@
 
       <div class="dash-panel acct-sidebar" id="acctSidebarMyListings"></div>
     </div>
+  </div>
+</section>
+
+<!-- ============ AGENT CRM ============ -->
+<section class="dash-section" id="agent-crm">
+  <div class="section-inner">
+    <div class="section-head">
+      <div>
+        <span class="section-eyebrow">Харилцагчийн менежмент</span>
+        <h2 class="section-title display">Миний <em>харилцагчид</em></h2>
+      </div>
+      <button class="btn btn-blue" onclick="openClientFormModal(null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Харилцагч нэмэх
+      </button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+      <button class="mytab active" id="crmTab-pipeline" onclick="renderAgentCrmPage('pipeline')">Pipeline</button>
+      <button class="mytab" id="crmTab-clients" onclick="renderAgentCrmPage('clients')">Харилцагчид</button>
+      <button class="mytab" id="crmTab-viewings" onclick="renderAgentCrmPage('viewings')">Үзлэгүүд</button>
+      <button class="mytab" id="crmTab-deals" onclick="renderAgentCrmPage('deals')">Хэлэлцээр/Гэрээ</button>
+    </div>
+
+    <div id="crmContent"><div class="admin-loading">Ачааллаж байна…</div></div>
   </div>
 </section>
 
@@ -2422,6 +2460,7 @@
 <script src="/js/favorites.js"></script>
 <script src="/js/listing-detail.js"></script>
 <script src="/js/my-listings.js"></script>
+<script src="/js/crm.js"></script>
 <script src="/js/info-pages.js"></script>
 <script src="/js/filters.js"></script>
 <script src="/js/search.js"></script>

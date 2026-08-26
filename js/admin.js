@@ -15,6 +15,7 @@
   const ADMIN_NAV = [
     { id: 'overview', label: 'Нүүр' },
     { id: 'listings', label: 'Зарууд' },
+    { id: 'crm', label: 'Харилцагч' },
     { id: 'users', label: 'Agent-ууд', ownerOnly: true },
     { id: 'projects', label: 'Шинэ орон сууц' },
     { id: 'ads', label: 'Сурталчилгаа' },
@@ -29,7 +30,10 @@
     activate_ad: 'Ad идэвхжүүлсэн', deactivate_ad: 'Ad идэвхгүй болгосон',
     activate_agent: 'Agent идэвхжүүлсэн', deactivate_agent: 'Agent идэвхгүй болгосон',
     revoke_agent: 'Agent цуцалсан', invite_agent: 'Agent урьсан',
-    mark_sold: 'Зарагдсан болгосон', mark_rented: 'Түрээслэгдсэн болгосон'
+    mark_sold: 'Зарагдсан болгосон', mark_rented: 'Түрээслэгдсэн болгосон',
+    crm_add_client: 'Харилцагч нэмсэн', crm_edit_client: 'Харилцагч засварласан',
+    crm_delete_client: 'Харилцагч устгасан', crm_reassign_client: 'Agent сольсон',
+    crm_stage_change: 'Pipeline шат солисон', crm_close_deal: 'Гэрээ хаасан'
   };
 
   let _adminSection = 'overview';
@@ -61,6 +65,7 @@
     const s = _adminSection;
     if (s === 'overview') await renderAdminOverview();
     else if (s === 'listings') await renderAdminListingsSection();
+    else if (s === 'crm') await renderAdminCrmSection();
     else if (s === 'users' && owner) await renderAdminUsersSection();
     else if (s === 'projects') await renderAdminProjectsSection();
     else if (s === 'ads') await renderAdminAdsSection();
@@ -883,11 +888,19 @@
   // ===== AGENT PERFORMANCE DETAIL (Admin CRM — "Admin бол бүх Agent-ийн performance-ийг
   // харж чадна") — same computeAgentStats() output the row above shows compactly, plus
   // this-month/total-views/most-viewed, which don't fit the row without cluttering it. =====
-  function openAgentPerformanceModal(uid) {
+  async function openAgentPerformanceModal(uid) {
     const u = (_adminUsersCache || []).find(x => x.uid === uid);
     if (!u) return;
     const stats = u._stats || { total: 0, active: 0, pending: 0, sold: 0, rented: 0, rejected: 0, expired: 0, thisMonthNew: 0, totalViews: 0, mostViewed: null };
     const name = ((u.lastName || '') + ' ' + (u.firstName || '')).trim() || 'Нэргүй';
+    // CRM pipeline performance for this one agent — a dedicated scoped fetch (not the shared
+    // admin CRM cache, which may not be loaded yet if the admin opened this from Agents
+    // directly) so this modal is self-sufficient regardless of navigation order.
+    let crmKpis = null;
+    try {
+      const [agentClients, agentDeals] = await Promise.all([crmLoadClients(uid), crmLoadDeals(uid)]);
+      crmKpis = computeCrmKpis(agentClients, agentDeals);
+    } catch(e) { console.error('Agent CRM performance fetch failed:', e.code, e.message); }
     document.getElementById('modalContent').innerHTML = `
       <button class="modal-close" onclick="closeModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -912,6 +925,16 @@
           ${adminKpiCard('Нийт үзэлт', { ok: true, value: stats.totalViews })}
         </div>
         ${stats.mostViewed ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-3);">Хамгийн их үзсэн зар: <b style="color:var(--ink);">${esc(stats.mostViewed.title || '')}</b> — ${stats.mostViewed.viewCount} үзэлт</div>` : ''}
+        ${crmKpis ? `
+        <div class="step-section-title" style="margin:20px 0 10px;">CRM Pipeline</div>
+        <div class="admin-kpi-grid">
+          ${adminKpiCard('Харилцагч', { ok: true, value: crmKpis.totalClients })}
+          ${adminKpiCard('Шинэ lead', { ok: true, value: crmKpis.newLeads })}
+          ${adminKpiCard('Хэлэлцээр дээр', { ok: true, value: crmKpis.inNegotiation })}
+          ${adminKpiCard('Зарагдсан', { ok: true, value: crmKpis.sold })}
+          ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: crmKpis.rented })}
+          ${adminKpiCard('Conversion rate', { ok: true, value: crmKpis.conversionRate + '%' })}
+        </div>` : ''}
       </div>
     `;
     document.getElementById('modal').classList.add('open');
