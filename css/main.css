@@ -2012,6 +2012,14 @@
   }
   .filter-range { display: flex; gap: 6px; align-items: center; }
   .filter-range span { color: var(--ink-3); font-size: 12px; }
+  .filter-range input, .filter-range select {
+    flex: 1; min-width: 0; width: 100%; padding: 9px 10px; border: 1.5px solid var(--line-2);
+    border-radius: 8px; font-family: inherit; font-size: 13px; background: var(--paper);
+    color: var(--ink); cursor: pointer; transition: all 0.18s;
+  }
+  .filter-range input:focus, .filter-range select:focus {
+    outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-soft);
+  }
   .filter-toggles {
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
     padding-top: 16px; border-top: 1px solid var(--line);
