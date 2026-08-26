@@ -81,12 +81,13 @@
       mfCount.textContent = n > 0 ? ` (${n})` : '';
     }
     if (items.length === 0) {
-      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 24px;color:var(--ink-3);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:14px;opacity:0.3;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-        <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">Тохирох түрээсийн зар олдсонгүй</div>
-        <div style="font-size:13px;max-width:320px;margin:0 auto 20px;">Шүүлтүүрийн нөхцөлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.</div>
-        <button class="btn btn-blue" onclick="resetRentFilters()">Шүүлтүүр цэвэрлэх</button>
-      </div>`;
+      grid.innerHTML = buyerEmptyState({
+        icon: BUYER_EMPTY_ICON_SEARCH,
+        title: 'Тохирох түрээсийн зар олдсонгүй',
+        sub: 'Шүүлтүүрийн нөхцөлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.',
+        resetLabel: 'Шүүлтүүр цэвэрлэх',
+        resetOnclick: 'resetRentFilters()'
+      });
       return;
     }
     grid.innerHTML = items.map(l => listingCardHtml(l, { fullFeatures: true })).join('');

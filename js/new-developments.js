@@ -196,24 +196,21 @@
       mfCount.textContent = n > 0 ? ` (${n})` : '';
     }
     if (projects.length === 0) {
-      el.innerHTML = `
-        <div class="newdev-empty" style="grid-column:1/-1;">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;margin:0 auto 12px;"><path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/></svg>
-          <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">Одоогоор нийтэлсэн төсөл алга</div>
-          <div style="font-size:13px;">Барилгын компани мөн үү? Эхний төслөө нийтлээрэй.</div>
-        </div>
-      `;
+      el.innerHTML = buyerEmptyState({
+        icon: BUYER_EMPTY_ICON_BUILDING,
+        title: 'Одоогоор нийтэлсэн төсөл алга',
+        sub: 'Барилгын компани мөн үү? Эхний төслөө нийтлээрэй.'
+      });
       return;
     }
     if (items.length === 0) {
-      el.innerHTML = `
-        <div class="newdev-empty" style="grid-column:1/-1;">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.35;margin:0 auto 12px;"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px;">Тохирох төсөл олдсонгүй</div>
-          <div style="font-size:13px;max-width:320px;margin:0 auto 20px;">Шүүлтүүрийн нөхцлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.</div>
-          <button class="btn btn-blue" onclick="resetNewdevFilters()">Шүүлтүүр цэвэрлэх</button>
-        </div>
-      `;
+      el.innerHTML = buyerEmptyState({
+        icon: BUYER_EMPTY_ICON_SEARCH,
+        title: 'Тохирох төсөл олдсонгүй',
+        sub: 'Шүүлтүүрийн нөхцлийг өөрчлөх эсвэл цэвэрлэж дахин оролдоно уу.',
+        resetLabel: 'Шүүлтүүр цэвэрлэх',
+        resetOnclick: 'resetNewdevFilters()'
+      });
       return;
     }
     el.innerHTML = items.map(projectCard).join('');

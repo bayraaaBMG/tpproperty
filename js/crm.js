@@ -1526,7 +1526,7 @@
         ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: kpis.rented })}
         ${adminKpiCard('Conversion rate', { ok: true, value: kpis.conversionRate + '%' })}
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="admin-tabs">
         <button class="mytab ${_crmTab === 'pipeline' ? 'active' : ''}" onclick="renderAdminCrmSection('pipeline')">Pipeline</button>
         <button class="mytab ${_crmTab === 'clients' ? 'active' : ''}" onclick="renderAdminCrmSection('clients')">Харилцагчид</button>
         <button class="mytab ${_crmTab === 'viewings' ? 'active' : ''}" onclick="renderAdminCrmSection('viewings')">Үзлэгүүд</button>

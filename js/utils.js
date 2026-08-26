@@ -4,6 +4,27 @@
     return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  // Shared "no results" empty state for buyer-facing browse grids (Listings/Rent/
+  // New-dev) — previously each page hand-rolled its own icon/title sizing (64px/22px vs
+  // 48px/18px vs 40px/18px); one shared look now, matching Listings' original (largest/
+  // most prominent) sizing since it's the flagship browse page. `icon` is a literal SVG
+  // path/shape string (developer-authored per call site, not user data — not escaped).
+  function buyerEmptyState(opts) {
+    const { icon, title, sub, resetLabel, resetOnclick } = opts;
+    return `
+      <div style="grid-column:1/-1;text-align:center;padding:72px 24px;color:var(--ink-3);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:18px;opacity:0.3;">${icon}</svg>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--ink);margin-bottom:8px;">${esc(title)}</div>
+        <div style="font-size:14px;max-width:340px;margin:0 auto 24px;">${esc(sub)}</div>
+        ${resetLabel ? `<button class="btn btn-blue" onclick="${resetOnclick}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          ${esc(resetLabel)}
+        </button>` : ''}
+      </div>
+    `;
+  }
+  const BUYER_EMPTY_ICON_SEARCH = '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>';
+  const BUYER_EMPTY_ICON_BUILDING = '<path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/>';
   // Strips everything but digits and keeps the last 8 (Mongolian mobile numbers are 8
   // digits; this lets "+976 8811-2233", "88112233" and "976-88112233" all compare equal.
   function normalizePhone(phone) {

@@ -12,6 +12,7 @@
     --accent: #00D4AA;
     --warning: #FFB020;
     --danger: #FF4757;
+    --success: #009878;
     --line: rgba(10, 22, 40, 0.08);
     --line-2: rgba(10, 22, 40, 0.14);
     --shadow-sm: 0 1px 2px rgba(10, 22, 40, 0.04), 0 2px 8px rgba(10, 22, 40, 0.04);
@@ -81,6 +82,14 @@
   }
   .btn-blue:hover { background: var(--primary-deep); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(30, 91, 255, 0.4); }
   .btn-lg { padding: 14px 24px; font-size: 15px; border-radius: 12px; }
+  /* Every custom-styled interactive control gets a real visible keyboard-focus ring here —
+     previously only native form fields (input/select/textarea) had one. box-shadow, not
+     outline, to match every other focus rule in this file. */
+  .btn:focus-visible, .filter-toggle:focus-visible, .lrh-view-btn:focus-visible,
+  .toggle-switch:focus-visible, .mbn-btn:focus-visible, .auth-close-btn:focus-visible,
+  .chip:focus-visible, .hs-adv-toggle:focus-visible {
+    outline: none; box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary) inset;
+  }
 
   /* Mobile menu */
   .mobile-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
@@ -657,7 +666,7 @@
   .badge.hot { background: var(--danger); color: white; }
   .badge.new { background: var(--primary); color: white; }
   .badge.vip { background: #FFB020; color: #1a0f00; }
-  .badge.agent { background: #009878; color: white; }
+  .badge.agent { background: var(--success); color: white; }
   .badge.demo { background: rgba(10, 22, 40, 0.75); color: white; }
 
   .listing-fav {
@@ -680,12 +689,12 @@
   .listing-price-row { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; gap: 12px; }
   .listing-price { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
   .listing-price-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-weight: 500; }
-  .negotiable-tag { color: #009878; font-weight: 700; }
+  .negotiable-tag { color: var(--success); font-weight: 700; }
   .price-tag {
     background: var(--primary-soft); color: var(--primary-deep); padding: 4px 10px;
     border-radius: 6px; font-size: 11px; font-weight: 700; white-space: nowrap;
   }
-  .price-tag.below { background: rgba(0, 212, 170, 0.15); color: #009878; }
+  .price-tag.below { background: rgba(0, 212, 170, 0.15); color: var(--success); }
   .price-tag.above { background: rgba(255, 71, 87, 0.12); color: var(--danger); }
 
   .listing-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
@@ -976,7 +985,7 @@
     font-size: 14px; transition: all 0.2s; width: 100%;
   }
   .afford-input::placeholder { color: rgba(255, 255, 255, 0.4); }
-  .afford-input:focus { outline: none; background: rgba(255, 255, 255, 0.1); border-color: var(--primary-glow); }
+  .afford-input:focus { outline: none; background: rgba(255, 255, 255, 0.1); border-color: var(--primary-glow); box-shadow: 0 0 0 3px rgba(77, 124, 255, 0.25); }
 
   .afford-result {
     background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3);
@@ -1002,7 +1011,7 @@
   .fstat-card.warn { border-left-color: var(--warning); }
   .fstat-label { font-size: 12px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
   .fstat-value { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-  .fstat-value.green { color: #009878; }
+  .fstat-value.green { color: var(--success); }
 
   .chart-wrap {
     background: var(--paper); border-radius: 16px; padding: 24px;
@@ -1115,7 +1124,7 @@
   .seller-av { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-deep)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 18px; flex-shrink: 0; }
   .seller-info { flex: 1; min-width: 0; }
   .seller-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-  .seller-verified { font-size: 10px; background: #009878; color: #fff; border-radius: 100px; padding: 1px 7px; font-weight: 700; }
+  .seller-verified { font-size: 10px; background: var(--success); color: #fff; border-radius: 100px; padding: 1px 7px; font-weight: 700; }
   .seller-meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
 
   /* Scam-protection status row — shown on every listing (real vs. not-yet-verified, never hidden) */
@@ -1124,7 +1133,7 @@
     display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 100px;
     font-size: 11.5px; font-weight: 700; border: 1px solid transparent;
   }
-  .verify-pill.on { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .verify-pill.on { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .verify-pill.off { background: var(--paper-2); color: var(--ink-3); border-color: var(--line); border-style: dashed; }
   .verify-pill svg { flex-shrink: 0; }
 
@@ -1283,7 +1292,7 @@
     text-transform: uppercase; letter-spacing: 0.03em;
   }
   .admin-status-pill.status-pending { background: #FFF4DC; color: #8A5A00; }
-  .admin-status-pill.status-active { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-active { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .admin-status-pill.status-rejected { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
   /* CRM pipeline stages */
   .admin-status-pill.status-new { background: var(--paper-2); color: var(--ink-3); }
@@ -1291,11 +1300,11 @@
   .admin-status-pill.status-viewing { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .admin-status-pill.status-negotiation, .admin-status-pill.status-negotiating { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
   .admin-status-pill.status-contract { background: rgba(30, 91, 255, 0.12); color: var(--primary-deep); }
-  .admin-status-pill.status-closed_sold, .admin-status-pill.status-sold { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-closed_sold, .admin-status-pill.status-sold { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .admin-status-pill.status-closed_rented, .admin-status-pill.status-rented { background: rgba(0, 152, 120, 0.12); color: #007a5e; }
   /* CRM viewings */
   .admin-status-pill.status-scheduled { background: var(--primary-soft); color: var(--primary-deep); }
-  .admin-status-pill.status-done { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .admin-status-pill.status-done { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .admin-status-pill.status-cancelled { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
   /* CRM follow-up urgency */
   .admin-status-pill.status-overdue { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
@@ -1349,7 +1358,7 @@
   .crm-task-list { display: flex; flex-direction: column; }
   .crm-task-line {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 12px 4px; cursor: pointer; border-top: 1px solid var(--line); font-size: 13.5px; font-weight: 600;
+    padding: 12px 16px; cursor: pointer; border-top: 1px solid var(--line); font-size: 13.5px; font-weight: 600;
   }
   .crm-task-line:first-child { border-top: none; }
   .crm-task-line:hover { color: var(--primary); }
@@ -1529,7 +1538,7 @@
     display: flex; gap: 10px; align-items: center;
     padding: 8px 0; font-size: 13.5px;
   }
-  .stability-item.ok { color: #009878; }
+  .stability-item.ok { color: var(--success); }
   .stability-item.warn { color: #C77700; }
   .stability-item svg { flex-shrink: 0; }
 
@@ -1617,7 +1626,7 @@
   }
   .ld-spec-row-label { color: var(--ink-3); font-weight: 500; }
   .ld-spec-row-value { color: var(--ink); font-weight: 700; text-align: right; }
-  .ld-spec-row-value.ok { color: #009878; }
+  .ld-spec-row-value.ok { color: var(--success); }
   .ld-spec-row-value.warn { color: #C77700; }
   .ld-legal-notes {
     font-size: 12px; color: var(--ink-3); line-height: 1.5; margin: -6px 0 14px;
@@ -1727,6 +1736,14 @@
     .ld-grid { grid-template-columns: 1fr; }
     .ld-sticky { position: static; }
   }
+  /* .mobile-sticky-call also starts showing at this exact breakpoint (768px) — this
+     bottom-padding compensation has to match it 1:1, or the 641-768px band gets no
+     clearance and the sticky bar can sit over the last bit of page content. The rest
+     of the narrower-viewport tweaks (title size, spec-table columns, etc.) stay scoped
+     to 640px below since those are genuinely narrow-screen-only adjustments. */
+  @media (max-width: 768px) {
+    .ld-grid { padding-bottom: 100px; }
+  }
   @media (max-width: 640px) {
     .ld-header { padding: 16px 16px 0; }
     .ld-grid { padding: 14px 16px 100px; gap: 18px; } /* extra bottom padding clears the sticky contact bar */
@@ -1800,7 +1817,7 @@
   .insul-table th, .insul-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13.5px; }
   .insul-table th { background: var(--paper-2); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-3); }
   .insul-badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; }
-  .insul-badge.good { background: rgba(0,212,170,0.15); color: #009878; }
+  .insul-badge.good { background: rgba(0,212,170,0.15); color: var(--success); }
   .insul-badge.mid { background: rgba(255,176,32,0.15); color: #C77700; }
   .insul-badge.bad { background: rgba(255,71,87,0.12); color: var(--danger); }
 
@@ -1850,7 +1867,7 @@
     border: 1px solid var(--line); border-radius: 14px; padding: 20px; background: white;
   }
   .stress-scenario { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
-  .stress-scenario.safe { color: #009878; }
+  .stress-scenario.safe { color: var(--success); }
   .stress-scenario.warn { color: #C77700; }
   .stress-scenario.danger { color: var(--danger); }
   .stress-payment { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; margin-bottom: 4px; }
@@ -1931,7 +1948,7 @@
   .warning-card-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; }
   .warning-card-fix {
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
-    font-size: 13px; color: #009878; line-height: 1.5; display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; color: var(--success); line-height: 1.5; display: flex; gap: 8px; align-items: flex-start;
   }
   .warning-card-fix svg { flex-shrink: 0; margin-top: 1px; }
   .guide-docs {
@@ -2158,7 +2175,7 @@
   }
   .compare-cell-best { background: rgba(0, 212, 170, 0.08); }
   .compare-cell-best::after {
-    content: ' ✓'; color: #009878; font-weight: 700;
+    content: ' ✓'; color: var(--success); font-weight: 700;
   }
   @media (max-width: 640px) {
     .compare-table-modal .row-label { width: 96px; min-width: 96px; font-size: 10.5px; }
@@ -2247,7 +2264,7 @@
     flex: 1; padding: 12px 16px; border: 1.5px solid var(--line-2); border-radius: 100px;
     font-family: inherit; font-size: 14px; transition: all 0.18s;
   }
-  .chat-input:focus { outline: none; border-color: var(--primary); }
+  .chat-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
   .chat-send {
     width: 44px; height: 44px; border-radius: 50%; background: var(--primary);
     border: none; cursor: pointer; display: grid; place-items: center; color: white;
@@ -2565,7 +2582,7 @@
     display: grid; place-items: center;
   }
   .notif-icon.view { background: var(--primary-soft); color: var(--primary); }
-  .notif-icon.price { background: rgba(0, 212, 170, 0.15); color: #009878; }
+  .notif-icon.price { background: rgba(0, 212, 170, 0.15); color: var(--success); }
   .notif-icon.message { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .notif-icon.match { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
   .notif-icon.system { background: var(--paper-2); color: var(--ink-2); }
@@ -2603,7 +2620,7 @@
     margin-bottom: 14px;
   }
   .dash-stat-icon.blue { background: var(--primary-soft); color: var(--primary); }
-  .dash-stat-icon.green { background: rgba(0, 212, 170, 0.15); color: #009878; }
+  .dash-stat-icon.green { background: rgba(0, 212, 170, 0.15); color: var(--success); }
   .dash-stat-icon.orange { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .dash-stat-icon.purple { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
   .dash-stat-num {
@@ -2665,7 +2682,7 @@
     font-size: 11px; padding: 3px 8px; border-radius: 100px; font-weight: 700;
     height: fit-content;
   }
-  .dash-listing-status.active { background: rgba(0, 212, 170, 0.15); color: #009878; }
+  .dash-listing-status.active { background: rgba(0, 212, 170, 0.15); color: var(--success); }
   .dash-listing-status.pending { background: rgba(255, 176, 32, 0.15); color: #C77700; }
 
   /* ============ BOOST / PROMOTION ============ */
@@ -2994,7 +3011,7 @@
     font-size: 13px; padding: 4px 10px; border-radius: 100px;
     display: inline-flex; align-items: center; gap: 4px; font-weight: 600;
   }
-  .stat-big-trend.up { background: rgba(0, 212, 170, 0.12); color: #009878; }
+  .stat-big-trend.up { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .stat-big-trend.down { background: rgba(255, 71, 87, 0.12); color: var(--danger); }
 
   /* Age distribution */
@@ -3513,7 +3530,7 @@
   .job-meta { font-size: 13px; color: var(--ink-3); margin-bottom: 8px; }
   .job-salary {
     font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
-    color: #009878;
+    color: var(--success);
   }
 
   /* Press list */
@@ -3625,7 +3642,7 @@
     font-size: 14px; font-weight: 500;
   }
   .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { background: #009878; }
+  .toast.success { background: var(--success); }
 
   /* ============ RESPONSIVE ============ */
   @media (max-width: 1024px) {
@@ -3765,7 +3782,10 @@
     background: white; border-radius: 24px;
     width: 100%; max-width: 420px;
     box-shadow: 0 32px 80px rgba(10,22,40,0.18), 0 8px 24px rgba(10,22,40,0.08);
-    overflow: hidden;
+    /* .auth-overlay's own 20px padding on each side is the "40" below — without a cap
+       here, a step with several fields (e.g. register) has no scroll affordance and can
+       overflow a short/landscape mobile viewport. */
+    max-height: calc(100vh - 40px); overflow-x: hidden; overflow-y: auto;
     transform: translateY(10px); transition: transform 0.22s ease;
   }
   .auth-overlay.open .auth-box { transform: translateY(0); }
@@ -3831,7 +3851,7 @@
     font-size: 15px; font-family: inherit; color: var(--ink);
     outline: none; transition: border-color 0.15s; background: white;
   }
-  .auth-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,91,255,0.1); }
+  .auth-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
   .auth-field-row { display: flex; gap: 10px; }
   .auth-field-row .auth-field { flex: 1; }
 
