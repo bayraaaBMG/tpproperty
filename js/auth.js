@@ -82,6 +82,15 @@
           // isBlocked() the same way.
           currentUser.agentActive = data.agentActive === true;
           currentUser.blocked = data.blocked === true;
+          // The placeholder object only ever set this from the phone-auth sign-in path
+          // itself (isPhone) — a Google/email agent who separately verified a number via
+          // Миний тохиргоо (confirmAcctPhoneOtp()) in an earlier session would otherwise
+          // show no verified phone on a fresh load, even though Firestore has it.
+          currentUser.verifiedPhone = data.verifiedPhone || currentUser.verifiedPhone || null;
+          // Best-effort "last seen" for the admin Agents CRM view — self-write, doesn't
+          // touch role, already covered by the existing free-form self-update rule. Never
+          // awaited/blocking: a failed write here must not affect sign-in itself.
+          db.collection('users').doc(fbUser.uid).set({ lastActiveAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }).catch(() => {});
           // Self-heal: the owner's profile doc may already have existed (role:'user' or no
           // role at all) from before this permission system shipped — the create-time
           // bootstrap in createAccount()/loginWithGoogle() only ever runs on a brand-new doc,
@@ -157,7 +166,7 @@
           };
           listings.push(entry);
           if (d.images && d.images.length > 0) listingExtras[numId] = { coords: { x: 50, y: 50 }, gallery: d.images };
-          sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '' };
+          sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '', email: d.sellerEmail || '', photoURL: d.sellerPhotoURL || '' };
         });
         renderMyListings(); renderHomeListings(); renderListings(getFilteredListings());
         if (typeof renderDashboard === 'function') renderDashboard();

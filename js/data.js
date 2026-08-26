@@ -401,7 +401,7 @@
         };
         listings.push(entry);
         if (d.images && d.images.length > 1) listingExtras[numId] = { coords: { x: 50, y: 50 }, gallery: d.images };
-        sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '' };
+        sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '', email: d.sellerEmail || '', photoURL: d.sellerPhotoURL || '' };
         added = true;
       });
       if (added) {

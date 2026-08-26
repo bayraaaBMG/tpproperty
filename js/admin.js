@@ -186,14 +186,17 @@
       ? { ok: true, value: new Set(reportsResult.value.docs.map(d => d.data().listingFsId).filter(Boolean)).size }
       : { ok: false };
     const dupGroupCount = dupGroupsResult.ok ? { ok: true, value: dupGroupsResult.value.length } : { ok: false };
-    // Total agents = anyone with agentActive:true, plus every admin/owner (they always count
-    // as an approved agent too, per isApprovedAgent()) — same single users.get() fetch above.
-    const agentCount = usersResult && usersResult.ok
-      ? { ok: true, value: usersResult.value.docs.filter(d => {
-          const u = d.data();
-          return u.agentActive === true || u.role === 'admin' || u.role === 'owner';
-        }).length }
-      : { ok: false };
+    // Agent counts scoped to role:'user' specifically (admin/owner aren't "Agent" accounts
+    // for CRM purposes even though they always pass isApprovedAgent()) — same single
+    // users.get() fetch above, split into total/active/inactive.
+    let totalAgentCount = { ok: false }, activeAgentCount = { ok: false }, inactiveAgentCount = { ok: false };
+    if (usersResult && usersResult.ok) {
+      const agentDocs = usersResult.value.docs.filter(d => (d.data().role || 'user') === 'user');
+      const active = agentDocs.filter(d => d.data().agentActive === true).length;
+      totalAgentCount = { ok: true, value: agentDocs.length };
+      activeAgentCount = { ok: true, value: active };
+      inactiveAgentCount = { ok: true, value: agentDocs.length - active };
+    }
 
     const quickActions = [
       { label: 'Зар шалгах', onclick: `adminGoToListingsTab('pending')` },
@@ -210,8 +213,9 @@
         ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: byStatus.rented || 0 })}
         ${adminKpiCard('Энэ сарын шинэ зар', { ok: true, value: newThisMonth })}
         ${adminKpiCard('Хүлээгдэж буй', { ok: true, value: pendingCount })}
-        ${owner ? adminKpiCard('Нийт Agent', agentCount) : ''}
-        ${owner ? adminKpiCard('Нийт хэрэглэгч', usersResult.ok ? { ok: true, value: usersResult.value.size } : { ok: false }) : ''}
+        ${owner ? adminKpiCard('Нийт Agent', totalAgentCount) : ''}
+        ${owner ? adminKpiCard('Идэвхтэй Agent', activeAgentCount) : ''}
+        ${owner ? adminKpiCard('Идэвхгүй Agent', inactiveAgentCount) : ''}
         ${adminKpiCard('Report авсан', reportedCount)}
       </div>
 
@@ -778,17 +782,23 @@
       el.innerHTML = adminErrorState('Хэрэглэгчдийн жагсаалт татахад алдаа гарлаа.', `renderAdminUsersSection()`);
       return;
     }
-    // Listings-per-owner count — one pass over the public+own-visible local array is not
-    // exhaustive (admin needs every user's count), so this queries Firestore directly.
-    let listingCounts = {};
+    // Per-owner performance — one pass over the public+own-visible local array is not
+    // exhaustive (admin needs every user's data), so this queries Firestore directly. One
+    // read for the whole section; computeAgentStats() (js/utils.js) is the same function
+    // js/dashboard.js uses for an agent's own view, so the two can never disagree.
+    let listingsByOwner = {};
     try {
       const lsnap = await db.collection('listings').get();
       lsnap.forEach(doc => {
-        const ownerId = doc.data().ownerId;
-        if (ownerId) listingCounts[ownerId] = (listingCounts[ownerId] || 0) + 1;
+        const d = doc.data();
+        if (!d.ownerId) return;
+        (listingsByOwner[d.ownerId] = listingsByOwner[d.ownerId] || []).push({
+          status: d.status || 'active', viewCount: d.viewCount || 0,
+          createdAtMs: d.createdAt?.toMillis?.() || 0, title: d.title, img: d.img
+        });
       });
     } catch(e) {}
-    _adminUsersCache.forEach(u => { u._listingCount = listingCounts[u.uid] || 0; });
+    _adminUsersCache.forEach(u => { u._stats = computeAgentStats(listingsByOwner[u.uid] || []); });
     renderAdminUsersList();
   }
 
@@ -851,17 +861,61 @@
         menuActions.push({ label: 'Agent устгах', onclick: `adminRevokeAgent('${u.uid}', '${nameJs}')`, danger: true });
       }
     }
+    if (role === 'user') menuActions.push({ label: 'Дэлгэрэнгүй гүйцэтгэл', onclick: `openAgentPerformanceModal('${u.uid}')` });
+    const stats = u._stats || { total: 0, active: 0, sold: 0, rented: 0 };
+    const statsLine = role === 'user'
+      ? `<div class="admin-row-meta">${stats.total} нийт · ${stats.active} идэвхтэй · ${stats.sold} зарагдсан · ${stats.rented} түрээслэгдсэн · Сүүлд идэвхтэй: ${fmtRelativeTime(u.lastActiveAt)}</div>`
+      : '';
     return `
       <div class="admin-row">
-        <div class="admin-user-avatar">${esc((u.firstName || u.email || '?')[0].toUpperCase())}</div>
+        <div class="admin-user-avatar" style="overflow:hidden;">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || u.email || '?')[0].toUpperCase())}</div>
         <div class="admin-row-body">
           <div class="admin-row-title">${esc(name)} ${isSelf ? '<span style="color:var(--ink-3);font-weight:500;">(та)</span>' : ''}</div>
-          <div class="admin-row-meta">${esc(u.email || '—')} · ${esc(created)} · ${u._listingCount} зар</div>
+          <div class="admin-row-meta">${esc(u.email || '—')} · ${u.verifiedPhone ? '+976 ' + esc(u.verifiedPhone) : '—'} · ${esc(created)}</div>
+          ${statsLine}
           <span class="admin-role-pill role-${role}">${roleLabel(role)}</span> ${agentPill} ${statusPill}
         </div>
         <div class="admin-row-actions">${primaryBtn}${adminActionMenu(u.uid, menuActions)}</div>
       </div>
     `;
+  }
+
+  // ===== AGENT PERFORMANCE DETAIL (Admin CRM — "Admin бол бүх Agent-ийн performance-ийг
+  // харж чадна") — same computeAgentStats() output the row above shows compactly, plus
+  // this-month/total-views/most-viewed, which don't fit the row without cluttering it. =====
+  function openAgentPerformanceModal(uid) {
+    const u = (_adminUsersCache || []).find(x => x.uid === uid);
+    if (!u) return;
+    const stats = u._stats || { total: 0, active: 0, pending: 0, sold: 0, rented: 0, rejected: 0, expired: 0, thisMonthNew: 0, totalViews: 0, mostViewed: null };
+    const name = ((u.lastName || '') + ' ' + (u.firstName || '')).trim() || 'Нэргүй';
+    document.getElementById('modalContent').innerHTML = `
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div style="padding:32px 28px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+          <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg, var(--primary), var(--primary-deep));display:grid;place-items:center;overflow:hidden;flex-shrink:0;font-size:20px;font-weight:700;color:#fff;">
+            ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || u.email || '?')[0].toUpperCase())}
+          </div>
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:16px;">${esc(name)}</div>
+            <div style="font-size:12.5px;color:var(--ink-3);">${esc(u.email || '—')} · ${u.verifiedPhone ? '+976 ' + esc(u.verifiedPhone) : 'Утас баталгаажаагүй'}</div>
+            <div style="font-size:12px;color:var(--ink-3);margin-top:2px;">Сүүлд идэвхтэй: ${fmtRelativeTime(u.lastActiveAt)}</div>
+          </div>
+        </div>
+        <div class="admin-kpi-grid">
+          ${adminKpiCard('Нийт зар', { ok: true, value: stats.total })}
+          ${adminKpiCard('Идэвхтэй', { ok: true, value: stats.active })}
+          ${adminKpiCard('Зарагдсан', { ok: true, value: stats.sold })}
+          ${adminKpiCard('Түрээслэгдсэн', { ok: true, value: stats.rented })}
+          ${adminKpiCard('Энэ сарын шинэ', { ok: true, value: stats.thisMonthNew })}
+          ${adminKpiCard('Нийт үзэлт', { ok: true, value: stats.totalViews })}
+        </div>
+        ${stats.mostViewed ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-3);">Хамгийн их үзсэн зар: <b style="color:var(--ink);">${esc(stats.mostViewed.title || '')}</b> — ${stats.mostViewed.viewCount} үзэлт</div>` : ''}
+      </div>
+    `;
+    document.getElementById('modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
   }
 
   function confirmGrantAdmin(uid, name) {

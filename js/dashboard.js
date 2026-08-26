@@ -31,19 +31,37 @@
     }
     const myListings = listings.filter(l => l.userSubmitted && l.ownerId === currentUser.uid);
     const activeListings = myListings.filter(l => !l._inactive);
-    const totalViews = myListings.reduce((s, l) => s + (l.viewCount || 0), 0);
     const totalContacts = myListings.reduce((s, l) => s + (l.contactCount || 0), 0);
     const totalFavorites = myListings.reduce((s, l) => s + (l.favoriteCount || 0), 0);
+    // Single shared stats function (js/utils.js) — also used by js/admin.js's per-agent CRM
+    // row/detail, so "active"/"this month"/"most viewed" can never quietly disagree between
+    // the Agent's own dashboard and what Admin sees for the same account.
+    const stats = computeAgentStats(myListings.map(l => ({ status: l.status || 'active', viewCount: l.viewCount || 0, createdAtMs: l._createdAtMs || 0, title: l.title, img: l.img, id: l.id })));
 
     setText('dashGreeting', `Сайн байна уу, ${currentUser.name}!`);
     setText('dashSub', myListings.length > 0
-      ? `Танд ${activeListings.length} идэвхтэй зар байна. Нийт ${fmt(totalViews)} үзэлт авсан байна.`
+      ? `Танд ${activeListings.length} идэвхтэй зар байна. Нийт ${fmt(stats.totalViews)} үзэлт авсан байна.`
       : 'Та одоогоор зар нэмээгүй байна.');
-    setText('dashStatViews', fmt(totalViews));
+    setText('dashStatViews', fmt(stats.totalViews));
     setText('dashStatContacts', fmt(totalContacts));
     setText('dashStatFavorites', fmt(totalFavorites));
     setText('dashStatActive', activeListings.length);
-    setText('dashListingsSub', `${activeListings.length} идэвхтэй зар`);
+    setText('dashStatSold', stats.sold);
+    setText('dashStatRented', stats.rented);
+    setText('dashStatNewMonth', stats.thisMonthNew);
+    setText('dashListingsSub', `Нийт ${myListings.length} зараас сүүлд нэмэгдсэн нь эхэнд`);
+
+    const mostViewedEl = document.getElementById('dashMostViewed');
+    if (mostViewedEl) {
+      if (stats.mostViewed) {
+        mostViewedEl.style.display = 'block';
+        mostViewedEl.innerHTML = `Хамгийн их үзсэн зар: <b style="color:var(--ink);">${esc(stats.mostViewed.title)}</b> — ${fmt(stats.mostViewed.viewCount)} үзэлт`;
+      } else {
+        mostViewedEl.style.display = 'none';
+      }
+    }
+
+    renderDashProfileCard();
 
     const list = document.getElementById('dashMyListingsList');
     if (list) {
@@ -53,7 +71,8 @@
           <button class="btn btn-blue" onclick="openAddListing()">Эхний зараа нэмэх</button>
         </div>`;
       } else {
-        list.innerHTML = myListings.slice(0, 5).map(l => `
+        // Newest first — this panel doubles as "Сүүлийн нэмсэн зарууд" (index.html title).
+        list.innerHTML = myListings.slice().sort((a, b) => (b._createdAtMs || 0) - (a._createdAtMs || 0)).slice(0, 5).map(l => `
           <div class="dash-listing" onclick="showPage('listings'); setTimeout(()=>openListing(${l.id}),150)" style="${l._inactive ? 'opacity:0.6;' : ''}">
             <img class="dash-listing-img" src="${esc(l.img)}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
             <div class="dash-listing-info">
@@ -75,6 +94,33 @@
     if (banner) banner.style.display = activeListings.length > 0 ? 'block' : 'none';
 
     renderViewsChart(activeListings);
+  }
+
+  // ===== DASHBOARD PROFILE CARD ("Өөрийн profile мэдээлэл") =====
+  // Read-only summary built entirely from currentUser — photo/name/email/verified-phone
+  // already exist and are already editable via the real Миний тохиргоо flow
+  // (openAccountSettings() below), so this just surfaces what's already there plus a
+  // shortcut into that existing editor rather than building a second edit UI.
+  function renderDashProfileCard() {
+    const el = document.getElementById('dashProfileCard');
+    if (!el || !currentUser) return;
+    const contact = currentUser.isPhone ? (currentUser.phoneNumber || '') : (currentUser.email || '');
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg, var(--primary), var(--primary-deep));display:grid;place-items:center;overflow:hidden;flex-shrink:0;font-size:20px;font-weight:700;color:#fff;">
+          ${currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc(currentUser.letter || '?')}
+        </div>
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:15px;">${esc(((currentUser.lastName || '') + ' ' + (currentUser.name || '')).trim())}</div>
+          <div style="font-size:12.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(contact || '—')}</div>
+          <span class="admin-role-pill" style="background:rgba(0,200,120,.12);color:#0a8a52;margin-top:4px;display:inline-block;">TP Property Agent</span>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink-3);margin-bottom:12px;">
+        Утас: ${currentUser.verifiedPhone ? `<b style="color:var(--ink);">+976 ${esc(currentUser.verifiedPhone)}</b> ✓` : '<span style="color:var(--ink-3);">баталгаажаагүй</span>'}
+      </div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;border:1.5px solid var(--line-2);" onclick="openAccountSettings()">Тохиргоо засах</button>
+    `;
   }
 
   // ===== DASHBOARD VIEWS CHART (real per-listing view counts) =====

@@ -82,6 +82,49 @@
     return new Date(ms).toLocaleDateString('mn-MN');
   }
 
+  // Same relative-time ladder as listingTimeAgo() above, but for any raw timestamp (a
+  // Firestore Timestamp, a ms number, or a Date) rather than a listing object specifically —
+  // used for "Сүүлд идэвхтэй байсан" (users/{uid}.lastActiveAt) in the admin Agents section.
+  function fmtRelativeTime(ts) {
+    const ms = ts?.toMillis?.() ?? (ts instanceof Date ? ts.getTime() : (typeof ts === 'number' ? ts : 0));
+    if (!ms) return '—';
+    const diffMin = Math.floor((Date.now() - ms) / 60000);
+    if (diffMin < 1) return 'Дөнгөж сая';
+    if (diffMin < 60) return diffMin + ' минутын өмнө';
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return diffHr + ' цагийн өмнө';
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay === 1) return 'Өчигдөр';
+    if (diffDay < 30) return diffDay + ' хоногийн өмнө';
+    const diffMonth = Math.floor(diffDay / 30);
+    if (diffMonth < 12) return diffMonth + ' сарын өмнө';
+    return new Date(ms).toLocaleDateString('mn-MN');
+  }
+
+  // ===== AGENT PERFORMANCE (shared by js/dashboard.js's own-performance view and
+  // js/admin.js's per-agent CRM row/detail — single source of truth for what counts as
+  // "active"/"this month"/"most viewed" so the two views can never quietly disagree). =====
+  // Takes an array of listing-like objects already scoped to one owner — each needs at
+  // least { status, viewCount, createdAtMs, title, img, id } — and never touches Firestore
+  // or the DOM itself, so it works equally well against the client's live `listings` array
+  // (dashboard) or plain objects built from a fresh Firestore snapshot (admin).
+  function computeAgentStats(ownerListings) {
+    const list = ownerListings || [];
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const monthStartMs = monthStart.getTime();
+    const stats = { total: list.length, active: 0, pending: 0, sold: 0, rented: 0, rejected: 0, expired: 0, thisMonthNew: 0, totalViews: 0, mostViewed: null };
+    list.forEach(l => {
+      const st = l.status || 'active';
+      if (stats[st] !== undefined) stats[st]++;
+      const views = l.viewCount || 0;
+      stats.totalViews += views;
+      if ((l.createdAtMs || 0) >= monthStartMs) stats.thisMonthNew++;
+      if (!stats.mostViewed || views > (stats.mostViewed.viewCount || 0)) stats.mostViewed = l;
+    });
+    if (stats.mostViewed && !(stats.mostViewed.viewCount > 0)) stats.mostViewed = null;
+    return stats;
+  }
+
   // A DISTRICT_MARKET_AVG (сая ₮/м² by district) lookup used to live here — invented
   // numbers with no real source, used by both Property Score and the add-listing price
   // suggestion. Removed. Both features now rely solely on computeValuation()'s real

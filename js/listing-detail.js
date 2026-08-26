@@ -565,15 +565,17 @@
 
         <div class="ld-right">
           <div class="ld-sticky">
-            <!-- SELLER CARD -->
+            <!-- AGENT CARD -->
             <div class="seller-card">
-              <div class="seller-av" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>${sellerLetter}</div>
+              <div class="seller-av" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>${seller.photoURL ? `<img src="${esc(seller.photoURL)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : sellerLetter}</div>
               <div class="seller-info">
                 <div class="seller-name" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>
                   ${esc(sellerName)}
                   ${isVerified ? '<span class="seller-verified">✓ Баталгаажсан</span>' : ''}
                 </div>
+                ${l.userSubmitted ? '<div class="seller-verified" style="background:var(--primary);margin-top:4px;display:inline-block;">TP Property Agent</div>' : ''}
                 <div class="seller-meta">${esc(seller.type)}</div>
+                ${seller.email ? `<a class="seller-meta" href="mailto:${esc(seller.email)}" style="display:block;color:var(--primary);text-decoration:none;">${esc(seller.email)}</a>` : ''}
                 <div class="seller-stats">
                   ${totalListings != null ? `<span ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;"` : ''}><b>${totalListings} зар</b></span>` : ''}
                   ${memberSinceYear ? `<span>Гишүүн: <b>${memberSinceYear} оноос</b></span>` : ''}
@@ -593,6 +595,12 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Чат бичих
             </button>
+            ${seller.email ? `
+            <a class="btn btn-ghost" href="mailto:${esc(seller.email)}" style="width:100%;justify-content:center;margin-top:8px;border:1.5px solid var(--line-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              И-мэйл бичих
+            </a>
+            ` : ''}
             <button type="button" class="btn btn-ghost listing-compare ld-compare-btn" style="width:100%;justify-content:center;margin-top:8px;border:1.5px solid var(--line-2);" onclick="toggleCompare(${l.id}, this)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
               Харьцуулах жагсаалтад нэмэх

@@ -1866,6 +1866,8 @@
         // users/{uid} doc (Firestore rules), so verification/company identity has to
         // ride along on the listing itself the same way sellerVerified already does.
         sellerCompany: currentUser.companyName || '',
+        sellerEmail: currentUser.email || '',
+        sellerPhotoURL: currentUser.photoURL || '',
         status: 'pending', rejectionReason: '',
         badges: newListing.badges,
         boosted: false,
