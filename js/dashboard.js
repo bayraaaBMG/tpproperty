@@ -278,16 +278,15 @@
     document.body.style.overflow = 'hidden';
   }
 
-  // ===== ACCOUNT PHONE VERIFICATION (real Firebase Phone Auth — same OTP mechanism as
-  // phone sign-in, but links the number to the current account with linkWithPhoneNumber
-  // instead of signing in). This is what "Verified phone" on a listing actually checks —
-  // not just "an account exists", but that this specific number received a real SMS code. =====
-  let acctPhoneVerifyStep = 'idle';
-  let acctPhoneVerifyNumber = '';
-  let acctPhoneOtpConfirmation = null;
-  let acctPhoneRecaptchaVerifier = null;
-  let acctPhoneOtpCooldown = false;
-
+  // ===== ACCOUNT PHONE VERIFICATION =====
+  // The OTP/SMS verification flow (linkWithPhoneNumber + RecaptchaVerifier) was removed
+  // per request — this now only collects a plain contact number, never sets
+  // currentUser.verifiedPhone, and never touches users/{uid}.verifiedPhone in Firestore.
+  // A listing's "Утас баталгаажсан" badge reads that same field, so it correctly stays
+  // false for every number entered here — nothing in this block can flip it true anymore.
+  // The `if (currentUser.verifiedPhone)` branch below is left intact on purpose: it's a
+  // read-only display for accounts verified through the separate phone sign-in flow
+  // (js/auth.js, untouched), not something this simplified form can produce itself.
   function renderPhoneVerifyBlock() {
     if (currentUser.verifiedPhone) {
       return `
@@ -298,106 +297,14 @@
         </div>
       `;
     }
-    if (acctPhoneVerifyStep === 'otp') {
-      return `
-        <label class="form-label">Баталгаажуулах код</label>
-        <div style="font-size:12px;color:var(--ink-3);margin-bottom:10px;">+976 ${esc(acctPhoneVerifyNumber)} дугаарт 6 оронтой код илгээлээ</div>
-        <div class="otp-input-group">
-          ${[0,1,2,3,4,5].map(i => `<input type="text" class="otp-input" maxlength="1" id="vphOtp${i}" aria-label="Кодын ${i+1}-р орон"/>`).join('')}
-        </div>
-        <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:10px;" onclick="confirmAcctPhoneOtp()">Баталгаажуулах</button>
-        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;" onclick="acctPhoneVerifyStep='idle'; document.getElementById('phoneVerifyRow').innerHTML = renderPhoneVerifyBlock();">Цуцлах</button>
-        <div id="vphRecaptchaContainer"></div>
-      `;
-    }
     return `
-      <label class="form-label">Утасны дугаар баталгаажуулах <span class="hint">— зар дээр "Утас баталгаажсан" тэмдэг харагдана</span></label>
+      <label class="form-label">Утасны дугаар <span class="hint">— холбоо барих дугаар</span></label>
       <div class="phone-input-group">
         <div class="phone-prefix">+976</div>
         <input type="tel" class="form-input" id="acctPhoneVerifyInput" placeholder="88112233" maxlength="8" />
       </div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;" onclick="sendAcctPhoneOtp()">Код илгээх</button>
-      <div id="vphRecaptchaContainer"></div>
     `;
   }
-
-  async function sendAcctPhoneOtp() {
-    if (!currentUser || !auth.currentUser) { showToast('Нэвтэрнэ үү'); return; }
-    const input = document.getElementById('acctPhoneVerifyInput');
-    const phone = (input?.value || '').replace(/\D/g, '');
-    if (phone.length !== 8) { showToast('Утасны дугаар 8 оронтой байх ёстой'); return; }
-    if (acctPhoneOtpCooldown) { showToast('Түр хүлээгээд дахин оролдоно уу'); return; }
-    const fullNumber = '+976' + phone;
-    try {
-      if (!acctPhoneRecaptchaVerifier) {
-        acctPhoneRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('vphRecaptchaContainer', { size: 'invisible' });
-      }
-      acctPhoneOtpConfirmation = await auth.currentUser.linkWithPhoneNumber(fullNumber, acctPhoneRecaptchaVerifier);
-      acctPhoneVerifyNumber = phone;
-      acctPhoneVerifyStep = 'otp';
-      document.getElementById('phoneVerifyRow').innerHTML = renderPhoneVerifyBlock();
-      acctPhoneOtpCooldown = true;
-      setTimeout(() => { acctPhoneOtpCooldown = false; }, 30000);
-      setTimeout(() => document.getElementById('vphOtp0')?.focus(), 100);
-      showToast('Баталгаажуулах код илгээгдлээ', 'success');
-    } catch(e) {
-      const msgs = {
-        'auth/invalid-phone-number': 'Утасны дугаар буруу байна',
-        'auth/too-many-requests': 'Хэт олон оролдлого. Түр хүлээнэ үү.',
-        'auth/credential-already-in-use': 'Энэ дугаар өөр бүртгэлд аль хэдийн ашиглагдсан байна',
-        'auth/provider-already-linked': 'Утасны дугаар аль хэдийн холбогдсон байна'
-      };
-      console.error('sendAcctPhoneOtp failed:', e.code, e.message);
-      showToast(msgs[e.code] || ('Код илгээхэд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')));
-      if (acctPhoneRecaptchaVerifier) { acctPhoneRecaptchaVerifier.clear(); acctPhoneRecaptchaVerifier = null; }
-    }
-  }
-
-  async function confirmAcctPhoneOtp() {
-    const code = [0,1,2,3,4,5].map(i => document.getElementById('vphOtp' + i)?.value || '').join('');
-    if (code.length !== 6 || !acctPhoneOtpConfirmation) { showToast('6 оронтой кодоо бүрэн оруулна уу'); return; }
-    try {
-      await acctPhoneOtpConfirmation.confirm(code);
-    } catch(e) {
-      const msgs = { 'auth/invalid-verification-code': 'Код буруу байна', 'auth/code-expired': 'Кодын хугацаа дууссан байна' };
-      console.error('confirmAcctPhoneOtp failed:', e.code, e.message);
-      showToast(msgs[e.code] || ('Баталгаажуулахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')));
-      [0,1,2,3,4,5].forEach(i => {
-        const el = document.getElementById('vphOtp' + i);
-        if (el) { el.value = ''; el.classList.remove('filled'); }
-      });
-      document.getElementById('vphOtp0')?.focus();
-      return;
-    }
-    try {
-      await db.collection('users').doc(currentUser.uid).set({ verifiedPhone: acctPhoneVerifyNumber }, { merge: true });
-      currentUser.verifiedPhone = acctPhoneVerifyNumber;
-      acctPhoneVerifyStep = 'idle';
-      const row = document.getElementById('phoneVerifyRow');
-      if (row) row.innerHTML = renderPhoneVerifyBlock();
-      showToast('Утасны дугаар баталгаажлаа', 'success');
-    } catch(e) {
-      showToast('Баталгаажуулалт амжилттай ч хадгалахад алдаа гарлаа');
-    }
-  }
-
-  document.addEventListener('input', (e) => {
-    if (!e.target.id || !e.target.id.startsWith('vphOtp')) return;
-    const i = parseInt(e.target.id.replace('vphOtp', ''), 10);
-    if (e.target.value.length === 1) {
-      e.target.classList.add('filled');
-      const next = document.getElementById('vphOtp' + (i + 1));
-      if (next) next.focus(); else confirmAcctPhoneOtp();
-    }
-  });
-  document.addEventListener('keydown', (e) => {
-    if (!e.target.id || !e.target.id.startsWith('vphOtp')) return;
-    if (e.key === 'Backspace' && !e.target.value) {
-      const i = parseInt(e.target.id.replace('vphOtp', ''), 10);
-      const prev = document.getElementById('vphOtp' + (i - 1));
-      if (prev) prev.focus();
-    }
-  });
 
   let pendingProfilePhoto = null;
   function handleProfilePhotoUpload(event) {

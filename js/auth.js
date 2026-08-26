@@ -83,9 +83,9 @@
           currentUser.agentActive = data.agentActive === true;
           currentUser.blocked = data.blocked === true;
           // The placeholder object only ever set this from the phone-auth sign-in path
-          // itself (isPhone) — a Google/email agent who separately verified a number via
-          // Миний тохиргоо (confirmAcctPhoneOtp()) in an earlier session would otherwise
-          // show no verified phone on a fresh load, even though Firestore has it.
+          // itself (isPhone) — an account whose verifiedPhone was set some other way (e.g.
+          // a legacy Firestore doc from before the dashboard's own OTP flow was removed)
+          // would otherwise show no verified phone on a fresh load, even though Firestore has it.
           currentUser.verifiedPhone = data.verifiedPhone || currentUser.verifiedPhone || null;
           // Best-effort "last seen" for the admin Agents CRM view — self-write, doesn't
           // touch role, already covered by the existing free-form self-update rule. Never
