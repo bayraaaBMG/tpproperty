@@ -259,7 +259,7 @@
 
   function adminKpiCard(label, result) {
     if (!result.ok) {
-      return `<div class="admin-kpi-card"><div class="v" style="font-size:12.5px;color:var(--danger);">Ачаалж чадсангүй</div><div class="l">${esc(label)}</div></div>`;
+      return `<div class="admin-kpi-card"><div class="v admin-inline-error">Ачаалж чадсангүй</div><div class="l">${esc(label)}</div></div>`;
     }
     return `<div class="admin-kpi-card"><div class="v">${result.value}</div><div class="l">${esc(label)}</div></div>`;
   }
@@ -269,7 +269,7 @@
       return `
         <div class="admin-attention-row" style="cursor:default;">
           <span class="admin-attention-label">${esc(label)}</span>
-          <span class="admin-attention-count" style="background:rgba(255,71,87,0.1);color:var(--danger);">Алдаа</span>
+          <span class="admin-attention-count admin-inline-error" style="background:rgba(255,71,87,0.1);">Алдаа</span>
         </div>
       `;
     }

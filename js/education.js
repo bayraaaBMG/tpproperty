@@ -88,7 +88,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div class="doc-body">
-          <div class="doc-label">${i + 1}. ${d.title}</div>
+          <h4 class="doc-label">${i + 1}. ${d.title}</h4>
           <div class="doc-note">${d.note}</div>
           ${d.tip ? `<div class="doc-tip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>${d.tip}</div>` : ''}
         </div>

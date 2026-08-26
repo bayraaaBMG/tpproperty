@@ -78,9 +78,7 @@
       <div style="padding:32px 28px;">
         <span class="al-eyebrow">Миний хайлтууд</span>
         <div class="al-title" style="margin-bottom:20px;">Хадгалсан хайлтууд</div>
-        <div id="savedSearchList" style="display:grid;gap:12px;">
-          <div style="text-align:center;padding:40px;color:var(--ink-3);">Ачааллаж байна…</div>
-        </div>
+        <div id="savedSearchList" style="display:grid;gap:12px;">${skeletonRows(3)}</div>
       </div>
     `;
     document.getElementById('modal').classList.add('open');

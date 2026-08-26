@@ -591,7 +591,7 @@
                 Дугаар харах
               </button>
             </div>
-            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;" onclick="openListingChat(${l.id})">
+            <button class="btn btn-primary btn-lg ld-chat-btn" style="width:100%;justify-content:center;margin-top:8px;" onclick="openListingChat(${l.id})">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Чат бичих
             </button>
@@ -723,7 +723,7 @@
       renderNearbyResults(cat, nearbyCache[cacheKey]);
       return;
     }
-    resultsEl.innerHTML = `<div style="padding:8px 0;">Ачааллаж байна…</div>`;
+    resultsEl.innerHTML = skeletonRows(3);
     const query = `[out:json][timeout:15];(node${cat.filter}(around:${cat.radius},${lat},${lng});way${cat.filter}(around:${cat.radius},${lat},${lng}););out center 25;`;
     try {
       const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });

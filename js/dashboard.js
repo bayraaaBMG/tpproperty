@@ -67,7 +67,17 @@
     // Харилцагчид page uses, scoped to this agent, so both surfaces stay consistent.
     (async () => {
       if (typeof crmLoadAll !== 'function') return;
-      if (typeof _crmScopeUid === 'undefined' || _crmScopeUid !== currentUser.uid) await crmLoadAll(currentUser.uid);
+      // These 4 widgets previously stayed blank with no indicator at all while
+      // crmLoadAll() was in flight — a skeleton row each, cleared once the real
+      // render*() calls below overwrite the innerHTML.
+      const needsLoad = typeof _crmScopeUid === 'undefined' || _crmScopeUid !== currentUser.uid;
+      if (needsLoad) {
+        ['dashCrmFollowUp', 'dashCrmAlerts', 'dashCrmToday', 'dashCrmMonthly'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = skeletonRows(2);
+        });
+        await crmLoadAll(currentUser.uid);
+      }
       const followEl = document.getElementById('dashCrmFollowUp');
       if (followEl && typeof renderCrmFollowUpWidgets === 'function') renderCrmFollowUpWidgets(followEl, currentUser.uid);
       const alertsEl = document.getElementById('dashCrmAlerts');
@@ -385,7 +395,7 @@
       <div style="padding:32px 28px;">
         <span class="al-eyebrow">Төлбөр</span>
         <div class="al-title" style="margin-bottom:20px;">Төлбөрийн түүх</div>
-        <div id="paymentHistoryList" style="text-align:center;padding:40px;color:var(--ink-3);">Ачааллаж байна…</div>
+        <div id="paymentHistoryList">${skeletonRows(3)}</div>
       </div>
     `;
     document.getElementById('modal').classList.add('open');

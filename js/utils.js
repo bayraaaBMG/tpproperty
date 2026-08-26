@@ -25,6 +25,48 @@
   }
   const BUYER_EMPTY_ICON_SEARCH = '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>';
   const BUYER_EMPTY_ICON_BUILDING = '<path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/>';
+  // Shared skeleton placeholders (see css/main.css's "LOADING: skeleton + spinner" block) —
+  // one card shape (image + 3 text lines, matching a listing/project card) and one row
+  // shape (avatar + 2 text lines, matching a list row), so call sites don't hand-roll markup.
+  function skeletonCards(n) {
+    return Array.from({ length: n }, () => `
+      <div class="skeleton-card">
+        <div class="skeleton skeleton-img"></div>
+        <div class="skeleton-body">
+          <div class="skeleton skeleton-line w-40"></div>
+          <div class="skeleton skeleton-line w-80"></div>
+          <div class="skeleton skeleton-line w-60"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+  function skeletonRows(n) {
+    return Array.from({ length: n }, () => `
+      <div class="skeleton-row">
+        <div class="skeleton skeleton-avatar"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton skeleton-line w-60"></div>
+          <div class="skeleton skeleton-line w-40"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Escape closes whichever overlay/sheet is actually open — every one of these already
+  // closes on backdrop click, this just adds the keyboard equivalent. Was previously only
+  // wired for #modal (and unconditionally, from js/calc.js of all places); consolidated
+  // here since it's not calculator-specific, and extended to the overlays that had no
+  // Escape handling at all (#authModal, the 3 mobile filter sheets, the admin sidebar
+  // drawer). Checked in a fixed order so only the top-most open thing closes.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('modal')?.classList.contains('open')) { closeModal(); return; }
+    if (document.getElementById('authModal')?.classList.contains('open')) { closeAuth(); return; }
+    if (document.getElementById('listingsSidebar')?.classList.contains('open')) { closeMobileFilterSheet(); return; }
+    if (document.getElementById('rentSidebar')?.classList.contains('open')) { closeRentFilterSheet(); return; }
+    if (document.getElementById('newdevSidebar')?.classList.contains('open')) { closeNewdevFilterSheet(); return; }
+    if (document.getElementById('adminSidebar')?.classList.contains('open')) { closeAdminSidebar(); return; }
+  });
   // Strips everything but digits and keeps the last 8 (Mongolian mobile numbers are 8
   // digits; this lets "+976 8811-2233", "88112233" and "976-88112233" all compare equal.
   function normalizePhone(phone) {

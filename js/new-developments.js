@@ -23,6 +23,11 @@
 
   // ===== LOAD (public, no auth required — same pattern as loadPublicListings) =====
   async function loadProjects() {
+    // Unlike Listings/Rent (which always have synchronous demo data to show instantly),
+    // New Developments has no fallback — the grid is genuinely empty until this resolves,
+    // so it's worth a real skeleton here instead of a blank grid.
+    const gridEl = document.getElementById('newdevGrid');
+    if (gridEl) gridEl.innerHTML = skeletonCards(6);
     try {
       const snap = await db.collection('projects').where('status', '==', 'active').get();
       projects = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))

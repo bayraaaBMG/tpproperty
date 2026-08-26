@@ -367,8 +367,3 @@
   // now just mark themselves active/inactive and only take effect once "Хайх" is
   // pressed, via performSearch() in search.js.
 
-  // ESC to close modal
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModal();
-  });
-

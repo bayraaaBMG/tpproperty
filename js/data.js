@@ -419,7 +419,7 @@
 
   async function loadMorePublicListings() {
     const btn = document.getElementById('loadMoreListingsBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Ачааллаж байна…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Ачааллаж байна…'; }
     await loadPublicListings(true);
     if (btn) { btn.disabled = false; btn.textContent = 'Цааш үзэх'; }
   }
