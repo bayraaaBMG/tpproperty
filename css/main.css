@@ -3317,18 +3317,22 @@
   .toggle-row.on .toggle-switch { background: var(--primary); }
   .toggle-row.on .toggle-switch::after { left: 18px; }
 
-  /* Feature chip grid — mobile-friendly multi-select replacing the old toggle-row list */
+  /* Feature chip grid — mobile-friendly multi-select replacing the old toggle-row list.
+     .toggle-row-pt (payment-terms chips in the add/edit listing form) shares this exact
+     look but is a separate class so its click handler (attachAddListingHandlers) writes
+     into addListingState.paymentTerms instead of .features without any risk of the two
+     arrays getting cross-wired. */
   .feature-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .toggle-row.chip {
+  .toggle-row.chip, .toggle-row-pt.chip {
     display: inline-flex; align-items: center; justify-content: center;
     padding: 10px 16px; min-height: 44px; border-radius: 100px;
     background: var(--paper-2); border: 1.5px solid var(--line-2);
     font-size: 13.5px; font-weight: 600; color: var(--ink-2);
     cursor: pointer; transition: all 0.15s; text-align: center;
   }
-  .toggle-row.chip:hover { border-color: var(--primary-soft); }
-  .toggle-row.chip.on { background: var(--primary); border-color: var(--primary); color: white; }
-  .toggle-row.chip.on span::before { content: '✓ '; }
+  .toggle-row.chip:hover, .toggle-row-pt.chip:hover { border-color: var(--primary-soft); }
+  .toggle-row.chip.on, .toggle-row-pt.chip.on { background: var(--primary); border-color: var(--primary); color: white; }
+  .toggle-row.chip.on span::before, .toggle-row-pt.chip.on span::before { content: '✓ '; }
 
   /* Chip-select — single-choice replacement for a native <select>, backed by a hidden input */
   .chip-select { display: flex; flex-wrap: wrap; gap: 8px; }

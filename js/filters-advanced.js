@@ -35,6 +35,7 @@
     if (document.getElementById('fFloorTotalMin')?.value) n++;
     if (document.getElementById('fFloorTotalMax')?.value) n++;
     if (document.getElementById('fBuildingType')?.value) n++;
+    if (document.getElementById('fConstructionProgress')?.value) n++;
     if (document.getElementById('fYearMin')?.value) n++;
     if (document.getElementById('fYearMax')?.value) n++;
     if (currentCat && currentCat !== 'all') n++;
@@ -148,6 +149,7 @@
     const floorMax = parseInt(document.getElementById('fFloorMax')?.value) || 9999;
     const floorTotalMin = parseInt(document.getElementById('fFloorTotalMin')?.value) || 0;
     const floorTotalMax = parseInt(document.getElementById('fFloorTotalMax')?.value) || 9999;
+    const constructionProgress = document.getElementById('fConstructionProgress')?.value || '';
     const q = (searchText || (document.getElementById('fSearch')?.value) || '').trim().toLowerCase();
 
     if (q) {
@@ -188,6 +190,10 @@
       const kw = buildingTypeKeywords[buildingType];
       results = results.filter(l => (l.buildingType || '').toLowerCase().includes(kw));
     }
+    // Construction progress — a real categorical field (like district/buildingType above),
+    // not a range, so a listing missing it simply doesn't match a selected value (no
+    // pass-through) — matches the strictness of every other <select> filter here.
+    if (constructionProgress) results = results.filter(l => l.constructionProgress === constructionProgress);
     // Year filter
     if (yearMin > 0 || yearMax < 9999) {
       results = results.filter(l => !l.year || (l.year >= yearMin && l.year <= yearMax));
@@ -236,6 +242,21 @@
       (Array.isArray(l._gallery) && l._gallery.length > 0) ||
       (l.img && l.img.startsWith('http'))
     );
+    // Same dual-path pattern as 'parking' above — demo data has free-text l.elevator,
+    // real submissions carry it in l.features[] instead.
+    if (activeFilterToggles.includes('elevator')) results = results.filter(l =>
+      (l.elevator && !l.elevator.includes('Байхгүй') && !l.elevator.includes('Хамаарахгүй')) ||
+      (Array.isArray(l.features) && l.features.includes('elevator'))
+    );
+    // paymentTerms: string[] — new field (my-listings.js/data.js), missing on every
+    // listing that predates it, so Array.isArray(...) && .includes(...) correctly excludes
+    // old/unset listings rather than guessing or throwing. 'pt-loan' (not 'loan') is the
+    // toggle id deliberately, since 'loan' is still a distinct (if now unreachable from any
+    // UI) data-ftoggle value from the old loanType-based filter above — reusing the literal
+    // string would collide two unrelated predicates on the same activeFilterToggles entry.
+    if (activeFilterToggles.includes('leasing')) results = results.filter(l => Array.isArray(l.paymentTerms) && l.paymentTerms.includes('leasing'));
+    if (activeFilterToggles.includes('pt-loan')) results = results.filter(l => Array.isArray(l.paymentTerms) && l.paymentTerms.includes('loan'));
+    if (activeFilterToggles.includes('cash')) results = results.filter(l => Array.isArray(l.paymentTerms) && l.paymentTerms.includes('cash'));
 
     // Category filter still applies
     if (currentCat !== 'all') results = results.filter(l => l.cat === currentCat);
@@ -322,7 +343,7 @@
   function resetFilters() {
     ['fDistrict'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
     ['fRooms'].forEach(id => { const el=document.getElementById(id); if(el)el.value='all'; });
-    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fFloorTotalMin','fFloorTotalMax','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+    ['fPriceMin','fPriceMax','fAreaMin','fAreaMax','fYearMin','fYearMax','fFloorMin','fFloorMax','fFloorTotalMin','fFloorTotalMax','fConstructionProgress','fKhoroo','fComplex'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
     const fSearch = document.getElementById('fSearch');
     if (fSearch) fSearch.value = '';
     searchText = '';

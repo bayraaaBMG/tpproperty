@@ -99,8 +99,10 @@
       usageType: l.usageType || '',
       deposit: l.deposit ? String(l.deposit) : '',
       minTerm: l.minTerm || '',
+      constructionProgress: l.constructionProgress || '',
       description: l.description || '',
       features: Array.isArray(l.features) ? l.features.slice() : [],
+      paymentTerms: Array.isArray(l.paymentTerms) ? l.paymentTerms.slice() : [],
       // Every existing photo already has a real URL (Storage, or a legacy base64 string
       // from before this fix) — mark it 'uploaded' with nothing to (re)upload, so the
       // grid renders it immediately and retryImageUpload correctly no-ops on it.
@@ -157,8 +159,10 @@
     usageType: '', // office only — occupancy/readiness status
     deposit: '',
     minTerm: '',
+    constructionProgress: '', // '', 'completed', 'under-construction', 'presale'
     description: '',
     features: [],
+    paymentTerms: [], // subset of 'leasing'/'loan'/'cash' — barter uses the separate intent==='exchange' flag below
     // Step 4 - images
     images: [],
     videoUrl: '',
@@ -708,6 +712,28 @@
           `).join('')}
         </div>
 
+        ${!isLand ? `
+        <div class="step-section-title" style="margin-top:28px;">Төлбөрийн нөхцөл</div>
+        <div class="step-section-sub">Худалдан авагчид санал болгож буй төлбөрийн нөхцөл (сонголттой)</div>
+        <div class="feature-chip-grid">
+          ${[['leasing', 'Хувь лизингээр'], ['loan', 'Банкны зээлээр'], ['cash', 'Бэлэн төлөлтөөр']].map(([id, label]) => `
+            <div class="toggle-row-pt chip ${addListingState.paymentTerms.includes(id) ? 'on' : ''}" data-payment-term="${id}">
+              <span>${label}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="form-row" style="margin-top:16px;">
+          <label class="form-label">Барилгын явц</label>
+          <select class="form-select" id="alConstructionProgress">
+            <option value="">Сонгох...</option>
+            <option value="completed" ${addListingState.constructionProgress === 'completed' ? 'selected' : ''}>Ашиглалтад орсон</option>
+            <option value="under-construction" ${addListingState.constructionProgress === 'under-construction' ? 'selected' : ''}>Баригдаж байгаа</option>
+            <option value="presale" ${addListingState.constructionProgress === 'presale' ? 'selected' : ''}>Захиалга авч байгаа</option>
+          </select>
+        </div>
+        ` : ''}
+
         ${hasMore ? `
         <details class="al-more" style="margin-top:22px;">
           <summary class="al-more-toggle">Нэмэлт мэдээлэл <span class="hint">— заавал биш</span></summary>
@@ -1215,6 +1241,22 @@
       });
     });
 
+    // Payment-terms toggle rows — same mechanism as the feature toggle rows above, but a
+    // separate class/data attribute so they write into addListingState.paymentTerms
+    // instead of .features (kept as two distinct arrays deliberately, see renderStep3).
+    document.querySelectorAll('.toggle-row-pt').forEach(t => {
+      const term = t.dataset.paymentTerm;
+      if (addListingState.paymentTerms.includes(term)) t.classList.add('on');
+      t.addEventListener('click', () => {
+        t.classList.toggle('on');
+        if (t.classList.contains('on')) {
+          if (!addListingState.paymentTerms.includes(term)) addListingState.paymentTerms.push(term);
+        } else {
+          addListingState.paymentTerms = addListingState.paymentTerms.filter(x => x !== term);
+        }
+      });
+    });
+
     // Chip-selects (heating, condition, land ownership-esque single-choice fields) —
     // each group mirrors its choice into a hidden input so saveStepData/validateStep
     // keep reading it exactly like the native <select> it replaces.
@@ -1338,6 +1380,7 @@
       addListingState.usageType = document.getElementById('alUsageType')?.value || '';
       addListingState.deposit = document.getElementById('alDeposit')?.value || '';
       addListingState.minTerm = document.getElementById('alMinTerm')?.value || '';
+      addListingState.constructionProgress = document.getElementById('alConstructionProgress')?.value || '';
     }
     if (step === 4) {
       addListingState.videoUrl = document.getElementById('alVideoUrl')?.value || '';
@@ -1796,6 +1839,8 @@
       cadastre: '', collateral: '', taxDebt: '',
       condition: conditionLabels[s.condition] || s.condition || '',
       features: s.features.slice(),
+      paymentTerms: s.paymentTerms.slice(),
+      constructionProgress: s.constructionProgress || '',
       description: s.description || '',
       // Real "open to a barter/exchange" signal from the intent the user actually picked
       // in step 1 — was captured into addListingState but never carried through to the
@@ -1852,6 +1897,8 @@
         minTerm: newListing.minTerm,
         condition: newListing.condition,
         features: newListing.features,
+        paymentTerms: newListing.paymentTerms,
+        constructionProgress: newListing.constructionProgress,
         description: newListing.description,
         barterOk: newListing.barterOk,
         img: newListing.img,
@@ -2292,7 +2339,8 @@
       title: '', district: '', khoroo: '', address: '', geoLat: null, geoLng: null, area: '', rooms: '',
       bedrooms: '', bathrooms: '', floor: '', totalFloors: '', year: '', buildingName: '', complex: '', landArea: '',
       price: '', buildingType: '', heating: '', insulationType: '', windowDirection: '', hoaFee: '',
-      condition: '', usageType: '', deposit: '', minTerm: '', description: '', features: [], images: [],
+      condition: '', usageType: '', deposit: '', minTerm: '', constructionProgress: '',
+      description: '', features: [], paymentTerms: [], images: [],
       videoUrl: '', tourUrl: '', floorPlan: null,
       phone: '', name: '', role: 'owner', plan: 'basic'
     };

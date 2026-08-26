@@ -929,8 +929,8 @@
             </button>
           </div>
 
-          <details class="filter-section" open>
-            <summary>Байршил</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Байршил</div>
             <div class="filter-section-body">
               <div class="filter-field">
                 <select id="fDistrict">
@@ -962,10 +962,10 @@
                 Газрын зураг дээр бүсээр хайх
               </button>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section" open>
-            <summary>Үнэ (сая ₮)</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Үнэ (сая ₮)</div>
             <div class="filter-section-body">
               <div class="filter-range">
                 <select id="fPriceMin" aria-label="Үнэ, доод (сая ₮)">
@@ -1025,10 +1025,10 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section">
-            <summary>Талбай (м²)</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Талбай (м²)</div>
             <div class="filter-section-body">
               <div class="filter-range">
                 <select id="fAreaMin" aria-label="Талбай, доод (м²)">
@@ -1082,10 +1082,10 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section">
-            <summary>Өрөө</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Өрөө</div>
             <div class="filter-section-body">
               <div class="filter-field">
                 <select id="fRooms">
@@ -1097,10 +1097,10 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section">
-            <summary>Барилгын давхар</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Барилгын давхар</div>
             <div class="filter-section-body">
               <div class="filter-range">
                 <select id="fFloorMin" aria-label="Барилгын давхар, доод">
@@ -1162,13 +1162,13 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
           <!-- l.floor is stored "unit/total" (e.g. "8/14"); the range above filters the
                unit's own floor (split[0]), this one filters the building's total floor
                count (split[1]) — a real, independently useful filter, not a duplicate. -->
-          <details class="filter-section">
-            <summary>Хэдэн давхарт</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Хэдэн давхарт</div>
             <div class="filter-section-body">
               <div class="filter-range">
                 <select id="fFloorTotalMin" aria-label="Барилгын нийт давхар, доод">
@@ -1230,10 +1230,10 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section">
-            <summary>Ашиглалтад орсон он</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Ашиглалтад орсон он</div>
             <div class="filter-section-body">
               <div class="filter-range">
                 <input type="number" id="fYearMin" aria-label="Барилгын он, доод" placeholder="1980" min="1950" max="2030" />
@@ -1241,10 +1241,10 @@
                 <input type="number" id="fYearMax" aria-label="Барилгын он, дээд" placeholder="2026" min="1950" max="2030" />
               </div>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section">
-            <summary>Барилгын төрөл</summary>
+          <div class="filter-section">
+            <div class="fs-quick-label">Барилгын төрөл</div>
             <div class="filter-section-body">
               <div class="filter-field">
                 <select id="fBuildingType">
@@ -1257,31 +1257,60 @@
                 </select>
               </div>
             </div>
-          </details>
+          </div>
 
-          <!-- Only the 2 toggles with a real underlying data field (loan/barter) are
-               surfaced here — a full 4-option payment-terms set would need a listing data
-               field ("cash"/"leasing") that doesn't exist yet, so it isn't faked. -->
-          <details class="filter-section">
-            <summary>Төлбөрийн нөхцөл</summary>
+          <!-- paymentTerms: string[] is a new listing field (leasing/loan/cash), set via a
+               chip-checkbox group in the add/edit form (js/my-listings.js renderStep3) and
+               threaded through newListing/fsDoc/loadPublicListings like every other field.
+               Barter reuses the existing real barterOk boolean directly, not duplicated in
+               here — it already has an external consumer (home page's quick filter). -->
+          <div class="filter-section">
+            <div class="fs-quick-label">Төлбөрийн нөхцөл</div>
             <div class="filter-section-body filter-toggles fs-payment-terms" style="margin-top:0; padding-top:0; border-top:none;">
-              <button class="filter-toggle filter-toggle-check" data-ftoggle="loan">Банкны зээлээр</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="leasing">Хувь лизингээр</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="pt-loan">Банкны зээлээр</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="cash">Бэлэн төлөлтөөр</button>
               <button class="filter-toggle filter-toggle-check" data-ftoggle="barter">Бартер сонирхоно</button>
             </div>
-          </details>
+          </div>
 
-          <details class="filter-section" open>
-            <summary>Нэмэлт</summary>
+          <!-- constructionProgress is a new listing field (select, not a toggle) — same 3
+               save touch points as paymentTerms above. -->
+          <div class="filter-section">
+            <div class="fs-quick-label">Барилгын явц</div>
+            <div class="filter-section-body">
+              <div class="filter-field">
+                <select id="fConstructionProgress">
+                  <option value="">Бүгд</option>
+                  <option value="completed">Ашиглалтад орсон</option>
+                  <option value="under-construction">Баригдаж байгаа</option>
+                  <option value="presale">Захиалга авч байгаа</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Цахилгаан шаттай эсэх reuses the real features[]/free-text elevator signal
+               that already exists (no new field) — same dual-path pattern as parking below. -->
+          <div class="filter-section">
+            <div class="fs-quick-label">Тохижилт</div>
+            <div class="filter-section-body filter-toggles fs-payment-terms" style="margin-top:0; padding-top:0; border-top:none;">
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="elevator">Цахилгаан шаттай</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="furnished">Тавилгатай</button>
+              <button class="filter-toggle filter-toggle-check" data-ftoggle="parking">Паркингтай</button>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <div class="fs-quick-label">Бусад</div>
             <div class="filter-section-body filter-toggles" style="margin-top:0; padding-top:0; border-top:none;">
-              <button class="filter-toggle" data-ftoggle="furnished">Тавилгатай</button>
               <button class="filter-toggle" data-ftoggle="new">Шинэ барилга</button>
               <button class="filter-toggle" data-ftoggle="verified">Баталгаажсан</button>
               <button class="filter-toggle" data-ftoggle="below">Зах зээлээс хямд</button>
-              <button class="filter-toggle" data-ftoggle="parking">Паркингтай</button>
               <button class="filter-toggle" data-ftoggle="vip">⭐ VIP зар</button>
               <button class="filter-toggle" data-ftoggle="withphoto">Зурагтай</button>
             </div>
-          </details>
+          </div>
         </div>
         <div class="ls-sidebar-footer">
           <button class="btn btn-ghost" onclick="saveCurrentSearch()" title="Хайлтыг хадгалах" style="font-size:12px;">
