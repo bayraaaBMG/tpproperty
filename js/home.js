@@ -73,7 +73,11 @@
       const recent = listings.filter(l => !l._inactive)
         .sort((a, b) => (b.badges.includes('vip') - a.badges.includes('vip')) || (b.id - a.id))
         .slice(0, 8);
-      grid.innerHTML = recent.map(l => listingCardHtml(l)).join('');
+      grid.innerHTML = recent.length ? recent.map(l => listingCardHtml(l)).join('') : buyerEmptyState({
+        icon: BUYER_EMPTY_ICON_SEARCH,
+        title: 'Одоогоор зар алга',
+        sub: 'Удахгүй шинэ зарууд нэмэгдэнэ.'
+      });
     }
     renderFeaturedListings();
     renderHomeCategoryCounts();
@@ -92,7 +96,11 @@
       .sort((a, b) => b.score - a.score || b.id - a.id)
       .slice(0, 8)
       .map(x => x.l);
-    grid.innerHTML = featured.map(l => listingCardHtml(l)).join('');
+    grid.innerHTML = featured.length ? featured.map(l => listingCardHtml(l)).join('') : buyerEmptyState({
+      icon: BUYER_EMPTY_ICON_SEARCH,
+      title: 'Одоогоор зар алга',
+      sub: 'Удахгүй шинэ зарууд нэмэгдэнэ.'
+    });
   }
 
   // "Категориуд" — every count is a live tally over the real `listings` array, the same

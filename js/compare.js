@@ -9,7 +9,7 @@
     const growth = parseFloat(document.getElementById('cmpGrowth').value);
 
     // Update display labels
-    document.getElementById('cmpPriceVal').textContent = priceM >= 1000 ? (priceM/1000).toFixed(2) + ' тэрбум ₮' : priceM + ' сая ₮';
+    document.getElementById('cmpPriceVal').textContent = fmtPrice(priceM);
     document.getElementById('cmpRentVal').textContent = (rentK/1000).toFixed(1) + ' сая ₮';
     const downAmt = Math.round(priceM * downPct / 100);
     document.getElementById('cmpDownVal').textContent = downAmt + ' сая ₮ (' + downPct + '%)';

@@ -1289,7 +1289,7 @@
           );
           return `
             <div class="admin-row">
-              <div class="admin-user-avatar">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || '?')[0].toUpperCase())}</div>
+              <div class="admin-user-avatar">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${esc((u.firstName || '?')[0].toUpperCase())}';">` : esc((u.firstName || '?')[0].toUpperCase())}</div>
               <div class="admin-row-body">
                 <div class="admin-row-title">${esc(((u.lastName || '') + ' ' + (u.firstName || '')).trim())}</div>
                 <div class="admin-row-meta">Clients: ${r.newClients} · Viewings: ${r.viewings} · Deals: ${r.dealsOpened} · Sold: ${r.sold} · Rented: ${r.rented}</div>
@@ -1566,7 +1566,7 @@
           const k = computeCrmKpis(clients, deals);
           return `
             <div class="admin-row">
-              <div class="admin-user-avatar">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || '?')[0].toUpperCase())}</div>
+              <div class="admin-user-avatar">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${esc((u.firstName || '?')[0].toUpperCase())}';">` : esc((u.firstName || '?')[0].toUpperCase())}</div>
               <div class="admin-row-body">
                 <div class="admin-row-title">${esc(((u.lastName || '') + ' ' + (u.firstName || '')).trim())}</div>
                 <div class="admin-row-meta">${k.totalClients} харилцагч · ${k.sold} зарагдсан · ${k.rented} түрээслэгдсэн · Conversion ${k.conversionRate}%</div>

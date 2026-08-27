@@ -275,7 +275,7 @@
 
   function openListing(id) {
     const l = listings.find(x => x.id === id);
-    if (!l) return;
+    if (!l) { showToast('Зар олдсонгүй'); return; }
     // View count: bump locally right away, best-effort sync to Firestore for real listings
     l.viewCount = (l.viewCount || 0) + 1;
     if (l.firestoreId) {
@@ -413,7 +413,7 @@
           <!-- INLINE GALLERY CAROUSEL -->
           <div class="mc-wrap">
             <div class="mc-main" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event, mcPrev, mcNext)">
-              <img id="mcMainImg" src="${esc(mcImages[0])}" alt="${esc(l.title)}" style="transition:opacity 0.22s;" />
+              <img id="mcMainImg" src="${esc(mcImages[0])}" alt="${esc(l.title)}" style="transition:opacity 0.22s;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
               <span class="mc-counter" id="mcCounter">1 / ${mcImages.length}</span>
               ${mcImages.length > 1 ? `
               <button class="mc-nav prev" onclick="mcPrev()">
@@ -428,7 +428,7 @@
             </div>
             ${mcImages.length > 1 ? `
             <div class="mc-thumbs">
-              ${mcImages.map((img, i) => `<img class="mc-thumb ${i===0?'active':''}" src="${esc(img)}" onclick="mcGoto(${i})" alt="" />`).join('')}
+              ${mcImages.map((img, i) => `<img class="mc-thumb ${i===0?'active':''}" src="${esc(img)}" onclick="mcGoto(${i})" alt="" onerror="this.style.visibility='hidden';" />`).join('')}
             </div>` : ''}
           </div>
 
@@ -567,7 +567,7 @@
           <div class="ld-sticky">
             <!-- AGENT CARD -->
             <div class="seller-card">
-              <div class="seller-av" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>${seller.photoURL ? `<img src="${esc(seller.photoURL)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : sellerLetter}</div>
+              <div class="seller-av" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>${seller.photoURL ? `<img src="${esc(seller.photoURL)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.parentElement.textContent='${esc(sellerLetter)}';">` : sellerLetter}</div>
               <div class="seller-info">
                 <div class="seller-name" ${sellerClickable ? `onclick="openSellerProfile('${l.ownerId}')" style="cursor:pointer;"` : ''}>
                   ${esc(sellerName)}

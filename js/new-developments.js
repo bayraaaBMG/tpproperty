@@ -271,7 +271,7 @@
 
       <div class="mc-wrap">
         <div class="mc-main">
-          <img id="mcMainImg" src="${esc(images[0])}" alt="${esc(p.projectName)}" style="transition:opacity 0.22s;" />
+          <img id="mcMainImg" src="${esc(images[0])}" alt="${esc(p.projectName)}" style="transition:opacity 0.22s;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
           <span class="mc-counter" id="mcCounter">1 / ${images.length}</span>
           ${images.length > 1 ? `
           <button class="mc-nav prev" onclick="mcPrev()">
@@ -283,7 +283,7 @@
         </div>
         ${images.length > 1 ? `
         <div class="mc-thumbs">
-          ${images.map((img, i) => `<img class="mc-thumb ${i===0?'active':''}" src="${esc(img)}" onclick="mcGoto(${i})" alt="" />`).join('')}
+          ${images.map((img, i) => `<img class="mc-thumb ${i===0?'active':''}" src="${esc(img)}" onclick="mcGoto(${i})" alt="" onerror="this.style.visibility='hidden';" />`).join('')}
         </div>` : ''}
       </div>
 

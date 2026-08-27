@@ -82,13 +82,27 @@
   }
   .btn-blue:hover { background: var(--primary-deep); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(30, 91, 255, 0.4); }
   .btn-lg { padding: 14px 24px; font-size: 15px; border-radius: 12px; }
+  /* A destructive-action variant of .btn-ghost — was previously done ad hoc with an inline
+     color:var(--danger) override wherever a delete/remove action needed it. */
+  .btn-danger { background: transparent; color: var(--danger); }
+  .btn-danger:hover { background: rgba(255, 71, 87, 0.08); }
+  /* One shared compact-button size — was previously an inline font-size:11px override (that
+     left .btn's full padding untouched, producing an odd proportion) duplicated per call
+     site. Still applied alongside .btn, so the existing 768px min-height:44px rule below
+     still governs mobile touch targets. Deliberately NOT given overflow:hidden — that would
+     reset a flex item's automatic min-width to 0 (a real flexbox quirk) and let it shrink
+     below its label's width, which is exactly what caused button text to overlap in a
+     tight flex:1 row before this was found and fixed. Leaving min-width at its default
+     (content-based) means an overflowing row wraps onto a new line instead. */
+  .btn-sm { padding: 8px 14px; font-size: 12.5px; border-radius: 8px; }
   /* Every custom-styled interactive control gets a real visible keyboard-focus ring here —
      previously only native form fields (input/select/textarea) had one. box-shadow, not
-     outline, to match every other focus rule in this file. */
+     outline, to match every other focus rule in this file. Ring width matches
+     .form-input:focus's 4px so buttons and inputs share one focus language. */
   .btn:focus-visible, .filter-toggle:focus-visible, .lrh-view-btn:focus-visible,
   .toggle-switch:focus-visible, .mbn-btn:focus-visible, .auth-close-btn:focus-visible,
   .chip:focus-visible, .hs-adv-toggle:focus-visible {
-    outline: none; box-shadow: 0 0 0 3px var(--primary-soft), 0 0 0 1.5px var(--primary) inset;
+    outline: none; box-shadow: 0 0 0 4px var(--primary-soft), 0 0 0 1.5px var(--primary) inset;
   }
   /* .btn computes to ~40px tall as-is — fine on desktop (.btn-lg already exists for
      prominent actions), but under the 44px touch-target minimum on touch devices. Bumped
@@ -675,6 +689,12 @@
   .badge.vip { background: #FFB020; color: #1a0f00; }
   .badge.agent { background: var(--success); color: white; }
   .badge.demo { background: rgba(10, 22, 40, 0.75); color: white; }
+  /* 14-day refresh freshness tiers — one shared definition instead of 3 independently
+     hand-typed inline color maps (js/utils.js's listingFreshnessStatus() is the single
+     source of truth for which key maps to which tier). */
+  .badge.fresh { background: var(--accent); color: white; }
+  .badge.needs-refresh { background: var(--warning); color: #1a0f00; }
+  .badge.stale, .badge.very-stale { background: var(--danger); color: white; }
 
   .listing-fav {
     position: absolute; top: 12px; right: 12px; width: 36px; height: 36px;
@@ -858,6 +878,11 @@
     box-shadow: 0 2px 8px rgba(0, 212, 170, 0.5) !important;
   }
   .early-input-row .slider-marks {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  /* Compare page's slider panel is dark like .early-input-row's — same override so the
+     min/mid/max marks (added to match the Calculator page's sliders) stay legible. */
+  .compare-input-row .slider-marks {
     color: rgba(255, 255, 255, 0.5);
   }
 
@@ -1240,12 +1265,15 @@
   .admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 
   .admin-kpi-grid, .admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  /* Unified with Agent Dashboard's .dash-stat (css/main.css, search dash-stat) — same
+     conceptual "stat tile" component, previously two independently-drifted card shells
+     (12px vs 16px radius, monospace vs serif number, always-on vs no resting shadow). */
   .admin-kpi-card, .admin-stat-card {
-    background: white; border: 1px solid var(--line); border-radius: 12px;
-    padding: 16px 18px; box-shadow: var(--shadow-sm);
+    background: white; border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px;
   }
-  .admin-kpi-card .v, .admin-stat-card .v { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--ink); }
-  .admin-kpi-card .l, .admin-stat-card .l { font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-top: 4px; }
+  .admin-kpi-card .v, .admin-stat-card .v { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .admin-kpi-card .l, .admin-stat-card .l { font-size: 12px; color: var(--ink-3); font-weight: 600; margin-top: 4px; }
 
   .admin-panel { background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-sm); overflow: hidden; }
   .admin-panel-head { font-size: 12.5px; font-weight: 700; color: var(--ink-2); padding: 14px 16px; border-bottom: 1px solid var(--line); }
@@ -1977,7 +2005,7 @@
   .warnings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
   .warning-card {
     background: white; border: 1px solid var(--line); border-left: 4px solid var(--danger);
-    border-radius: 14px; padding: 22px; transition: all 0.2s;
+    border-radius: var(--radius-md); padding: 22px; transition: all 0.2s;
   }
   .warning-card:hover { box-shadow: var(--shadow-md); }
   .warning-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -2558,7 +2586,7 @@
 
   /* Promoted card */
   .promoted-card {
-    border-radius: 14px; overflow: hidden; cursor: pointer; transition: all 0.2s;
+    border-radius: var(--radius-md); overflow: hidden; cursor: pointer; transition: all 0.2s;
     position: relative; border: 1px solid var(--line);
   }
   .promoted-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
@@ -2654,7 +2682,7 @@
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
   }
   .dash-stat {
-    background: white; border-radius: 16px; padding: 22px; border: 1px solid var(--line);
+    background: white; border-radius: 16px; padding: 20px; border: 1px solid var(--line);
   }
   .dash-stat-icon {
     width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
@@ -2665,10 +2693,10 @@
   .dash-stat-icon.orange { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .dash-stat-icon.purple { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
   .dash-stat-num {
-    font-family: 'Fraunces', serif; font-size: 32px; font-weight: 700; color: var(--ink);
+    font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; color: var(--ink);
     letter-spacing: -0.02em; line-height: 1;
   }
-  .dash-stat-label { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+  .dash-stat-label { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
 
   .dash-main-grid {
     display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px;
@@ -3599,7 +3627,7 @@
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 20px 0;
   }
   .contact-card {
-    padding: 22px; background: var(--paper-2); border-radius: 14px;
+    padding: 22px; background: var(--paper-2); border-radius: var(--radius-md);
     transition: all 0.2s; border: 1px solid transparent;
   }
   .contact-card:hover { background: white; border-color: var(--primary-soft); box-shadow: var(--shadow-sm); }

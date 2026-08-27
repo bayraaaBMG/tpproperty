@@ -133,7 +133,7 @@
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
         <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg, var(--primary), var(--primary-deep));display:grid;place-items:center;overflow:hidden;flex-shrink:0;font-size:20px;font-weight:700;color:#fff;">
-          ${currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc(currentUser.letter || '?')}
+          ${currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${esc(currentUser.letter || '?')}';">` : esc(currentUser.letter || '?')}
         </div>
         <div style="min-width:0;">
           <div style="font-weight:700;font-size:15px;">${esc(((currentUser.lastName || '') + ' ' + (currentUser.name || '')).trim())}</div>
@@ -229,7 +229,7 @@
         <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
           <div style="position:relative; width:72px; height:72px; flex-shrink:0;">
             <div id="acctPhotoPreview" style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--primary-deep)); display:grid; place-items:center; overflow:hidden; font-size:26px; font-weight:700; color:#fff;">
-              ${currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc(currentUser.letter)}
+              ${currentUser.photoURL ? `<img src="${esc(currentUser.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${esc(currentUser.letter)}';">` : esc(currentUser.letter)}
             </div>
             <label for="acctPhotoInput" style="position:absolute; bottom:-2px; right:-2px; width:26px; height:26px; border-radius:50%; background:var(--ink); display:grid; place-items:center; cursor:pointer; border:2px solid white;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>

@@ -156,12 +156,14 @@
   }
   // Freshness tier for the "Шинэчлэх" (refresh) system. Purely a display classification —
   // never auto-deletes/archives/deactivates a listing at any threshold; Admin decides.
+  // `color` is the single source of truth for freshness tier coloring — read this instead
+  // of hand-typing a parallel { fresh: 'var(--accent)', ... } map at each call site.
   function listingFreshnessStatus(days) {
     if (days == null) return null;
-    if (days < 14) return { key: 'fresh', label: 'Идэвхтэй', badgeText: (14 - days) + ' хоногийн дараа шинэчилнэ' };
-    if (days < 30) return { key: 'needs-refresh', label: 'Шинэчлэх шаардлагатай', badgeText: days + ' хоног шинэчлээгүй' };
-    if (days < 45) return { key: 'stale', label: 'Удаан шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй' };
-    return { key: 'very-stale', label: '45+ хоног шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй' };
+    if (days < 14) return { key: 'fresh', label: 'Идэвхтэй', badgeText: (14 - days) + ' хоногийн дараа шинэчилнэ', color: 'var(--accent)' };
+    if (days < 30) return { key: 'needs-refresh', label: 'Шинэчлэх шаардлагатай', badgeText: days + ' хоног шинэчлээгүй', color: 'var(--warning)' };
+    if (days < 45) return { key: 'stale', label: 'Удаан шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй', color: 'var(--danger)' };
+    return { key: 'very-stale', label: '45+ хоног шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй', color: 'var(--danger)' };
   }
 
   // Same relative-time ladder as listingTimeAgo() above, but for any raw timestamp (a

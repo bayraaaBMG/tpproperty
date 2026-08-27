@@ -53,7 +53,7 @@
     el.innerHTML = `
       <div class="admin-shell">
         <aside class="admin-sidebar" id="adminSidebar">
-          ${ADMIN_NAV.filter(it => !it.ownerOnly || owner).map(it => `<button class="admin-nav-item ${_adminSection === it.id ? 'active' : ''}" onclick="renderAdminDashboard('${it.id}'); closeAdminSidebar();">${esc(it.label)}</button>`).join('')}
+          ${ADMIN_NAV.filter(it => !it.ownerOnly || owner).map(it => `<button class="admin-nav-item ${_adminSection === it.id ? 'active' : ''}" ${_adminSection === it.id ? 'aria-current="page"' : ''} onclick="renderAdminDashboard('${it.id}'); closeAdminSidebar();">${esc(it.label)}</button>`).join('')}
         </aside>
         <button type="button" class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="closeAdminSidebar()" aria-label="Хаах"></button>
         <div class="admin-main">
@@ -80,7 +80,7 @@
     bar.innerHTML = `
       <div class="admin-topbar">
         <div class="admin-topbar-left">
-          <button type="button" class="admin-topbar-menu-btn" onclick="openAdminSidebar()" aria-label="Цэс">
+          <button type="button" class="admin-topbar-menu-btn" onclick="openAdminSidebar()" aria-label="Цэс" aria-expanded="false" aria-controls="adminSidebar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
           <div class="admin-topbar-logo"><img src="/img/logo-mark.png" alt="TP Property" /></div>
@@ -98,10 +98,12 @@
   function openAdminSidebar() {
     document.getElementById('adminSidebar')?.classList.add('open');
     document.getElementById('adminSidebarOverlay')?.classList.add('open');
+    document.querySelector('.admin-topbar-menu-btn')?.setAttribute('aria-expanded', 'true');
   }
   function closeAdminSidebar() {
     document.getElementById('adminSidebar')?.classList.remove('open');
     document.getElementById('adminSidebarOverlay')?.classList.remove('open');
+    document.querySelector('.admin-topbar-menu-btn')?.setAttribute('aria-expanded', 'false');
   }
 
   function adminSectionEl() { return document.getElementById('adminSectionContent'); }
@@ -564,7 +566,7 @@
             ${row.reportCount ? ` · <span style="color:var(--danger);font-weight:700;">${row.reportCount} report</span>` : ''}
           </div>
           <span class="admin-status-pill status-${row.status === 'active' ? 'active' : (row.status === 'pending' ? 'pending' : 'rejected')}">${esc(LISTING_STATUS_LABELS[row.status] || row.status)}</span>
-          ${row.status === 'active' && row.freshness ? `<div class="admin-row-flag" style="color:${{fresh:'var(--accent)','needs-refresh':'var(--warning)',stale:'var(--danger)','very-stale':'var(--danger)'}[row.freshness.key]};">Сүүлд шинэчилсэн: ${esc(row.lastRefreshedText)} (${row.freshnessDays} хоног) — ${esc(row.freshness.label)}</div>` : ''}
+          ${row.status === 'active' && row.freshness ? `<div class="admin-row-flag" style="color:${row.freshness.color};">Сүүлд шинэчилсэн: ${esc(row.lastRefreshedText)} (${row.freshnessDays} хоног) — ${esc(row.freshness.label)}</div>` : ''}
           ${row.flagReasons ? `<div class="admin-row-flag" title="${esc(row.flagReasons.join('; '))}">⚠ ${row.flagReasons.length} шалтгаанаар анхаарал татаж байна</div>` : ''}
           ${row.status === 'rejected' && row.rejectionReason ? `<div class="admin-row-reject-reason">Шалтгаан: ${esc(row.rejectionReason)}</div>` : ''}
         </div>
@@ -896,7 +898,7 @@
     if (!isSelf && role !== 'owner') {
       const nameJs = name.replace(/'/g, "\\'");
       primaryBtn = role === 'admin'
-        ? `<button class="btn btn-ghost" style="color:var(--danger);border-color:var(--danger);" onclick="confirmRevokeAdmin('${u.uid}', '${nameJs}')">Admin эрх цуцлах</button>`
+        ? `<button class="btn btn-ghost btn-danger" onclick="confirmRevokeAdmin('${u.uid}', '${nameJs}')">Admin эрх цуцлах</button>`
         : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}', '${nameJs}')">Admin болгох</button>`;
       menuActions.push(u.blocked
         ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
@@ -915,9 +917,10 @@
     const statsLine = role === 'user'
       ? `<div class="admin-row-meta">${stats.total} нийт · ${stats.active} идэвхтэй · ${stats.sold} зарагдсан · ${stats.rented} түрээслэгдсэн · Сүүлд идэвхтэй: ${fmtRelativeTime(u.lastActiveAt)}</div>`
       : '';
+    const avatarLetter = esc((u.firstName || u.email || '?')[0].toUpperCase());
     return `
       <div class="admin-row">
-        <div class="admin-user-avatar" style="overflow:hidden;">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || u.email || '?')[0].toUpperCase())}</div>
+        <div class="admin-user-avatar" style="overflow:hidden;">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${avatarLetter}';">` : avatarLetter}</div>
         <div class="admin-row-body">
           <div class="admin-row-title">${esc(name)} ${isSelf ? '<span style="color:var(--ink-3);font-weight:500;">(та)</span>' : ''}</div>
           <div class="admin-row-meta">${esc(u.email || '—')} · ${u.verifiedPhone ? '+976 ' + esc(u.verifiedPhone) : '—'} · ${esc(created)}</div>
@@ -952,7 +955,7 @@
       <div style="padding:32px 28px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
           <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg, var(--primary), var(--primary-deep));display:grid;place-items:center;overflow:hidden;flex-shrink:0;font-size:20px;font-weight:700;color:#fff;">
-            ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : esc((u.firstName || u.email || '?')[0].toUpperCase())}
+            ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${esc((u.firstName || u.email || '?')[0].toUpperCase())}';">` : esc((u.firstName || u.email || '?')[0].toUpperCase())}
           </div>
           <div style="min-width:0;">
             <div style="font-weight:700;font-size:16px;">${esc(name)}</div>

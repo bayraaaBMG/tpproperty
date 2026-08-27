@@ -105,7 +105,7 @@
     }
 
     // Update slider value displays
-    document.getElementById('priceVal').textContent = price >= 1000 ? (price/1000).toFixed(2) + ' тэрбум ₮' : price + ' сая ₮';
+    document.getElementById('priceVal').textContent = fmtPrice(price);
     document.getElementById('downVal').textContent = downAmt + ' сая ₮ (' + downPct + '%)';
     document.getElementById('incomeVal').textContent = fmt(income * 1000) + ' ₮';
     document.getElementById('termVal').textContent = term + ' жил';
