@@ -162,7 +162,9 @@
             _inactive: (d.status || 'active') !== 'active',
             viewCount: d.viewCount || 0, favoriteCount: d.favoriteCount || 0, contactCount: d.contactCount || 0,
             expiresAt: d.expiresAt || null, _bumpedAt: d.bumpedAt || numId,
-            _createdAtMs: d.createdAt?.toMillis?.() || 0
+            _createdAtMs: d.createdAt?.toMillis?.() || 0,
+            _updatedAtMs: d.updatedAt?.toMillis?.() || 0,
+            _lastRefreshedAtMs: d.lastRefreshedAt?.toMillis?.() || 0
           };
           listings.push(entry);
           if (d.images && d.images.length > 0) listingExtras[numId] = { coords: { x: 50, y: 50 }, gallery: d.images };

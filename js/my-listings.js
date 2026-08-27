@@ -1933,6 +1933,7 @@
           if (existingFsId) await db.collection('listings').doc(existingFsId).update(fsDoc);
         } else {
           fsDoc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          fsDoc.lastRefreshedAt = firebase.firestore.FieldValue.serverTimestamp();
           fsDoc.viewCount = 0; fsDoc.favoriteCount = 0; fsDoc.reportCount = 0;
           const docRef = await db.collection('listings').add(fsDoc);
           newListing.firestoreId = docRef.id;
@@ -1962,6 +1963,12 @@
       editingListingId = null;
     } else {
       newListing._gallery = allImages;
+      // Local mirror of the serverTimestamp() writes above, so the freshness badge/sort
+      // is correct immediately rather than only after the next Firestore reload — set only
+      // on create, never on the shared newListing object used by the edit branch too
+      // (an edit must not reset the refresh clock).
+      newListing._createdAtMs = now;
+      newListing._lastRefreshedAtMs = now;
       listings.push(newListing);
       try {
         var saved = JSON.parse(localStorage.getItem('bairxUserListings') || '[]');
@@ -2063,6 +2070,32 @@
     renderHomeListings();
   }
 
+  // "Шинэчлэх" — marks a listing as still accurate. Writes ONLY lastRefreshedAt (a real
+  // Firestore Timestamp, not a local Date.now() mirror pushed to the server) — must never
+  // touch content, images, ownerId, or status. No cooldown: unlike bumpMyListing's paid/
+  // free-tier 24h rate limit, the 14-day system is purely informational, so refreshing
+  // early (e.g. an agent double-checking a listing is still accurate) is allowed on demand.
+  async function refreshMyListing(id) {
+    const l = listings.find(x => x.id === id);
+    if (!l) return;
+    const now = Date.now();
+    l._lastRefreshedAtMs = now;
+    if (l.firestoreId) {
+      try {
+        await db.collection('listings').doc(l.firestoreId).update({ lastRefreshedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      } catch (e) {
+        console.error('Refresh failed:', e.code, e.message);
+        showToast('Шинэчлэхэд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+        return;
+      }
+    }
+    showToast('Зар шинэчлэгдлээ', 'success');
+    renderMyListings();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    renderListings(getFilteredListings());
+    renderHomeListings();
+  }
+
   // "Сунгах" — extends expiresAt by 30 days and (re)activates without going back through
   // admin review, since the listing's content hasn't changed. Works both for reactivating
   // an expired listing and for proactively extending one that's still active.
@@ -2154,6 +2187,9 @@
       const meta = MY_LISTINGS_STATUS_META[st] || MY_LISTINGS_STATUS_META.active;
       const daysLeft = l.expiresAt ? Math.ceil((l.expiresAt - Date.now()) / 86400000) : null;
       const canBump = st === 'active' && (!l._bumpedAt || Date.now() - l._bumpedAt >= 86400000);
+      const freshDays = st === 'active' ? listingFreshnessDays(l) : null;
+      const fresh = listingFreshnessStatus(freshDays);
+      const freshColor = { fresh: 'var(--accent)', 'needs-refresh': 'var(--warning)', stale: 'var(--danger)', 'very-stale': 'var(--danger)' };
 
       let actions;
       if (st === 'pending') {
@@ -2182,6 +2218,10 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             Дээшлүүлэх
           </button>
+          <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px;min-width:0;color:${fresh && fresh.key !== 'fresh' ? 'var(--warning)' : ''};" onclick="event.stopPropagation();refreshMyListing(${l.id})">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Шинэчлэх
+          </button>
           <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px;min-width:0;" onclick="event.stopPropagation();renewMyListing(${l.id})">Сунгах</button>
           <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px;min-width:0;" onclick="event.stopPropagation();openBoostModal(${l.id})">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -2200,6 +2240,7 @@
           <div class="listing-badges">
             ${isVip ? '<span class="badge vip">⭐ VIP</span>' : ''}
             <span class="${meta.cls}">${meta.label}</span>
+            ${fresh ? `<span class="badge" style="background:${freshColor[fresh.key]};color:#fff;">${esc(fresh.label)}</span>` : ''}
           </div>
         </div>
         <div class="listing-body">
@@ -2215,6 +2256,7 @@
           </div>
           ${st === 'rejected' && l.rejectionReason ? `<div style="font-size:11.5px;color:var(--danger);margin-top:6px;">Шалтгаан: ${esc(l.rejectionReason)}</div>` : ''}
           ${st === 'active' && daysLeft !== null ? `<div style="font-size:11px;color:var(--ink-3);margin-top:6px;">${daysLeft > 0 ? daysLeft + ' хоногийн дараа дуусна' : 'Өнөөдөр дуусна'}</div>` : ''}
+          ${fresh ? `<div style="font-size:11px;color:${freshColor[fresh.key]};margin-top:4px;font-weight:600;">${esc(fresh.badgeText)}</div>` : ''}
           <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;">
             ${actions}
           </div>
@@ -2314,10 +2356,16 @@
   }
 
   async function deleteMyListing(id) {
-    if (!confirm('Зарыг устгах уу?')) return;
+    if (!confirm('Та энэ зарыг устгахдаа итгэлтэй байна уу?')) return;
     const l = listings.find(x => x.id === id);
     if (l?.firestoreId) {
-      try { await db.collection('listings').doc(l.firestoreId).delete(); } catch(e) {}
+      try {
+        await db.collection('listings').doc(l.firestoreId).delete();
+      } catch (e) {
+        console.error('Delete failed:', e.code, e.message);
+        showToast('Устгахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+        return;
+      }
     }
     const idx = listings.findIndex(x => x.id === id);
     if (idx > -1) listings.splice(idx, 1);

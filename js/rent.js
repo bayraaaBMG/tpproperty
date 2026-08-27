@@ -61,7 +61,13 @@
     if (rentSort === 'price-asc') results.sort((a, b) => a.price - b.price);
     else if (rentSort === 'price-desc') results.sort((a, b) => b.price - a.price);
     else if (rentSort === 'area-desc') results.sort((a, b) => b.area - a.area);
-    else results.sort((a, b) => (b._bumpedAt || b.id) - (a._bumpedAt || a.id));
+    // Whichever is more recent of a paid bump or a content refresh (_lastRefreshedAtMs
+    // falls back to createdAt already), id as the final stable tiebreaker.
+    else results.sort((a, b) => {
+      const bFresh = Math.max(b._bumpedAt || 0, b._lastRefreshedAtMs || 0);
+      const aFresh = Math.max(a._bumpedAt || 0, a._lastRefreshedAtMs || 0);
+      return (bFresh - aFresh) || (b.id - a.id);
+    });
 
     return results;
   }

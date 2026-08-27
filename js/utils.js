@@ -145,6 +145,25 @@
     return new Date(ms).toLocaleDateString('mn-MN');
   }
 
+  // Days since a listing was last refreshed, using the fallback chain
+  // lastRefreshedAt -> createdAt -> updatedAt (whichever is populated first) so legacy
+  // listings created before this feature existed still get a sensible age instead of null.
+  // Returns null only when none of the three fields are present at all.
+  function listingFreshnessDays(l) {
+    const ms = (l && (l._lastRefreshedAtMs || l._createdAtMs || l._updatedAtMs)) || 0;
+    if (!ms) return null;
+    return Math.floor((Date.now() - ms) / 86400000);
+  }
+  // Freshness tier for the "Шинэчлэх" (refresh) system. Purely a display classification —
+  // never auto-deletes/archives/deactivates a listing at any threshold; Admin decides.
+  function listingFreshnessStatus(days) {
+    if (days == null) return null;
+    if (days < 14) return { key: 'fresh', label: 'Идэвхтэй', badgeText: (14 - days) + ' хоногийн дараа шинэчилнэ' };
+    if (days < 30) return { key: 'needs-refresh', label: 'Шинэчлэх шаардлагатай', badgeText: days + ' хоног шинэчлээгүй' };
+    if (days < 45) return { key: 'stale', label: 'Удаан шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй' };
+    return { key: 'very-stale', label: '45+ хоног шинэчлээгүй', badgeText: days + ' хоног шинэчлээгүй' };
+  }
+
   // Same relative-time ladder as listingTimeAgo() above, but for any raw timestamp (a
   // Firestore Timestamp, a ms number, or a Date) rather than a listing object specifically —
   // used for "Сүүлд идэвхтэй байсан" (users/{uid}.lastActiveAt) in the admin Agents section.

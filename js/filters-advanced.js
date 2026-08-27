@@ -288,12 +288,17 @@
       return bv - av || b.id - a.id;
     });
     else if (currentSort === 'date-asc') results.sort((a, b) => a.id - b.id);
-    // Default: VIP/Featured-plan listings first (the plan's actual promised benefit),
-    // newest/bumped first within each tier.
+    // Default: VIP/Featured-plan listings first (the plan's actual promised benefit), then
+    // whichever is more recent of a paid bump or a content refresh (_lastRefreshedAtMs
+    // already falls back to createdAt for listings that were never explicitly refreshed,
+    // so this single field covers both "refreshed" and "freshly created" cases), id as the
+    // final stable tiebreaker.
     else results.sort((a, b) => {
       const av = a.badges && a.badges.includes('vip') ? 1 : 0;
       const bv = b.badges && b.badges.includes('vip') ? 1 : 0;
-      return (bv - av) || ((b._bumpedAt || b.id) - (a._bumpedAt || a.id));
+      const bFresh = Math.max(b._bumpedAt || 0, b._lastRefreshedAtMs || 0);
+      const aFresh = Math.max(a._bumpedAt || 0, a._lastRefreshedAtMs || 0);
+      return (bv - av) || (bFresh - aFresh) || (b.id - a.id);
     });
 
     return results;

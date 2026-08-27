@@ -329,8 +329,15 @@
     { id: 'pending', label: 'Хүлээгдэж буй' },
     { id: 'active', label: 'Нийтлэгдсэн' },
     { id: 'rejected', label: 'Татгалзсан' },
-    { id: 'flagged', label: 'Report авсан' }
+    { id: 'flagged', label: 'Report авсан' },
+    { id: 'stale14', label: 'Шинэчлэх шаардлагатай' },
+    { id: 'stale30', label: '30+ хоног шинэчлээгүй' },
+    { id: 'stale45', label: '45+ хоног шинэчлээгүй' }
   ];
+  // Threshold (in days-since-refresh) each stale tab filters active listings down to —
+  // cumulative, not exclusive buckets: a moderator narrowing 14 -> 30 -> 45 is the natural
+  // workflow, so e.g. stale30 also includes every stale45 listing.
+  const STALE_TAB_THRESHOLDS = { stale14: 14, stale30: 30, stale45: 45 };
   let _adminListingsTab = 'pending';
 
   async function renderAdminListingsSection(tab) {
@@ -352,6 +359,17 @@
     if (tab === 'flagged') {
       const rows = await buildFlaggedRows();
       renderListingsTableRows(wrap, rows, 'Одоогоор мэдээлэгдсэн, үнийн хэвийн бус эсвэл давхардсан зар олдсонгүй.', `renderAdminListingsSection('flagged')`);
+      return;
+    }
+    if (STALE_TAB_THRESHOLDS[tab]) {
+      const rawItems = await adminFetchListingsByStatus(['active']);
+      if (rawItems === null) {
+        wrap.innerHTML = adminErrorState('Зарын жагсаалт татахад алдаа гарлаа.', `renderAdminListingsSection('${tab}')`);
+        return;
+      }
+      const threshold = STALE_TAB_THRESHOLDS[tab];
+      const rows = rawItems.map(normalizeListingRow).filter(r => r.freshnessDays != null && r.freshnessDays >= threshold);
+      renderListingsTableRows(wrap, rows, 'Энэ ангилалд зар алга байна.', `renderAdminListingsSection('${tab}')`);
       return;
     }
     const statusMap = { all: ['pending', 'active', 'rejected', 'expired', 'sold', 'rented'], pending: ['pending'], active: ['active'], rejected: ['rejected'] };
@@ -378,14 +396,17 @@
   function normalizeListingRow(source) {
     const isLocalShape = !!source.firestoreId;
     const fsId = source.fsId || source.firestoreId;
-    let sellerName, dateText;
+    let sellerName, dateText, lastRefreshedMs;
     if (isLocalShape) {
       sellerName = (sellerData[source.id] && sellerData[source.id].name) || 'Тодорхойгүй';
       dateText = source._createdAtMs ? new Date(source._createdAtMs).toLocaleDateString() : '—';
+      lastRefreshedMs = source._lastRefreshedAtMs || source._createdAtMs || source._updatedAtMs || 0;
     } else {
       sellerName = source.sellerName || 'Тодорхойгүй';
       dateText = source.createdAt?.toDate ? source.createdAt.toDate().toLocaleDateString() : (source.updatedAt?.toDate ? source.updatedAt.toDate().toLocaleDateString() : '—');
+      lastRefreshedMs = source.lastRefreshedAt?.toMillis?.() || source.createdAt?.toMillis?.() || source.updatedAt?.toMillis?.() || 0;
     }
+    const freshnessDays = lastRefreshedMs ? Math.floor((Date.now() - lastRefreshedMs) / 86400000) : null;
     return {
       fsId,
       img: source.img || (source.images && source.images[0]) || '',
@@ -396,7 +417,10 @@
       reportCount: source.reportCount || 0,
       rejectionReason: source.rejectionReason || '',
       ownerId: source.ownerId || null,
-      flagReasons: null, reportIds: null
+      flagReasons: null, reportIds: null,
+      lastRefreshedText: lastRefreshedMs ? new Date(lastRefreshedMs).toLocaleDateString() : '—',
+      freshnessDays,
+      freshness: listingFreshnessStatus(freshnessDays)
     };
   }
 
@@ -519,6 +543,7 @@
       menuActions.push({ label: 'Approve', onclick: `adminApproveListing('${row.fsId}')` });
       menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
     } else if (row.status === 'active') {
+      menuActions.push({ label: 'Шинэчлэх', onclick: `adminRefreshListing('${row.fsId}')` });
       menuActions.push({ label: 'Зарагдсан болгох', onclick: `adminMarkListingStatus('${row.fsId}', 'sold')` });
       menuActions.push({ label: 'Түрээслэгдсэн болгох', onclick: `adminMarkListingStatus('${row.fsId}', 'rented')` });
       menuActions.push({ label: 'Нуух', onclick: `adminArchiveListing('${row.fsId}')` });
@@ -539,6 +564,7 @@
             ${row.reportCount ? ` · <span style="color:var(--danger);font-weight:700;">${row.reportCount} report</span>` : ''}
           </div>
           <span class="admin-status-pill status-${row.status === 'active' ? 'active' : (row.status === 'pending' ? 'pending' : 'rejected')}">${esc(LISTING_STATUS_LABELS[row.status] || row.status)}</span>
+          ${row.status === 'active' && row.freshness ? `<div class="admin-row-flag" style="color:${{fresh:'var(--accent)','needs-refresh':'var(--warning)',stale:'var(--danger)','very-stale':'var(--danger)'}[row.freshness.key]};">Сүүлд шинэчилсэн: ${esc(row.lastRefreshedText)} (${row.freshnessDays} хоног) — ${esc(row.freshness.label)}</div>` : ''}
           ${row.flagReasons ? `<div class="admin-row-flag" title="${esc(row.flagReasons.join('; '))}">⚠ ${row.flagReasons.length} шалтгаанаар анхаарал татаж байна</div>` : ''}
           ${row.status === 'rejected' && row.rejectionReason ? `<div class="admin-row-reject-reason">Шалтгаан: ${esc(row.rejectionReason)}</div>` : ''}
         </div>
@@ -645,6 +671,24 @@
       renderListings(getFilteredListings()); renderHomeListings();
     } catch(e) {
       console.error('adminMarkListingStatus failed:', e.code, e.message);
+      showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+    }
+  }
+
+  // Admin/owner refresh — writes ONLY lastRefreshedAt, same narrow shape as the agent's own
+  // refreshMyListing(). Works across any owner, including a deactivated agent's listings
+  // (firestore.rules' isAdminOrOwner() moderation branch, not the owner-self branch).
+  async function adminRefreshListing(fsId) {
+    try {
+      await db.collection('listings').doc(fsId).update({ lastRefreshedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const l = listings.find(x => x.firestoreId === fsId);
+      if (l) l._lastRefreshedAtMs = Date.now();
+      logAdminAction('refresh', 'listing', fsId, '');
+      showToast('Зар шинэчлэгдлээ', 'success');
+      renderAdminListingsSection();
+      renderListings(getFilteredListings()); renderHomeListings();
+    } catch(e) {
+      console.error('adminRefreshListing failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
   }

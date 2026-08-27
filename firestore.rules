@@ -156,6 +156,9 @@ service cloud.firestore {
       // something INTO 'active' from 'pending'/'rejected', or move it INTO 'rejected' at all.
       // A deactivated agent (agentActive:false) loses this self-edit path entirely — their
       // existing listings stay live/public, but only admin/owner can touch them going forward.
+      // This rule is also what lets an approved agent write the 14-day "Шинэчлэх" refresh
+      // (lastRefreshedAt only) — not field-whitelisted, so a refresh-only update already
+      // satisfies every guard above with no separate rule needed.
       allow update: if isSignedIn() && isApprovedAgent() && resource.data.ownerId == request.auth.uid
                     && !isBlocked()
                     && !(request.resource.data.get('listingVerified', false) == true
@@ -178,11 +181,14 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
                     && request.resource.data.reportCount == resource.data.reportCount + 1;
 
-      // Admin/owner moderation — approve/reject/hide from the admin dashboard, scoped to only
-      // the fields it touches, never full content. Rejecting requires a real, non-empty reason
-      // (the owner sees it on their own listing) — enforced here, not just in the UI.
+      // Admin/owner moderation — approve/reject/hide/refresh from the admin dashboard, scoped
+      // to only the fields it touches, never full content. Rejecting requires a real,
+      // non-empty reason (the owner sees it on their own listing) — enforced here, not just
+      // in the UI. lastRefreshedAt is included so Admin can refresh ANY agent's listing
+      // (including one whose agent has since been deactivated) — still narrowly scoped, an
+      // admin refresh can never touch status/listingVerified/rejectionReason/content/images.
       allow update: if isAdminOrOwner()
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'listingVerified', 'rejectionReason'])
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'listingVerified', 'rejectionReason', 'lastRefreshedAt'])
                     && (request.resource.data.get('status', '') != 'rejected' || request.resource.data.get('rejectionReason', '').size() > 0);
 
       // Admin/owner can hard-delete any listing (spam/abuse) — owners can only delete their
