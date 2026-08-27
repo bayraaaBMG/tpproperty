@@ -253,7 +253,19 @@ service cloud.firestore {
     // ever flips `read`, never removes the doc.
     match /notifications/{notifId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // A user can always create their own notification (the saved-search/price-drop case
+      // above). The second branch is a narrow, auditable exception added for chat: the
+      // sender of a chat message may create exactly one notification FOR THE OTHER real
+      // participant of a chat they're both actually in — never for an arbitrary uid.
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid
+        ||
+        (request.resource.data.get('type', '') == 'chat_message'
+         && exists(/databases/$(database)/documents/chats/$(request.resource.data.get('chatId', 'x')))
+         && request.auth.uid in get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participants
+         && request.resource.data.userId in get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participants
+         && request.resource.data.userId != request.auth.uid)
+      );
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if false;
@@ -291,17 +303,74 @@ service cloud.firestore {
     }
 
     // ===== CHATS =====
+    // Participants-only chat between a buyer and a listing's agent. chatId is a
+    // deterministic composite key (listingKey + sorted uid pair — see js/chat.js), so a
+    // duplicate chat for the same pair+listing can never be created; getOrCreateChat()
+    // always resolves back to the same doc.
+    //
+    // Every update rule below requires chatFieldsUnchanged() — participants,
+    // participantNames, and listingKey must stay byte-identical between the old and new
+    // doc — so no participant can ever hijack the other's identity or repoint the chat at
+    // a different listing/pair. Each of the three update rules is scoped to exactly the
+    // fields that action touches (mirrors the multi-rule pattern used for listings).
+    function chatFieldsUnchanged() {
+      return request.resource.data.participants == resource.data.participants
+          && request.resource.data.participantNames == resource.data.participantNames
+          && request.resource.data.listingKey == resource.data.listingKey;
+    }
+    // True once either participant has blocked the other. blockedBy/participants are read
+    // together here (not via two more get() calls) since this only ever runs on a doc
+    // already fetched by the caller.
+    function chatDocIsBlocked(chatData) {
+      return chatData.get('blockedBy', {}).get(chatData.participants[0], false) == true
+          || chatData.get('blockedBy', {}).get(chatData.participants[1], false) == true;
+    }
+    function chatIsBlockedForSend(chatId) {
+      return chatDocIsBlocked(get(/databases/$(database)/documents/chats/$(chatId)).data);
+    }
+
     match /chats/{chatId} {
-      allow read, update: if isSignedIn() && request.auth.uid in resource.data.participants;
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+
+      allow create: if isSignedIn() && !isBlocked()
+                    && request.auth.uid in request.resource.data.participants
+                    && request.resource.data.participants.size() == 2;
+
+      // Sending a message: touches lastMessage/lastMessageAt and the recipient's key in
+      // the unread map (a dot-path increment, which Firestore reports as the top-level
+      // `unread` field in the diff) — nothing else.
+      allow update: if isSignedIn() && !isBlocked()
+                    && request.auth.uid in resource.data.participants
+                    && chatFieldsUnchanged()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt', 'unread']);
+
+      // "Уншсан болгох" / opening a thread, and "Хэрэглэгчийг блоклох" — a participant may
+      // only ever set or clear their OWN key in blockedBy, never speak for the other side.
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.participants
+                    && chatFieldsUnchanged()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blockedBy'])
+                    && request.resource.data.blockedBy.diff(resource.data.get('blockedBy', {})).affectedKeys().hasOnly([request.auth.uid]);
+
+      // "Чат хаах" — same self-only-key shape as block, for closedBy. Never deletes
+      // anything; history stays intact for both participants regardless of this flag.
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.participants
+                    && chatFieldsUnchanged()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closedBy'])
+                    && request.resource.data.closedBy.diff(resource.data.get('closedBy', {})).affectedKeys().hasOnly([request.auth.uid]);
+
       allow delete: if false;
 
       match /messages/{messageId} {
         allow read: if isSignedIn()
+                    && exists(/databases/$(database)/documents/chats/$(chatId))
                     && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if isSignedIn()
+        allow create: if isSignedIn() && !isBlocked()
+                      && exists(/databases/$(database)/documents/chats/$(chatId))
                       && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
-                      && request.resource.data.senderId == request.auth.uid;
+                      && request.resource.data.senderId == request.auth.uid
+                      && !chatIsBlockedForSend(chatId);
         allow update, delete: if false;
       }
     }

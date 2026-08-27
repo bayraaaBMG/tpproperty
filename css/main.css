@@ -2258,7 +2258,7 @@
   }
   .chat-layout { display: flex; flex: 1; min-height: 0; }
   .chat-list {
-    width: 280px; border-right: 1px solid var(--line); display: flex; flex-direction: column;
+    width: 320px; border-right: 1px solid var(--line); display: flex; flex-direction: column;
     flex-shrink: 0;
   }
   .chat-list-head {
@@ -2267,7 +2267,7 @@
   .chat-list-head h3 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700; }
   .chat-list-items { flex: 1; overflow-y: auto; }
   .chat-list-item {
-    display: flex; gap: 12px; padding: 14px 16px; cursor: pointer;
+    display: flex; gap: 10px; align-items: center; padding: 14px 16px; cursor: pointer;
     border-bottom: 1px solid var(--line); transition: all 0.15s; position: relative;
   }
   .chat-list-item:hover { background: var(--paper-2); }
@@ -2277,17 +2277,71 @@
     display: grid; place-items: center; color: white; font-weight: 700;
     font-family: 'Fraunces', serif; font-size: 16px;
   }
+  .chat-list-thumb {
+    width: 30px; height: 30px; border-radius: 7px; object-fit: cover; flex-shrink: 0;
+    border: 1px solid var(--line);
+  }
   .chat-list-info { flex: 1; min-width: 0; }
-  .chat-list-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .chat-list-name {
+    font-weight: 700; font-size: 14px; margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .chat-list-preview {
     font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Unread rows read heavier, like an unopened email — matches the reference screenshot. */
+  .chat-list-item.unread .chat-list-name { font-weight: 800; }
+  .chat-list-item.unread .chat-list-preview { color: var(--ink); font-weight: 600; }
+  .chat-list-meta {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;
+  }
+  .chat-list-time { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
   .chat-unread-badge {
-    position: absolute; right: 14px; bottom: 14px;
     min-width: 18px; height: 18px; background: var(--primary); color: white;
     border-radius: 100px; font-size: 10px; font-weight: 700; display: grid; place-items: center;
     padding: 0 5px;
+  }
+  .chat-closed-toggle {
+    display: block; width: 100%; padding: 12px 16px; background: none; border: none;
+    border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--ink-3);
+    cursor: pointer; text-align: center; font-family: inherit;
+  }
+  .chat-closed-toggle:hover { background: var(--paper-2); color: var(--ink-2); }
+
+  /* 3-dot conversation menu — same trigger/toggle/click-outside-closes idiom as admin.js's
+     adminActionMenu, own CSS since this one becomes a mobile bottom sheet (matching the
+     Unegui.mn reference) rather than a small anchored dropdown. */
+  .chat-menu { position: relative; flex-shrink: 0; }
+  .chat-menu-trigger {
+    width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent;
+    color: var(--ink-3); font-size: 18px; font-weight: 700; cursor: pointer;
+    display: grid; place-items: center; transition: background 0.15s;
+  }
+  .chat-menu-trigger:hover { background: var(--paper-2); color: var(--ink); }
+  .chat-menu-list {
+    display: none; position: absolute; right: 0; top: 36px; z-index: 30;
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow-md); min-width: 200px; padding: 6px; flex-direction: column; gap: 2px;
+  }
+  .chat-menu-list.open { display: flex; }
+  .chat-menu-item {
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500;
+    color: var(--ink); background: none; border: none; text-align: left; cursor: pointer;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .chat-menu-item:hover { background: var(--paper-2); }
+  .chat-menu-item.danger { color: var(--danger); }
+  .chat-menu-item.danger:hover { background: rgba(255, 71, 87, 0.08); }
+  @media (max-width: 640px) {
+    /* Bottom-sheet on mobile, matching the reference image, instead of a cramped anchored
+       dropdown that would otherwise clip against the narrow chat-list width. */
+    .chat-menu-list {
+      position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 200;
+      border-radius: 16px 16px 0 0; min-width: 0; padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 24px rgba(10, 22, 40, 0.18);
+    }
+    .chat-menu-item { padding: 14px 16px; font-size: 14.5px; }
   }
 
   .chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -2295,13 +2349,16 @@
     padding: 16px 20px; border-bottom: 1px solid var(--line);
     display: flex; align-items: center; gap: 12px;
   }
-  .chat-header-info { flex: 1; }
+  .chat-header-info { flex: 1; min-width: 0; }
   .chat-back-mobile {
     display: none; width: 36px; height: 36px; border-radius: 50%;
     border: none; background: var(--paper-2); cursor: pointer;
     place-items: center; color: var(--ink-2); flex-shrink: 0;
   }
-  .chat-header-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  .chat-header-name {
+    font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .chat-property-ref {
     display: flex; gap: 10px; padding: 10px 16px; background: var(--paper-2);
     border-bottom: 1px solid var(--line); align-items: center; cursor: pointer;
@@ -2318,6 +2375,7 @@
   .chat-msg.sent { align-self: flex-end; flex-direction: row-reverse; }
   .chat-bubble {
     padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.45;
+    overflow-wrap: break-word; word-break: break-word;
   }
   .chat-msg.received .chat-bubble {
     background: white; border: 1px solid var(--line); border-bottom-left-radius: 4px;
@@ -2652,7 +2710,7 @@
   }
   .notif-icon.view { background: var(--primary-soft); color: var(--primary); }
   .notif-icon.price { background: rgba(0, 212, 170, 0.15); color: var(--success); }
-  .notif-icon.message { background: rgba(255, 176, 32, 0.15); color: #C77700; }
+  .notif-icon.message, .notif-icon.chat_message { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .notif-icon.match { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
   .notif-icon.system { background: var(--paper-2); color: var(--ink-2); }
   .notif-content { flex: 1; }

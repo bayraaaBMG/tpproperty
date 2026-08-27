@@ -41,7 +41,8 @@
     if (!list) return;
     const icons = {
       price: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-      match: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>'
+      match: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>',
+      chat_message: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
     };
     if (!currentUser) {
       list.innerHTML = '<div style="padding:32px 20px;text-align:center;color:var(--ink-3);font-size:13px;">Мэдэгдэл авахын тулд нэвтэрнэ үү.</div>';
@@ -52,7 +53,7 @@
       return;
     }
     list.innerHTML = notifications.map(n => `
-      <div class="notif-item ${n.read ? '' : 'unread'}" onclick="readNotif('${n.id}', this, ${n.listingLocalId != null ? n.listingLocalId : 'null'})">
+      <div class="notif-item ${n.read ? '' : 'unread'}" onclick="readNotif('${n.id}', this, ${n.listingLocalId != null ? n.listingLocalId : 'null'}, ${n.chatId ? `'${n.chatId}'` : 'null'})">
         <div class="notif-icon ${n.type}">${icons[n.type] || icons.match}</div>
         <div class="notif-content">
           <div class="notif-text">${n.text}</div>
@@ -67,13 +68,18 @@
     document.getElementById('notifPanel').classList.toggle('open');
   }
 
-  function readNotif(id, el, listingLocalId) {
+  function readNotif(id, el, listingLocalId, chatId) {
     const n = notifications.find(x => x.id === id);
     if (n && !n.read) {
       n.read = true;
       el.classList.remove('unread');
       updateNotifCount();
       db.collection('notifications').doc(id).update({ read: true }).catch(() => {});
+    }
+    if (chatId && typeof openChatById === 'function') {
+      document.getElementById('notifPanel').classList.remove('open');
+      openChatById(chatId);
+      return;
     }
     if (listingLocalId != null && !isNaN(listingLocalId) && listings.some(l => l.id === listingLocalId)) {
       document.getElementById('notifPanel').classList.remove('open');

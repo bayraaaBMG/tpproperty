@@ -179,6 +179,14 @@
       if (typeof renderAccountSidebar === 'function') renderAccountSidebar();
       if (typeof subscribeNotifications === 'function') subscribeNotifications();
       if (typeof checkNotificationTriggers === 'function') checkNotificationTriggers();
+      // Resume a "Чат бичих" click an anonymous visitor made right before logging in (see
+      // js/chat.js's pendingChatListingId / js/listing-detail.js's openListingChat) — the
+      // only login-resume flow in the app, deliberately scoped to just this one action.
+      if (typeof pendingChatListingId !== 'undefined' && pendingChatListingId != null) {
+        const resumeId = pendingChatListingId;
+        pendingChatListingId = null;
+        setTimeout(() => { if (typeof openListingChat === 'function') openListingChat(resumeId); }, 400);
+      }
     } else {
       currentUser = null;
       const loginBtn = document.getElementById('loginBtn');

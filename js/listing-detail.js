@@ -919,7 +919,7 @@
     // Demo listings' ownerId is a synthetic placeholder (see data.js) with no real account
     // behind it — a chat thread would send real messages that nobody will ever read.
     if (l.isDemo) { showToast('Энэ бол жишээ зар — чат бичих боломжгүй.'); return; }
-    if (!currentUser) { closeModal(); showToast('Чат бичихийн тулд нэвтэрнэ үү'); openAuth(); return; }
+    if (!currentUser) { closeModal(); showToast('Чат бичихийн тулд нэвтэрнэ үү'); pendingChatListingId = id; openAuth(); return; }
     if (l.ownerId === currentUser.uid) { showToast('Энэ бол таны өөрийн зар'); return; }
     closeModal();
     const chatId = await getOrCreateChat(l);
