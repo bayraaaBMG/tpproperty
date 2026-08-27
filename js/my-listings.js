@@ -51,6 +51,15 @@
     'nalaikh': [47.7725, 107.2506], 'bagakhangai': [47.5497, 106.7644],
     'baganuur': [47.8093, 108.3722]
   };
+  // Local to the map picker's address-row breadcrumb — mirrors the district-label maps
+  // already declared locally elsewhere in this file (renderMyListings-adjacent code), kept
+  // as its own small constant rather than refactoring those to share one, since this is a
+  // UI-only addition and touching their scope isn't needed for it.
+  const DISTRICT_LABELS = {
+    'khan-uul': 'Хан-Уул', 'sukhbaatar': 'Сүхбаатар', 'chingeltei': 'Чингэлтэй',
+    'bayanzurkh': 'Баянзүрх', 'bayangol': 'Баянгол', 'songinokhairkhan': 'Сонгинохайрхан',
+    'nalaikh': 'Налайх', 'bagakhangai': 'Багахангай', 'baganuur': 'Багануур'
+  };
   const UB_CENTER = [47.9184, 106.9177];
 
   let editingListingId = null;
@@ -539,35 +548,98 @@
   let listingPickerMap = null;
   let listingPickerMarker = null;
   let listingPreviewMap = null;
+  let listingPickerStreetLayer = null;
+  let listingPickerSatelliteLayer = null;
+  let listingPickerSatelliteActive = true;
 
   function openListingMapPicker() {
     saveStepData(2);
     const start = (addListingState.geoLat && addListingState.geoLng)
       ? [addListingState.geoLat, addListingState.geoLng]
       : (DISTRICT_CENTERS[addListingState.district] || UB_CENTER);
+    const districtLabel = DISTRICT_LABELS[addListingState.district] || '';
+    const addressText = 'Улаанбаатар' + (districtLabel ? ' — ' + districtLabel : '')
+      + (addListingState.khoroo ? ' — ' + esc(String(addListingState.khoroo)) + '-р хороо' : '');
     document.getElementById('modalContent').innerHTML = `
       <div style="padding:0;">
-        <div style="display:flex; align-items:center; gap:12px; padding:20px 24px 12px;">
-          <button class="btn btn-ghost" onclick="document.getElementById('modalContent').innerHTML = renderAddListing(); setTimeout(attachAddListingHandlers, 50);">
+        <div style="display:flex; align-items:center; gap:12px; padding:20px 24px 4px;">
+          <button class="btn btn-ghost" onclick="document.getElementById('modalContent').innerHTML = renderAddListing(); setTimeout(attachAddListingHandlers, 50);" aria-label="Буцах">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <div style="font-weight:700; font-size:16px;">Байршил</div>
+          <div class="map-picker-header">Газрын зураг дээрх байршил</div>
         </div>
-        <div id="alMapPickerFull" style="height:60vh; min-height:320px;"></div>
-        <div style="padding:16px 24px;">
-          <div style="font-size:12px; color:var(--ink-3); margin-bottom:12px;">Газрын зураг дээр товшиж эсвэл цэгийг чирж яг байршлаа тэмдэглэнэ үү.</div>
-          <button class="btn btn-blue btn-lg" style="width:100%; justify-content:center;" onclick="saveListingLocation()">Газрын зураг дээр байршлыг хадгалах</button>
+        <div class="map-picker-address">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>${addressText}</span>
+        </div>
+        <div class="map-picker-wrap">
+          <div id="alMapPickerFull" style="height:60vh; min-height:320px;"></div>
+          <div class="map-picker-controls">
+            <button type="button" class="map-picker-ctrl-btn" onclick="listingPickerMap && listingPickerMap.zoomIn()" aria-label="Томруулах">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button type="button" class="map-picker-ctrl-btn" onclick="listingPickerMap && listingPickerMap.zoomOut()" aria-label="Багасгах">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+            </button>
+            <button type="button" class="map-picker-ctrl-btn" onclick="toggleListingPickerLayer()" aria-label="Давхарга солих">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </button>
+            <button type="button" class="map-picker-ctrl-btn" onclick="locateListingPicker(this)" aria-label="Миний байршил">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            </button>
+          </div>
+          <div class="map-picker-chip">Зөв байршилд сумыг аваачина уу.</div>
+        </div>
+        <div class="map-picker-actions">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="document.getElementById('modalContent').innerHTML = renderAddListing(); setTimeout(attachAddListingHandlers, 50);">Буцах</button>
+          <button class="btn btn-blue" style="flex:1;justify-content:center;" onclick="saveListingLocation()">Үргэлжлүүлэх</button>
         </div>
       </div>
     `;
     setTimeout(() => {
-      listingPickerMap = L.map('alMapPickerFull').setView(start, 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      listingPickerMap = L.map('alMapPickerFull', { zoomControl: false }).setView(start, 14);
+      listingPickerStreetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-      }).addTo(listingPickerMap);
+      });
+      // Esri World Imagery — free, tokenless satellite tiles (no Mapbox account/API key
+      // exists anywhere in this codebase; see the final report for what real Mapbox tiles
+      // would need if wanted later). Default layer, matching the Unegui.mn reference look.
+      listingPickerSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 19
+      });
+      listingPickerSatelliteActive = true;
+      listingPickerSatelliteLayer.addTo(listingPickerMap);
       listingPickerMarker = L.marker(start, { draggable: true }).addTo(listingPickerMap);
       listingPickerMap.on('click', (e) => listingPickerMarker.setLatLng(e.latlng));
     }, 50);
+  }
+
+  function toggleListingPickerLayer() {
+    if (!listingPickerMap) return;
+    if (listingPickerSatelliteActive) {
+      listingPickerMap.removeLayer(listingPickerSatelliteLayer);
+      listingPickerStreetLayer.addTo(listingPickerMap);
+    } else {
+      listingPickerMap.removeLayer(listingPickerStreetLayer);
+      listingPickerSatelliteLayer.addTo(listingPickerMap);
+    }
+    listingPickerSatelliteActive = !listingPickerSatelliteActive;
+  }
+
+  function locateListingPicker(btn) {
+    if (!listingPickerMap || !navigator.geolocation) { showToast('Энэ төхөөрөмж байршил тогтоох боломжгүй'); return; }
+    if (btn) btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (btn) btn.disabled = false;
+        const ll = [pos.coords.latitude, pos.coords.longitude];
+        listingPickerMap.setView(ll, 16);
+        if (listingPickerMarker) listingPickerMarker.setLatLng(ll);
+      },
+      () => { if (btn) btn.disabled = false; showToast('Байршил тогтоох зөвшөөрөл олдсонгүй'); },
+      { timeout: 8000 }
+    );
   }
 
   function saveListingLocation() {
