@@ -1,0 +1,8 @@
+{
+  "name": "tpproperty-scripts",
+  "private": true,
+  "description": "Local maintenance scripts. Not part of the deployed site — the site itself is static and has no build step.",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

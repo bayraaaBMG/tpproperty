@@ -81,13 +81,22 @@
           landArea: d.landArea || null, usageType: d.usageType || '', barterOk: !!d.barterOk,
           deposit: d.deposit || null, minTerm: d.minTerm || '',
           condition: d.condition || '', features: feats,
+          // Legal/ownership detail shown on the listing detail page and (legalNotes) in the
+          // rent card's "Барьцаа" strip. Previously never carried across from the document,
+          // so these sections were always blank for Firestore-loaded listings.
+          legalNotes: d.legalNotes || '', ownership: d.ownership || '',
+          cadastre: d.cadastre || '', collateral: d.collateral || '', taxDebt: d.taxDebt || '',
           paymentTerms: d.paymentTerms || [], constructionProgress: d.constructionProgress || '',
           description: d.description || '',
           videoUrl: d.videoUrl || '', tourUrl: d.tourUrl || '', floorPlan: d.floorPlan || null,
           img: (d.images && d.images[0]) || d.img || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
-          tag: { type: 'new', text: 'Шинэ зар' }, badges: d.badges || ['new', 'user'],
-          loanType: 'Тохиролцоно', monthly: 0,
-          userSubmitted: true, isDemo: false,
+          tag: d.tag || { type: 'new', text: 'Шинэ зар' }, badges: d.badges || ['new', 'user'],
+          loanType: d.loanType || 'Тохиролцоно', monthly: d.monthly || 0,
+          // Read from the document rather than hardcoded, so seeded demo listings
+          // (isDemo:true, userSubmitted:false — see scripts/seed-demo-listings.js) keep
+          // their DEMO badge and stay behind the `if (l.isDemo)` guards, e.g. the one
+          // that blocks starting a chat with a seller account that doesn't exist.
+          userSubmitted: d.userSubmitted !== false, isDemo: !!d.isDemo,
           // This query already only fetches status=='active' docs, so _inactive is false in
           // practice — kept as a real status check (not a hardcoded false) so this stays
           // correct if the query is ever loosened.

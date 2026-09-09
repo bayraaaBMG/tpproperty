@@ -422,6 +422,7 @@
       reportCount: source.reportCount || 0,
       rejectionReason: source.rejectionReason || '',
       ownerId: source.ownerId || null,
+      isDemo: !!source.isDemo,
       flagReasons: null, reportIds: null,
       lastRefreshedText: lastRefreshedMs ? new Date(lastRefreshedMs).toLocaleDateString() : '—',
       freshnessDays,
@@ -564,7 +565,7 @@
       <div class="admin-row">
         <img class="admin-row-img" src="${esc(row.img)}" alt="" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
         <div class="admin-row-body">
-          <div class="admin-row-title">${esc(row.title)}</div>
+          <div class="admin-row-title">${esc(row.title)}${row.isDemo ? ' <span class="admin-status-pill status-demo">DEMO</span>' : ''}</div>
           <div class="admin-row-meta">${esc(row.sellerName)} · ${fmtPrice(row.price)} · ${esc(row.dateText)}
             ${row.reportCount ? ` · <span style="color:var(--danger);font-weight:700;">${row.reportCount} report</span>` : ''}
           </div>

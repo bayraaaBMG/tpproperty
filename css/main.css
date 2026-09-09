@@ -1450,6 +1450,9 @@
   .admin-status-pill.status-rejected { background: rgba(255, 71, 87, 0.1); color: var(--danger); }
   /* CRM pipeline stages */
   .admin-status-pill.status-new { background: var(--paper-2); color: var(--ink-3); }
+  /* Marks a seeded sample listing (isDemo) in the admin listings table. Token-based, so it
+     follows the dark theme without needing its own override. */
+  .admin-status-pill.status-demo { background: var(--paper-3); color: var(--ink-2); }
   .admin-status-pill.status-contacted { background: var(--primary-soft); color: var(--primary-deep); }
   .admin-status-pill.status-viewing { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .admin-status-pill.status-negotiation, .admin-status-pill.status-negotiating { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
