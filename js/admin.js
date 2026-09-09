@@ -337,7 +337,12 @@
     { id: 'flagged', label: 'Report авсан' },
     { id: 'stale14', label: 'Шинэчлэх шаардлагатай' },
     { id: 'stale30', label: '30+ хоног шинэчлээгүй' },
-    { id: 'stale45', label: '45+ хоног шинэчлээгүй' }
+    { id: 'stale45', label: '45+ хоног шинэчлээгүй' },
+    // Demo/sample listings, seeded once by scripts/seed-demo-listings.js. They live in
+    // Firestore exactly like real listings (status:'active'), so they also keep showing up
+    // under Бүгд/Нийтлэгдсэн — this tab isn't a status bucket, it's an isDemo cross-cut that
+    // gathers every one of them in one place so an admin can review or clear them together.
+    { id: 'demo', label: 'Demo' }
   ];
   // Threshold (in days-since-refresh) each stale tab filters active listings down to —
   // cumulative, not exclusive buckets: a moderator narrowing 14 -> 30 -> 45 is the natural
@@ -375,6 +380,23 @@
       const threshold = STALE_TAB_THRESHOLDS[tab];
       const rows = rawItems.map(normalizeListingRow).filter(r => r.freshnessDays != null && r.freshnessDays >= threshold);
       renderListingsTableRows(wrap, rows, 'Энэ ангилалд зар алга байна.', `renderAdminListingsSection('${tab}')`);
+      return;
+    }
+    if (tab === 'demo') {
+      const rawItems = await adminFetchDemoListings();
+      if (rawItems === null) {
+        wrap.innerHTML = adminErrorState('Demo зарын жагсаалт татахад алдаа гарлаа.', `renderAdminListingsSection('demo')`);
+        return;
+      }
+      const rows = rawItems.map(normalizeListingRow);
+      if (rows.length === 0) { wrap.innerHTML = adminEmptyState('Хоосон байна', 'Demo зар алга байна.'); return; }
+      // Bulk clear is admin/owner-only, matching the per-row Устгах action and the
+      // `allow delete: if isAdminOrOwner()` listings rule that actually enforces it.
+      // The count is the real number of documents just fetched, not a hardcoded 20.
+      wrap.innerHTML = `
+        ${isAdminOrOwnerUser() ? `<button type="button" class="admin-bulk-danger" onclick="adminBulkDeleteDemoListings()">Бүх demo зарыг устгах (${rows.length})</button>` : ''}
+        <div class="admin-list-table">${rows.map(adminListingRow).join('')}</div>
+      `;
       return;
     }
     const statusMap = { all: ['pending', 'active', 'rejected', 'expired', 'sold', 'rented'], pending: ['pending'], active: ['active'], rejected: ['rejected'] };
@@ -524,6 +546,24 @@
     }
   }
 
+  // Demo listings are a cross-cut, not a status: they can sit in any status, so they're
+  // fetched by the isDemo flag itself rather than through adminFetchListingsByStatus(). A
+  // single-field equality filter needs no composite index (Firestore indexes every field
+  // automatically), so this works against the live project with no firestore.indexes.json.
+  // Returns null (not []) on a real failure so the caller can tell "no demos" from "couldn't
+  // load" — same contract as adminFetchListingsByStatus().
+  async function adminFetchDemoListings() {
+    try {
+      const snap = await db.collection('listings').where('isDemo', '==', true).get();
+      const results = [];
+      snap.forEach(doc => results.push(Object.assign({ fsId: doc.id }, doc.data())));
+      return results;
+    } catch(e) {
+      console.error('adminFetchDemoListings failed:', e.code, e.message);
+      return null;
+    }
+  }
+
   // The admin listings table is fetched straight from Firestore and only carries the real
   // document's own fields — never the client-only numeric `id` that openListing() keys off
   // (that id is assigned when a listing loads into the local `listings` array, see
@@ -554,7 +594,9 @@
       menuActions.push({ label: 'Түрээслэгдсэн болгох', onclick: `adminMarkListingStatus('${row.fsId}', 'rented')` });
       menuActions.push({ label: 'Нуух', onclick: `adminArchiveListing('${row.fsId}')` });
       menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
-      if (row.ownerId) menuActions.push({ label: 'Хэрэглэгч блоклох', onclick: `adminBlockUser('${row.ownerId}')`, danger: true });
+      // Not offered for demo rows: their ownerId is the synthetic 'demo-owner', so blocking
+      // it would only create a users/ doc for an account that can never sign in.
+      if (row.ownerId && !row.isDemo) menuActions.push({ label: 'Хэрэглэгч блоклох', onclick: `adminBlockUser('${row.ownerId}')`, danger: true });
     } else {
       menuActions.push({ label: 'Устгах', onclick: `adminDeleteListing('${row.fsId}')`, danger: true });
     }
@@ -716,6 +758,39 @@
       console.error('adminDeleteListing failed:', e.code, e.message);
       showToast('Алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
     }
+  }
+
+  // Bulk-clears every demo listing. Deliberately a manual, explicitly-confirmed admin action:
+  // nothing in the app ever deletes demo listings on its own, and nothing re-seeds them — they
+  // only come back if someone deliberately re-runs scripts/seed-demo-listings.js.
+  async function adminBulkDeleteDemoListings() {
+    if (!isAdminOrOwnerUser()) { showToast('Танд энэ үйлдлийг хийх эрх байхгүй'); return; }
+    // Re-read at click time rather than trusting the rendered count, so the number in the
+    // confirm dialog is what will actually be deleted even if the table is stale.
+    const items = await adminFetchDemoListings();
+    if (items === null) { showToast('Demo зарын жагсаалт татахад алдаа гарлаа'); return; }
+    if (items.length === 0) { showToast('Устгах demo зар алга байна'); renderAdminListingsSection('demo'); return; }
+    const reason = prompt('Устгах шалтгаан (заавал):');
+    if (reason === null) return;
+    if (!reason.trim()) { showToast('Шалтгаан оруулна уу'); return; }
+    if (!confirm(`Та бүх demo зарыг устгахдаа итгэлтэй байна уу? ${items.length} demo зар бүрмөсөн устана. Энэ үйлдлийг буцаах боломжгүй.`)) return;
+    let ok = 0, failed = 0;
+    for (const it of items) {
+      try {
+        await db.collection('listings').doc(it.fsId).delete();
+        const idx = listings.findIndex(x => x.firestoreId === it.fsId);
+        if (idx > -1) listings.splice(idx, 1);
+        logAdminAction('delete', 'listing', it.fsId, reason.trim());
+        ok++;
+      } catch(e) {
+        console.error('adminBulkDeleteDemoListings failed for', it.fsId, e.code, e.message);
+        failed++;
+      }
+    }
+    if (failed) showToast(`${ok} зар устгагдлаа, ${failed} нь амжилтгүй`);
+    else showToast(`${ok} demo зар устгагдлаа`, 'success');
+    renderAdminListingsSection('demo');
+    renderListings(getFilteredListings()); renderHomeListings();
   }
 
   async function adminBlockUser(uid) {

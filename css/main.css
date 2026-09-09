@@ -181,7 +181,8 @@
      .form-input:focus's 4px so buttons and inputs share one focus language. */
   .btn:focus-visible, .filter-toggle:focus-visible, .lrh-view-btn:focus-visible,
   .toggle-switch:focus-visible, .mbn-btn:focus-visible, .auth-close-btn:focus-visible,
-  .chip:focus-visible, .hs-adv-toggle:focus-visible, .notif-trigger:focus-visible {
+  .chip:focus-visible, .hs-adv-toggle:focus-visible, .notif-trigger:focus-visible,
+  .admin-bulk-danger:focus-visible {
     outline: none; box-shadow: 0 0 0 4px var(--primary-soft), 0 0 0 1.5px var(--primary) inset;
   }
   /* .btn computes to ~40px tall as-is — fine on desktop (.btn-lg already exists for
@@ -1382,6 +1383,15 @@
   .admin-sidebar-overlay { display: none; }
 
   .admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  /* Bulk "clear every demo listing" action above the Demo tab's table. A red text action
+     rather than a filled button: it's destructive, so it shouldn't read as the primary
+     thing to do on the page. */
+  .admin-bulk-danger {
+    display: inline-block; background: none; border: 0; padding: 2px 0; margin-bottom: 12px;
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--danger); cursor: pointer;
+    transition: opacity .18s ease;
+  }
+  .admin-bulk-danger:hover { opacity: .75; text-decoration: underline; }
 
   .admin-kpi-grid, .admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
   /* Unified with Agent Dashboard's .dash-stat (css/main.css, search dash-stat) — same
