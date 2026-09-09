@@ -51,8 +51,10 @@
 <nav class="nav">
   <div class="nav-inner">
     <a class="logo" onclick="showPage('home')">
-      <div class="logo-mark"><img src="/img/logo-mark.png" alt="TP Property" /></div>
-      <div class="logo-text">TP Property</div>
+      <img class="logo-wordmark brand-light" src="/zurag/tp-wordmark-navy.png" alt="TP Property" />
+      <img class="logo-wordmark brand-dark" src="/zurag/tp-wordmark-white.png" alt="TP Property" />
+      <img class="logo-square brand-light" src="/zurag/tp-logo-navy.png" alt="TP Property" />
+      <img class="logo-square brand-dark" src="/zurag/tp-logo-white.png" alt="TP Property" />
     </a>
     <div class="nav-links">
       <a onclick="showPage('listings')">Зар хайх</a>
@@ -2564,7 +2566,7 @@
   <div class="footer-inner">
     <div class="footer-grid">
       <div>
-        <div class="footer-logo"><img src="/img/logo-full.png" alt="TP Property" /></div>
+        <div class="footer-logo"><img src="/zurag/tp-logo-white.png" alt="TP Property" /></div>
         <div class="footer-desc">Үл хөдлөх хөрөнгийн худалдаа, түрээс, зуучлалын мэргэжлийн үйлчилгээ.</div>
         <div style="display:flex; gap:10px;">
           <a href="https://www.facebook.com/TPprivatepropertyLLC" target="_blank" rel="noopener noreferrer" aria-label="Facebook" style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.06); display:grid; place-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg></a>
@@ -2622,7 +2624,10 @@
     <!-- STEP 1: Имэйл оруулах -->
     <div class="auth-step" id="authStep1">
       <div class="auth-header">
-        <div class="auth-logo-mark"><img src="/img/logo-mark.png" alt="TP Property" /></div>
+        <div class="auth-logo-mark">
+          <img class="brand-light" src="/zurag/tp-logo-navy.png" alt="TP Property" />
+          <img class="brand-dark" src="/zurag/tp-logo-white.png" alt="TP Property" />
+        </div>
         <div class="auth-title">Нэвтрэх</div>
         <button class="auth-close-btn" onclick="closeAuth()" aria-label="Хаах">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -2890,7 +2895,10 @@
 
 <!-- PWA install banner (shown by JS when browser supports install) -->
 <div id="pwaBanner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--line-2);border-radius:16px;box-shadow:0 8px 32px rgba(10,22,40,0.15);padding:14px 20px;font-family:'Manrope',sans-serif;font-size:14px;align-items:center;gap:14px;z-index:9999;max-width:340px;width:calc(100% - 40px);">
-  <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line-2);overflow:hidden;flex-shrink:0;"><img src="/img/logo-mark.png" alt="TP Property" style="width:100%;height:100%;object-fit:contain;" /></div>
+  <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--line-2);overflow:hidden;flex-shrink:0;">
+    <img class="brand-light" src="/zurag/tp-logo-navy.png" alt="TP Property" style="width:100%;height:100%;object-fit:contain;" />
+    <img class="brand-dark" src="/zurag/tp-logo-white.png" alt="TP Property" style="width:100%;height:100%;object-fit:contain;" />
+  </div>
   <div style="flex:1;">
     <div style="font-weight:700;color:var(--ink);">TP Property суулгах</div>
     <div style="color:var(--ink-3);font-size:12px;">Гар утас дээрээ нэмж ашигла</div>

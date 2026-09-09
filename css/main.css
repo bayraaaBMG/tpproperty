@@ -68,9 +68,9 @@
      legible because the header/admin-topbar bars are always light. The footer already
      solves this exact problem for the full wordmark (a white plate behind the image) —
      same fix, scoped to dark mode only, for the two bars that flip dark above. */
-  html.dark .logo-mark, html.dark .admin-topbar-logo {
-    background: white; border-radius: 8px; padding: 3px;
-  }
+  /* (The .brand-light/.brand-dark theme-aware logo switch lives at the very end of this
+     file — it has to come after the per-component `.some-logo img { display: block }`
+     rules it needs to override.) */
   /* Status/role pills and stat-icon tints that were never tokenized to begin with (no
      var() existed for these hues at all) get their own dark-appropriate values directly —
      redefining a token does nothing for a color that was never a token. */
@@ -119,13 +119,21 @@
     max-width: 1320px; margin: 0 auto; padding: 18px 32px;
     display: flex; align-items: center; justify-content: space-between; gap: 32px;
   }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 22px; letter-spacing: -0.02em; cursor: pointer; }
-  .logo-mark {
-    width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0;
+  .logo { display: flex; align-items: center; cursor: pointer; flex-shrink: 0; min-width: 0; }
+  /* Horizontal wordmark carries the brand name itself, so there's no separate logo text
+     next to it any more. width:auto + object-fit:contain keeps the artwork's own aspect
+     ratio at every size; the max-width stops a wide wordmark from crowding the nav on
+     small screens. */
+  /* max-width sits just above the wordmark's natural width at this height (≈259px for a
+     7.6:1 mark at 34px) so the box never letterboxes the artwork. */
+  .logo-wordmark {
+    height: 34px; width: auto; max-width: 280px;
+    object-fit: contain; display: block;
   }
-  .logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .logo-text { font-family: 'Fraunces', serif; font-weight: 700; }
-  .logo-text em { color: var(--primary); font-style: normal; }
+  /* Compact square mark, swapped in for the wordmark on phone widths (see the responsive
+     rules in the brand block at the end of this file) — a 7.6:1 wordmark shrunk to fit a
+     360px nav would be ~16px tall and unreadable, where the square mark stays legible. */
+  .logo-square { height: 34px; width: auto; object-fit: contain; }
 
   .nav-links { display: flex; gap: 4px; }
   .nav-links a {
@@ -1164,7 +1172,10 @@
   .footer-inner { max-width: 1320px; margin: 0 auto; }
   .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 56px; }
   .footer-logo { display: flex; align-items: center; margin-bottom: 14px; }
-  .footer-logo img { height: 46px; width: auto; display: block; background: #fff; border-radius: 8px; padding: 5px 12px; }
+  /* The footer is permanently dark, so it always uses the white-on-dark artwork — which
+     needs no white backing plate behind it any more (that plate only existed because the
+     old asset was navy-on-white). */
+  .footer-logo img { height: 68px; width: auto; display: block; object-fit: contain; }
   .footer-desc { font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
   .footer-col h5 { color: white; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
   .footer-col ul { list-style: none; }
@@ -3924,6 +3935,10 @@
        duplicates here instead of cramming everything into the same row. */
     .nav-inner { padding: 14px 16px; gap: 10px; }
     .nav-fav-btn, #addListingBtn { display: none; }
+    /* Between 431–640px the wordmark still fits, just smaller (24px tall ≈ 183px wide,
+       against ~234px of nav padding/gap/action buttons). Below 431px it's swapped for the
+       square mark entirely — see the brand block at the end of this file. */
+    .logo-wordmark { height: 24px; max-width: none; }
 
     /* ---- Compact 2-column listing card ----
        The full card (compare button, photo-count badge, price-per-м² sub-line, price
@@ -4148,4 +4163,31 @@
 
   @media (max-width: 640px) {
     .auth-step { padding: 28px 24px; }
+  }
+
+  /* ============ THEME-AWARE BRAND ASSETS ============ */
+  /* Every branding spot (header wordmark, auth modal, admin topbar, PWA banner) ships
+     both the navy and the white artwork; CSS shows whichever suits the current theme, so
+     the logo swaps in the same frame as the theme toggle with no JS involved. This
+     replaced the old "white plate behind a navy logo" workaround — there are real
+     white-on-dark assets now, so nothing needs a backing plate.
+     Deliberately placed last in the file: the per-component rules these override
+     (`.auth-logo-mark img`, `.admin-topbar-logo img`, `.logo-wordmark`) all set
+     `display: block` at equal specificity, so source order is what settles it. */
+  img.brand-dark { display: none; }
+  html.dark img.brand-light { display: none; }
+  html.dark img.brand-dark { display: block; }
+
+  /* Phone widths: the horizontal wordmark can't fit next to the action buttons without
+     shrinking to an unreadable height, so the square mark takes over. All four header
+     images are spelled out explicitly here (rather than relying on the theme rules above)
+     because several combinations tie on specificity — being last in the file is what
+     settles them. */
+  img.logo-square { display: none; }
+  @media (max-width: 430px) {
+    img.logo-wordmark, html.dark img.logo-wordmark { display: none; }
+    img.logo-square.brand-light { display: block; }
+    img.logo-square.brand-dark { display: none; }
+    html.dark img.logo-square.brand-light { display: none; }
+    html.dark img.logo-square.brand-dark { display: block; }
   }

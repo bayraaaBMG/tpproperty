@@ -83,8 +83,11 @@
           <button type="button" class="admin-topbar-menu-btn" onclick="openAdminSidebar()" aria-label="Цэс" aria-expanded="false" aria-controls="adminSidebar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
-          <div class="admin-topbar-logo"><img src="/img/logo-mark.png" alt="TP Property" /></div>
-          <span class="admin-topbar-title">TP Property Удирдлага</span>
+          <div class="admin-topbar-logo">
+            <img class="brand-light" src="/zurag/tp-logo-navy.png" alt="TP Property" />
+            <img class="brand-dark" src="/zurag/tp-logo-white.png" alt="TP Property" />
+          </div>
+          <span class="admin-topbar-title">Удирдлага</span>
           <span class="admin-role-badge ${owner ? 'owner' : ''}">${owner ? 'OWNER' : 'ADMIN'}</span>
         </div>
         <div class="admin-topbar-right">
