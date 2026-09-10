@@ -22,15 +22,18 @@
     document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === c));
   }
 
-  // Fired by the Ангилал <select>'s change event (index.html). Without this the select
-  // was inert until Хайх was pressed: currentCat, the filter pills and the active-filter
-  // tags all still said "Бүгд" while the control on screen said "Түрээс".
+  // Fired by the Ангилал <select>'s change event (index.html). Picking a category is an
+  // instant filter — no Хайх press needed.
+  //
+  // Deliberately delegates to performSearch() instead of filtering here, so there stays
+  // exactly one search implementation. performSearch() re-reads this select (through
+  // setSearchCategory), the keyword box, the district and the advanced panel, so an
+  // existing keyword still narrows the chosen category and an empty one shows the whole
+  // category — and currentCat, the select, the active pill, the filter tags, the count
+  // and the rendered list all end up synchronized by the same code path Хайх uses.
   function onHomeCategoryChange() {
     setSearchCategory(document.getElementById('hSearchType')?.value || 'all');
-    // Keep the Listings page's tag row/count honest even though it isn't on screen yet,
-    // so it's already correct the moment Хайх navigates there.
-    if (typeof renderFilterTags === 'function') renderFilterTags();
-    if (typeof updateFilterCount === 'function') updateFilterCount();
+    if (typeof performSearch === 'function') performSearch();
   }
 
   function applyListingFilter() {
