@@ -268,7 +268,7 @@
     const diffPct = (subjectPerSqm - marketPerSqm) / marketPerSqm;
     let verdict, color;
     if (diffPct <= -0.08) { verdict = 'Сонирхолтой санал'; color = '#009878'; }
-    else if (diffPct <= 0.08) { verdict = 'Зах зээлийн үнэ'; color = '#1E5BFF'; }
+    else if (diffPct <= 0.08) { verdict = 'Зах зээлийн үнэ'; color = '#272B68'; }
     else { verdict = 'Зах зээлээс дээгүүр'; color = '#FF4757'; }
 
     let confidence;

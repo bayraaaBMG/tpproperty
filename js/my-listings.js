@@ -2307,7 +2307,7 @@
       return `
       <article class="listing-card" onclick="showPage('listings'); setTimeout(()=>openListing(${l.id}),150)" style="${st !== 'active' ? 'opacity:0.75;' : ''}">
         <div class="listing-img">
-          <img src="${esc(l.img)}" alt="${esc(l.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';"/>
+          <img src="${esc(l.img)}" alt="${esc(l.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #272B68)';"/>
           <div class="listing-badges">
             ${isVip ? '<span class="badge vip">⭐ VIP</span>' : ''}
             <span class="${meta.cls}">${meta.label}</span>

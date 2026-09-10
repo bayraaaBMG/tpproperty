@@ -286,9 +286,9 @@
 
         <div style="aspect-ratio: 16/9; background: linear-gradient(135deg, var(--primary-soft), white); border-radius: 16px; display: grid; place-items: center; margin: 24px 0; border: 1px dashed var(--line-2); position: relative; overflow: hidden;">
           <div style="position: absolute; inset: 0; background-image:
-            radial-gradient(circle at 30% 30%, rgba(30, 91, 255, 0.15) 0%, transparent 30%),
+            radial-gradient(circle at 30% 30%, rgba(39, 43, 104, 0.15) 0%, transparent 30%),
             radial-gradient(circle at 70% 50%, rgba(0, 212, 170, 0.15) 0%, transparent 25%),
-            radial-gradient(circle at 50% 70%, rgba(30, 91, 255, 0.1) 0%, transparent 25%);"></div>
+            radial-gradient(circle at 50% 70%, rgba(39, 43, 104, 0.1) 0%, transparent 25%);"></div>
           <div style="text-align: center; z-index: 1;">
             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5" style="margin: 0 auto 12px; display: block;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <div style="font-weight: 700; font-size: 18px; margin-bottom: 6px;">Удахгүй нэмэгдэнэ</div>

@@ -114,8 +114,8 @@
   function chatAvatarHtml(name, photoURL, size) {
     const letter = esc(name[0] || 'Х');
     const dim = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.37)}px;` : '';
-    if (!photoURL) return `<div class="chat-avatar" style="background:#1E5BFF;${dim}">${letter}</div>`;
-    return `<div class="chat-avatar" style="background:#1E5BFF;${dim}overflow:hidden;padding:0;">
+    if (!photoURL) return `<div class="chat-avatar" style="background:#272B68;${dim}">${letter}</div>`;
+    return `<div class="chat-avatar" style="background:#272B68;${dim}overflow:hidden;padding:0;">
       <img src="${esc(photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="var p=this.parentElement;p.style.overflow='';p.textContent='${letter}';">
     </div>`;
   }

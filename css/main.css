@@ -5,10 +5,22 @@
     --paper: #FAFBFC;
     --paper-2: #F0F4F9;
     --paper-3: #E2E9F2;
-    --primary: #1E5BFF;
-    --primary-deep: #0A3FCC;
-    --primary-soft: #E8EFFF;
-    --primary-glow: #4D7CFF;
+    /* Brand navy, sampled straight from the logo artwork rather than eyeballed:
+       #272B68 is the dominant opaque pixel in zurag/tp-wordmark-navy.png (and #262A67 in
+       tp-logo-navy.png — the same colour within rounding), and #1B1D4D is the darker navy
+       the mark itself uses for depth, which makes it the natural pressed/hover tone.
+       --primary-soft is that navy mixed ~90% into white. Contrast improves across the
+       board versus the old bright blue: white-on-primary 5.26 -> 12.87, primary-on-white
+       5.26 -> 12.87, primary-on-soft 4.56 -> 10.66. */
+    --primary: #272B68;
+    --primary-deep: #1B1D4D;
+    --primary-soft: #E8E9F4;
+    /* --primary-glow is not "a lighter primary" — it is the accent colour used ON the
+       permanently-dark ink panels (calculator results, affordability card, guide hero,
+       compare bar, verdict cards), so it has to stay light enough to read on #0A1628.
+       This is the brand navy lightened to do that: 5.19 on the ink panels, up from the
+       old #4D7CFF's 4.87. */
+    --primary-glow: #7C83D0;
     --accent: #00D4AA;
     --warning: #FFB020;
     --danger: #FF4757;
@@ -17,7 +29,7 @@
     --line-2: rgba(10, 22, 40, 0.14);
     --shadow-sm: 0 1px 2px rgba(10, 22, 40, 0.04), 0 2px 8px rgba(10, 22, 40, 0.04);
     --shadow-md: 0 4px 12px rgba(10, 22, 40, 0.06), 0 12px 32px rgba(10, 22, 40, 0.08);
-    --shadow-lg: 0 8px 24px rgba(30, 91, 255, 0.12), 0 24px 64px rgba(10, 22, 40, 0.12);
+    --shadow-lg: 0 8px 24px rgba(39, 43, 104, 0.12), 0 24px 64px rgba(10, 22, 40, 0.12);
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 20px;
@@ -56,6 +68,17 @@
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.30), 0 12px 32px rgba(0, 0, 0, 0.28);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.36), 0 24px 64px rgba(0, 0, 0, 0.32);
     --surface: #161F33;
+    /* --primary is the ONE brand token dark mode has to override. It's used as link and
+       active-state TEXT on the dark page, and the brand navy there scores 1.45 — invisible.
+       This is that navy lightened just enough: 4.12 as text on --paper and still 4.54 under
+       white button labels (the old bright blue managed 3.56 / 5.26, so the weaker axis
+       improves). --primary-deep and --primary-soft are deliberately left alone, exactly as
+       they were before this change: --primary-deep is text on the --primary-soft tint in
+       ~30 places but a white-text background in ~6 (button/chat-send hover, avatar
+       gradients), and those two roles want opposite directions on a dark page — lightening
+       it would fix the chips and break the avatars. --primary-glow is likewise untouched:
+       it lives on panels that stay dark in both themes. */
+    --primary: #686FC0;
   }
   /* A handful of translucent "frosted glass" bars hardcode a near-paper rgba literal
      instead of a token (so backdrop-filter blur still shows a hint of the page behind
@@ -85,7 +108,7 @@
   html.dark .boost-btn { color: #FFCB6B; }
   html.dark .badge.vip { color: #2a1a00; }
   html.dark .badge.needs-refresh { color: #2a1a00; }
-  html.dark .notif-item.unread:hover { background: rgba(30, 91, 255, 0.16); }
+  html.dark .notif-item.unread:hover { background: rgba(104, 111, 192, 0.16); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -163,9 +186,9 @@
   .btn-primary:hover { background: var(--ink-2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10, 22, 40, 0.2); }
   .btn-blue {
     background: var(--primary); color: white;
-    box-shadow: 0 2px 8px rgba(30, 91, 255, 0.25);
+    box-shadow: 0 2px 8px rgba(39, 43, 104, 0.25);
   }
-  .btn-blue:hover { background: var(--primary-deep); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(30, 91, 255, 0.4); }
+  .btn-blue:hover { background: var(--primary-deep); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(39, 43, 104, 0.4); }
   .btn-lg { padding: 14px 24px; font-size: 15px; border-radius: 12px; }
   /* A destructive-action variant of .btn-ghost — was previously done ad hoc with an inline
      color:var(--danger) override wherever a delete/remove action needed it. */
@@ -217,7 +240,7 @@
   }
   .hero::before {
     content: ''; position: absolute; top: -200px; right: -200px; width: 700px; height: 700px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.12) 0%, transparent 70%);
     pointer-events: none;
   }
   .hero::after {
@@ -749,7 +772,7 @@
   .listing-card.hidden { display: none; }
   .listing-img {
     position: relative; aspect-ratio: 4/3; overflow: hidden;
-    background: linear-gradient(135deg, #1B2D4F, #1E5BFF);
+    background: linear-gradient(135deg, #1B2D4F, #272B68);
   }
   .listing-img img {
     width: 100%; height: 100%; object-fit: cover;
@@ -845,7 +868,7 @@
   }
   .calc-section::before {
     content: ''; position: absolute; top: 80px; right: -100px; width: 400px; height: 400px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.08) 0%, transparent 70%);
   }
   .calc-grid {
     display: grid; grid-template-columns: 1fr 1.2fr; gap: 32px; position: relative; z-index: 2;
@@ -869,13 +892,13 @@
   .slider::-webkit-slider-thumb {
     -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
     background: var(--primary); cursor: pointer; border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(30, 91, 255, 0.4); transition: all 0.18s;
+    box-shadow: 0 2px 8px rgba(39, 43, 104, 0.4); transition: all 0.18s;
   }
   .slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
   .slider::-moz-range-thumb {
     width: 22px; height: 22px; border-radius: 50%;
     background: var(--primary); cursor: pointer; border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(30, 91, 255, 0.4);
+    box-shadow: 0 2px 8px rgba(39, 43, 104, 0.4);
   }
 
   .loan-type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 22px; }  .loan-type {
@@ -900,7 +923,7 @@
   .auto-card {
     display: flex; gap: 14px; align-items: flex-start;
     padding: 18px; margin: 8px 0 22px;
-    background: linear-gradient(135deg, rgba(30, 91, 255, 0.08), rgba(0, 212, 170, 0.06));
+    background: linear-gradient(135deg, rgba(39, 43, 104, 0.08), rgba(0, 212, 170, 0.06));
     border: 1.5px solid var(--primary-soft);
     border-radius: 14px;
     transition: all 0.3s ease;
@@ -913,7 +936,7 @@
     flex-shrink: 0;
     width: 42px; height: 42px; border-radius: 10px;
     background: var(--surface); display: grid; place-items: center;
-    box-shadow: 0 2px 8px rgba(30, 91, 255, 0.15);
+    box-shadow: 0 2px 8px rgba(39, 43, 104, 0.15);
   }
   .auto-card.warn .auto-card-icon svg { stroke: #C77700; }
   .auto-card-body { flex: 1; }
@@ -989,8 +1012,8 @@
     border: 1px solid rgba(0, 212, 170, 0.25);
   }
   .early-result-card.time {
-    background: rgba(77, 124, 255, 0.1);
-    border-color: rgba(77, 124, 255, 0.3);
+    background: rgba(124, 131, 208, 0.1);
+    border-color: rgba(124, 131, 208, 0.3);
   }
   .early-result-icon {
     width: 38px; height: 38px; border-radius: 10px;
@@ -1025,7 +1048,7 @@
   }
   .calc-results::before {
     content: ''; position: absolute; top: -100px; right: -100px; width: 350px; height: 350px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.4) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.4) 0%, transparent 70%);
     pointer-events: none;
   }
   .calc-results::after {
@@ -1093,7 +1116,7 @@
   .afford-card::before {
     content: ''; position: absolute; top: 0; right: 0; width: 100%; height: 100%;
     background-image:
-      radial-gradient(circle at 80% 20%, rgba(30, 91, 255, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(39, 43, 104, 0.3) 0%, transparent 50%),
       radial-gradient(circle at 20% 80%, rgba(0, 212, 170, 0.15) 0%, transparent 50%);
     pointer-events: none;
   }
@@ -1110,7 +1133,7 @@
     font-size: 14px; transition: all 0.2s; width: 100%;
   }
   .afford-input::placeholder { color: rgba(255, 255, 255, 0.4); }
-  .afford-input:focus { outline: none; background: rgba(255, 255, 255, 0.1); border-color: var(--primary-glow); box-shadow: 0 0 0 3px rgba(77, 124, 255, 0.25); }
+  .afford-input:focus { outline: none; background: rgba(255, 255, 255, 0.1); border-color: var(--primary-glow); box-shadow: 0 0 0 3px rgba(124, 131, 208, 0.25); }
 
   .afford-result {
     background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3);
@@ -1276,7 +1299,9 @@
   .mc-nav.prev { left: 12px; }
   .mc-nav.next { right: 12px; }
   .mc-expand { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; border-radius: 8px; background: rgba(10,22,40,0.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .mc-expand:hover { background: rgba(30,91,255,0.85); }
+  /* Sits on a near-black gallery bar, so it uses the lightened brand navy (--primary-glow's
+     rgb) — the base navy at this alpha would barely separate from the dark chrome. */
+  .mc-expand:hover { background: rgba(124, 131, 208, 0.85); }
   .mc-thumbs { display: flex; gap: 4px; padding: 6px; background: #0A1628; overflow-x: auto; scrollbar-width: none; }
   .mc-thumbs::-webkit-scrollbar { display: none; }
   .mc-thumb { width: 56px; height: 42px; object-fit: cover; border-radius: 5px; cursor: pointer; flex-shrink: 0; opacity: 0.6; border: 2px solid transparent; transition: all 0.15s; }
@@ -1477,7 +1502,7 @@
   .admin-status-pill.status-contacted { background: var(--primary-soft); color: var(--primary-deep); }
   .admin-status-pill.status-viewing { background: rgba(255, 176, 32, 0.15); color: #C77700; }
   .admin-status-pill.status-negotiation, .admin-status-pill.status-negotiating { background: rgba(123, 44, 191, 0.12); color: #7B2CBF; }
-  .admin-status-pill.status-contract { background: rgba(30, 91, 255, 0.12); color: var(--primary-deep); }
+  .admin-status-pill.status-contract { background: rgba(39, 43, 104, 0.12); color: var(--primary-deep); }
   .admin-status-pill.status-closed_sold, .admin-status-pill.status-sold { background: rgba(0, 212, 170, 0.12); color: var(--success); }
   .admin-status-pill.status-closed_rented, .admin-status-pill.status-rented { background: rgba(0, 152, 120, 0.12); color: #007a5e; }
   /* CRM viewings */
@@ -1674,7 +1699,7 @@
      js/home.js); the placement <div> stays empty with zero layout footprint whenever no
      active ad targets it, so an empty slot never shows as a blank gap. */
   .site-ad-banner {
-    display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, rgba(30, 91, 255, 0.06) 0%, rgba(123, 44, 191, 0.05) 100%);
+    display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, rgba(39, 43, 104, 0.06) 0%, rgba(123, 44, 191, 0.05) 100%);
     border: 1px solid var(--line-2); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;
     text-decoration: none; color: inherit; transition: border-color 0.15s;
   }
@@ -1692,7 +1717,7 @@
   .seller-stats span b { color: var(--ink); font-weight: 700; }
 
   /* Map */
-  .map-pin { width: 40px; height: 40px; background: var(--primary); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; box-shadow: 0 4px 14px rgba(30,91,255,0.4); }
+  .map-pin { width: 40px; height: 40px; background: var(--primary); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; box-shadow: 0 4px 14px rgba(39,43,104,0.4); }
   .map-pin svg { transform: rotate(45deg); }
 
   @media (max-width: 640px) { .mc-thumb { width: 44px; height: 34px; } }
@@ -2057,7 +2082,7 @@
   }
   .rir-box::before {
     content: ''; position: absolute; top: -80px; right: -40px; width: 280px; height: 280px;
-    background: radial-gradient(circle, rgba(30,91,255,0.3), transparent 60%);
+    background: radial-gradient(circle, rgba(39,43,104,0.3), transparent 60%);
   }
   .rir-inner { position: relative; z-index: 2; }
   .rir-formula {
@@ -2104,7 +2129,7 @@
   }
   .guide-hero::before {
     content: ''; position: absolute; top: -100px; right: -50px; width: 380px; height: 380px;
-    background: radial-gradient(circle, rgba(30,91,255,0.3) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(39,43,104,0.3) 0%, transparent 60%);
   }
   .guide-hero-inner { position: relative; z-index: 2; }
   .guide-hero-badge {
@@ -2134,7 +2159,7 @@
     width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
     background: linear-gradient(135deg, var(--primary), var(--primary-deep));
     color: white; display: grid; place-items: center; font-family: 'Fraunces', serif;
-    font-size: 22px; font-weight: 700; box-shadow: 0 4px 12px rgba(30,91,255,0.3);
+    font-size: 22px; font-weight: 700; box-shadow: 0 4px 12px rgba(39,43,104,0.3);
   }
   .journey-step-body { flex: 1; }
   .journey-step-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
@@ -2174,7 +2199,7 @@
     align-items: flex-start; cursor: pointer; transition: all 0.15s;
     border: 1.5px solid transparent;
   }
-  .doc-item:hover { background: var(--primary-soft); border-color: rgba(30,91,255,0.12); }
+  .doc-item:hover { background: var(--primary-soft); border-color: rgba(39,43,104,0.12); }
   .doc-item.checked { background: rgba(0,212,170,0.06); border-color: rgba(0,212,170,0.3); }
   .doc-check {
     width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--line-2);
@@ -2189,7 +2214,7 @@
   .doc-note { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
   .doc-tip {
     display: none; font-size: 11.5px; color: var(--ink-3); margin-top: 7px; line-height: 1.55;
-    background: rgba(30,91,255,0.04); padding: 8px 10px; border-radius: 8px;
+    background: rgba(39,43,104,0.04); padding: 8px 10px; border-radius: 8px;
     border-left: 3px solid var(--primary); gap: 5px; align-items: flex-start;
   }
   .doc-item:hover .doc-tip, .doc-item.checked .doc-tip { display: flex; }
@@ -2581,8 +2606,8 @@
   }
   .mini-map-grid {
     position: absolute; inset: 0;
-    background-image: linear-gradient(rgba(30,91,255,0.06) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(30,91,255,0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(39,43,104,0.06) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(39,43,104,0.06) 1px, transparent 1px);
     background-size: 32px 32px;
   }
   .mini-map-roads {
@@ -2879,7 +2904,7 @@
   }
   .dash-header-card::before {
     content: ''; position: absolute; top: -100px; right: -50px; width: 350px; height: 350px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.3), transparent 60%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.3), transparent 60%);
   }
   .dash-header-inner { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
   .dash-greeting { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; margin-bottom: 6px; }
@@ -3061,7 +3086,7 @@
   /* Rent CTA banner */
   .rent-cta {
     margin-bottom: 32px; padding: 28px; border-radius: 18px;
-    background: linear-gradient(135deg, rgba(0, 212, 170, 0.12) 0%, rgba(30, 91, 255, 0.08) 100%);
+    background: linear-gradient(135deg, rgba(0, 212, 170, 0.12) 0%, rgba(39, 43, 104, 0.08) 100%);
     border: 1px solid rgba(0, 212, 170, 0.25); display: grid;
     grid-template-columns: 1fr auto; align-items: center; gap: 24px;
   }
@@ -3075,8 +3100,8 @@
   .newdev-section { background: var(--paper); }
   .newdev-cta {
     margin-bottom: 32px; padding: 28px; border-radius: 18px;
-    background: linear-gradient(135deg, rgba(30, 91, 255, 0.1) 0%, rgba(123, 44, 191, 0.08) 100%);
-    border: 1px solid rgba(30, 91, 255, 0.2); display: grid;
+    background: linear-gradient(135deg, rgba(39, 43, 104, 0.1) 0%, rgba(123, 44, 191, 0.08) 100%);
+    border: 1px solid rgba(39, 43, 104, 0.2); display: grid;
     grid-template-columns: 1fr auto; align-items: center; gap: 24px;
   }
   .newdev-cta-content h4 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; color: var(--ink); }
@@ -3095,7 +3120,7 @@
   .newdev-badge {
     position: absolute; top: 10px; left: 10px; z-index: 2;
     padding: 4px 9px; border-radius: 6px; font-size: 10px; font-weight: 700;
-    color: white; background: rgba(30, 91, 255, 0.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    color: white; background: rgba(39, 43, 104, 0.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   }
   .newdev-units-badge {
     position: absolute; top: 10px; right: 10px; z-index: 2;
@@ -3129,7 +3154,7 @@
   }
   .compare-card::before {
     content: ''; position: absolute; top: -150px; left: -150px; width: 500px; height: 500px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.25) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.25) 0%, transparent 60%);
     pointer-events: none;
   }
   .compare-card::after {
@@ -3162,7 +3187,7 @@
   .compare-slider::-webkit-slider-thumb {
     -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
     background: var(--primary-glow); cursor: pointer; border: 3px solid var(--ink);
-    box-shadow: 0 2px 8px rgba(77, 124, 255, 0.6);
+    box-shadow: 0 2px 8px rgba(124, 131, 208, 0.6);
   }
   .compare-slider::-moz-range-thumb {
     width: 20px; height: 20px; border-radius: 50%;
@@ -3178,8 +3203,8 @@
     border: 1px solid rgba(0, 212, 170, 0.3);
   }
   .verdict-card.rent {
-    background: linear-gradient(135deg, rgba(77, 124, 255, 0.18), rgba(77, 124, 255, 0.05));
-    border-color: rgba(77, 124, 255, 0.35);
+    background: linear-gradient(135deg, rgba(124, 131, 208, 0.18), rgba(124, 131, 208, 0.05));
+    border-color: rgba(124, 131, 208, 0.35);
   }
   .verdict-label {
     font-size: 11px; font-weight: 700; color: var(--accent);
@@ -3336,7 +3361,7 @@
   }
   .forecast-big::before {
     content: ''; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px;
-    background: radial-gradient(circle, rgba(30, 91, 255, 0.3) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(39, 43, 104, 0.3) 0%, transparent 60%);
   }
   .forecast-big-inner { position: relative; z-index: 2; }
   .forecast-big h4 {
@@ -4250,7 +4275,7 @@
     font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink);
     cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow-sm);
   }
-  .auth-google-btn:hover { border-color: var(--primary-glow); box-shadow: 0 2px 12px rgba(30,91,255,0.1); }
+  .auth-google-btn:hover { border-color: var(--primary-glow); box-shadow: 0 2px 12px rgba(39,43,104,0.1); }
   .auth-google-icon { width: 20px; height: 20px; }
 
   .auth-divider {
@@ -4295,7 +4320,7 @@
     border: 2px solid transparent; transition: all 0.15s;
     position: relative;
   }
-  .user-av-nav:hover { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,91,255,0.15); }
+  .user-av-nav:hover { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(39,43,104,0.15); }
   .user-av-nav img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   .user-dropdown {
     position: absolute; top: calc(100% + 10px); right: 0;
@@ -4345,7 +4370,13 @@
      images are spelled out explicitly here (rather than relying on the theme rules above)
      because several combinations tie on specificity — being last in the file is what
      settles them. */
-  img.logo-square { display: none; }
+  /* `html.dark img.brand-dark` above is (0,2,1); a bare `img.logo-square` is only (0,1,1),
+     so in dark mode the square mark won the cascade and rendered at EVERY width — a second
+     logo sitting next to the wordmark in the dark header. Naming html.dark here brings this
+     rule to the same specificity, and being later in the file settles the tie in favour of
+     hidden. The 430px rules below are all (0,2,1)+ with html.dark variants at (0,3,1), so
+     the phone swap still wins. */
+  img.logo-square, html.dark img.logo-square { display: none; }
   @media (max-width: 430px) {
     img.logo-wordmark, html.dark img.logo-wordmark { display: none; }
     img.logo-square.brand-light { display: block; }

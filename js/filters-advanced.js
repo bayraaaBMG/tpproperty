@@ -108,7 +108,7 @@
     if (radiusCircle) { radiusMap.removeLayer(radiusCircle); radiusCircle = null; }
     if (areaFilter && areaFilter.lat && areaFilter.km) {
       radiusCircle = L.circle([areaFilter.lat, areaFilter.lng], {
-        radius: areaFilter.km * 1000, color: '#1E5BFF', fillColor: '#1E5BFF', fillOpacity: 0.08, weight: 1.5
+        radius: areaFilter.km * 1000, color: '#272B68', fillColor: '#272B68', fillOpacity: 0.08, weight: 1.5
       }).addTo(radiusMap);
       radiusMap.fitBounds(radiusCircle.getBounds(), { padding: [20, 20] });
     }

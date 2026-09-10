@@ -2,7 +2,7 @@
   const feedPosts = [
     {
       id: 'p1', type: 'new',
-      author: 'Болор Эстэйт', role: 'agent', avatar: 'Б', avatarColor: '#1E5BFF',
+      author: 'Болор Эстэйт', role: 'agent', avatar: 'Б', avatarColor: '#272B68',
       time: '15 минутын өмнө', verified: true,
       text: 'Зайсанд шинэ зар орууллаа. Хүннү 2222 хороололд, өмнө зүгтээ задгай, наран гэрэлтэй. Засвар шинэхэн. Сонирхвол шууд холбогдоорой! #Зайсан #2өрөө',
       property: { id: 1, img: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80', price: '412 сая ₮', title: 'Зайсан, Хүннү 2222, 2 өрөө', meta: '78 м² · 2 өрөө · 8/16 давхар' },
@@ -230,7 +230,7 @@
     feedPosts.unshift({
       id: 'user' + Date.now(),
       type: type === 'question' ? 'question' : type === 'price' ? 'price' : 'new',
-      author: 'Болд', role: 'owner', avatar: 'Б', avatarColor: '#1E5BFF',
+      author: 'Болд', role: 'owner', avatar: 'Б', avatarColor: '#272B68',
       time: 'Дөнгөж сая', verified: false,
       text: fullText, images: [],
       likes: 0, comments: 0, shares: 0, liked: false

@@ -413,7 +413,7 @@
           <!-- INLINE GALLERY CAROUSEL -->
           <div class="mc-wrap">
             <div class="mc-main" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event, mcPrev, mcNext)">
-              <img id="mcMainImg" src="${esc(mcImages[0])}" alt="${esc(l.title)}" style="transition:opacity 0.22s;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
+              <img id="mcMainImg" src="${esc(mcImages[0])}" alt="${esc(l.title)}" style="transition:opacity 0.22s;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #272B68)';" />
               <span class="mc-counter" id="mcCounter">1 / ${mcImages.length}</span>
               ${mcImages.length > 1 ? `
               <button class="mc-nav prev" onclick="mcPrev()">
@@ -673,7 +673,7 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
     }).addTo(nearbyMap);
-    L.circleMarker([lat, lng], { radius: 7, color: '#1E5BFF', fillColor: '#1E5BFF', fillOpacity: 1, weight: 2 })
+    L.circleMarker([lat, lng], { radius: 7, color: '#272B68', fillColor: '#272B68', fillOpacity: 1, weight: 2 })
       .addTo(nearbyMap).bindTooltip('Энэ байр');
     setTimeout(() => nearbyMap && nearbyMap.invalidateSize(), 60);
   }
@@ -1023,7 +1023,7 @@
     grid.innerHTML = allSellerListings.map(l => `
       <article class="listing-card" style="${l._inactive ? 'opacity:0.6;' : ''}" onclick="closeModal(); setTimeout(()=>openListing(${l.id}),200)">
         <div class="listing-img">
-          <img src="${esc(l.img)}" alt="${esc(l.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
+          <img src="${esc(l.img)}" alt="${esc(l.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #272B68)';" />
         </div>
         <div class="listing-body">
           <div class="listing-price-row">

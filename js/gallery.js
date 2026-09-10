@@ -47,7 +47,7 @@
       </button>
       <div class="gallery-main" ontouchstart="swipeStart(event)" ontouchend="swipeEnd(event, galleryPrev, galleryNext)">
         <div class="gallery-counter">${galleryIndex + 1} / ${galleryImages.length}</div>
-        <img src="${esc(galleryImages[galleryIndex])}" alt="" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #1E5BFF)';" />
+        <img src="${esc(galleryImages[galleryIndex])}" alt="" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #272B68)';" />
         ${galleryImages.length > 1 ? `
           <button class="gallery-nav prev" onclick="galleryPrev()">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
