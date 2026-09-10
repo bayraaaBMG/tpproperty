@@ -105,8 +105,53 @@
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    /* Belt-and-braces against horizontal scroll on mobile browsers: overflow-x alone still
+       lets the layout viewport widen when a descendant forces it (Samsung Internet and
+       older Chrome Android are the usual offenders). */
+    max-width: 100vw;
   }
+  html { overflow-x: hidden; }
   .display { font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; }
+  /* ============ BETA BAR ============ */
+  /* Lived as inline styles on #betaBar until now, which no media query could override —
+     which is why it stayed a two-line, 56px-tall block on every phone. The close button is
+     absolutely positioned, so the bar needs right padding wider than the button or the text
+     runs underneath it. safe-area-inset-top matters only in installed-PWA standalone mode,
+     where this bar is the topmost element on screen. */
+  .beta-bar {
+    background: #1E5BFF; color: #fff; font-family: 'Manrope', sans-serif;
+    font-size: 13px; font-weight: 500; text-align: center; line-height: 1.35;
+    padding: 8px 44px; padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    position: relative; z-index: 200;
+  }
+  .beta-bar-badge {
+    background: rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .5px; flex-shrink: 0;
+  }
+  .beta-bar-close {
+    background: none; border: none; color: rgba(255,255,255,0.75); cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 0; position: absolute;
+    right: 10px; top: calc(50% + env(safe-area-inset-top, 0px) / 2); transform: translateY(-50%);
+    width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px;
+  }
+  .beta-bar-close:hover { color: #fff; background: rgba(255,255,255,0.14); }
+  @media (max-width: 640px) {
+    /* One line at every phone width: smaller type, tighter padding, and the badge/text gap
+       closed up. 12px/1.3 fits the full sentence on one line down to 320px. */
+    .beta-bar {
+      font-size: 11px; gap: 6px; line-height: 1.28;
+      padding: 5px 36px 5px 10px; padding-top: calc(5px + env(safe-area-inset-top, 0px));
+      text-align: left;
+    }
+    .beta-bar-badge { font-size: 9.5px; padding: 2px 6px; }
+    .beta-bar-text { min-width: 0; }
+    .beta-bar-close { right: 4px; width: 30px; height: 30px; font-size: 14px; }
+  }
+  @media (max-width: 360px) {
+    .beta-bar { font-size: 10.5px; padding-left: 8px; padding-right: 34px; }
+  }
+
   /* ============ NAV ============ */
   .nav {
     position: sticky; top: 0; z-index: 100;
@@ -807,6 +852,13 @@
 
   .listing-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
   .listing-loc { font-size: 13px; color: var(--ink-3); margin-bottom: 14px; display: flex; align-items: center; gap: 4px; }
+  /* The location string used to be a bare text node inside this flex container, so the
+     `text-overflow: ellipsis` set on the compact card variants below could never apply
+     (ellipsis needs a block/inline box of its own, not an anonymous flex item) — a long
+     "Сонгинохайрхан, 20-р хороо · …" was simply sliced off mid-word at the card edge.
+     Wrapping it in a span (see listingCardHtml) gives the truncation something to act on. */
+  .listing-loc > svg { flex-shrink: 0; }
+  .listing-loc > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Real "posted X ago" (listingTimeAgo() — omitted entirely when there's no real
      timestamp, e.g. every demo listing). Hidden on the desktop card, where the existing
      meta/loan-strip rows already carry enough real info; shown on the compact mobile
@@ -3920,7 +3972,15 @@
     .features-grid { grid-template-columns: repeat(2, 1fr); }
     .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
     .nav-links { display: none; }
-    .mobile-toggle { display: block; }
+    /* The hamburger is the only way into the menu once .nav-links is hidden, so it gets a
+       full 44x44 target from the moment it appears — not only at phone widths. Done with an
+       overlay rather than min-width/min-height, which would make the icon the tallest item
+       in the row and push the whole header 6px taller. */
+    .mobile-toggle { display: grid; place-items: center; position: relative; }
+    .mobile-toggle::after {
+      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 44px; height: 44px; border-radius: 10px;
+    }
     .modal-info-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 640px) {
@@ -3948,7 +4008,22 @@
        it impossible to open the nav menu at all. Favorites and "Зар нэмэх" are already
        one tap away from the bottom mobile nav, so hide their (redundant) top-nav
        duplicates here instead of cramming everything into the same row. */
-    .nav-inner { padding: 14px 16px; gap: 10px; }
+    /* Compact mobile header: the 42px circles at an 18px row padding made the bar 71px
+       tall for what is really a logo and four icons. 38px circles on a 10px row keep the
+       same icon size and hit area (see the ::after tap target below) at 55px total. */
+    .nav-inner { padding: 10px 14px; gap: 8px; }
+    /* 8px here nets out to a 6px visual gap (each button carries an inline -2px margin),
+       giving a 44px button pitch — exactly the size of the tap target below, so the
+       targets sit edge to edge without overlapping into each other. */
+    .nav-actions { gap: 8px; }
+    .notif-trigger { width: 38px; height: 38px; }
+    /* Shrinking the visible circle must not shrink what a thumb has to hit — this keeps a
+       full 44x44 tap target centred on the 38px button without changing the layout. */
+    .notif-trigger::after {
+      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 44px; height: 44px; border-radius: 50%;
+    }
+    .mobile-toggle { padding: 7px; }
     .nav-fav-btn, #addListingBtn { display: none; }
     /* Between 431–640px the wordmark still fits, just smaller (24px tall ≈ 183px wide,
        against ~234px of nav padding/gap/action buttons). Below 431px it's swapped for the
@@ -3993,6 +4068,99 @@
     .filter-pill { flex-shrink: 0; }
   }
 
+  /* ============ PHONE LAYOUT REFINEMENTS ============ */
+  /* Scoped entirely to <=640px (and narrower) — no desktop rule is touched. Fixes found by
+     measuring the real phone layout: a 227px-tall search card whose controls were squeezed
+     below their own text width, a 176px stats strip that wrapped mid-phrase, 100px of
+     vertical section padding inherited from desktop, and a bottom nav with no active state. */
+  @media (max-width: 640px) {
+    /* ---- Vertical rhythm ----
+       Only the horizontal padding was ever overridden for phones, so every section still
+       carried the desktop 100px top/bottom. That is the "excessive empty space between
+       major sections" — nothing else about the sections changes. */
+    section { padding-top: 40px; padding-bottom: 40px; }
+    .section-head { margin-bottom: 24px; gap: 14px; }
+    .hero-compact { padding: 10px 14px 14px; }
+    .home-search-bar { padding: 12px 12px; }
+    .home-info-strip { padding: 14px 14px; margin-top: 10px; gap: 12px; }
+
+    /* ---- Search card ----
+       The row previously kept all three primary controls on one line and let flex shrink
+       them below their content width, which is what truncated "Ангилал" to "Анг..." and
+       clipped the placeholder. Below 640px the blue button drops to its own full-width
+       line instead: the two fields then get their real widths back, and the button is the
+       easiest thing on the card to hit. The [Байршил][Шүүлтүүр] row is unchanged. */
+    .hs-top-row { gap: 8px; }
+    .hs-primary-row { flex-wrap: wrap; flex: 1 1 100%; gap: 8px; }
+    .hs-secondary-row { flex: 1 1 100%; gap: 8px; }
+    .hs-cat-select { flex: 0 1 128px; }
+    .hs-keyword-wrap { flex: 1 1 140px; }
+    .hs-search-btn { flex: 1 1 100%; height: 46px; font-size: 14px; }
+    .hs-location-select { flex: 1 1 auto; }
+    .hs-adv-toggle { flex: 0 0 auto; }
+    /* One consistent control height/radius across the whole card. */
+    .hs-select-wrap select, .hs-keyword-wrap input, .hs-adv-toggle { height: 44px; border-radius: 10px; }
+    .hs-select-wrap select { padding-left: 32px; padding-right: 26px; font-size: 13px; }
+    .hs-keyword-wrap input { font-size: 13px; padding-left: 34px; }
+    .hs-select-icon { left: 10px; }
+    .hs-select-chevron { right: 8px; }
+
+    /* ---- Category shortcuts ----
+       Already a hidden-scrollbar scroller; what looked broken was a tile sliced in half at
+       the right edge. Scroll snapping lands each swipe on a whole tile, and the trailing
+       padding lets the last one clear the card edge. */
+    .hs-cat-shortcuts {
+      margin: 12px -12px 0; padding: 12px 12px 2px;
+      gap: 4px; scroll-snap-type: x mandatory; scroll-padding-left: 12px; overscroll-behavior-x: contain;
+      /* A tile sliced flat at the card edge reads as broken; fading the last 22px makes the
+         same overflow read as "swipe for more". Purely visual — the tile is still fully
+         scrollable to, and scroll-snap lands each swipe on a whole tile. */
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+    }
+    .hs-cat-shortcut { scroll-snap-align: start; width: 68px; padding: 5px 2px; gap: 3px; font-size: 10.5px; }
+    .hs-cs-icon { width: 28px; height: 28px; }
+    /* Trailing spacer so the final tile can scroll fully clear of the card's right edge. */
+    .hs-cat-shortcuts::after { content: ''; flex: 0 0 6px; }
+
+    /* ---- Hero heading ----
+       Same wording and the same italic-blue TP Property emphasis, one step smaller with
+       balanced wrapping so it no longer breaks after a single word. */
+    h1.hero-compact-title { font-size: 17.5px; line-height: 1.25; margin-bottom: 3px; text-wrap: balance; }
+    .hero-compact-sub { font-size: 12.5px; }
+
+    /* ---- Listing stats ----
+       The inline "N зар · N орон сууц · …" run wrapped mid-phrase at phone widths. On
+       mobile only, the same four items become a 2x2 grid with the count above its label —
+       no bullet separators, no reflow, and a shorter card than the wrapped version. */
+    .home-info-strip-text { min-width: 0; }
+    .home-info-stats-inline {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; width: 100%;
+      font-size: 11px;
+    }
+    .his-item {
+      display: flex; flex-direction: column; white-space: normal;
+      min-width: 0; line-height: 1.25; color: var(--ink-3);
+    }
+    .his-item strong { font-size: 18px; line-height: 1.1; }
+    .his-item:not(:first-child)::before { content: none; }
+  }
+
+  /* 320-375px: the two fields still share a line, just on tighter bases — stacking them
+     would cost another 52px of card height for no gain in legibility. */
+  @media (max-width: 380px) {
+    .hero, section { padding-left: 14px; padding-right: 14px; }
+    .hs-cat-select { flex: 0 1 112px; }
+    .hs-keyword-wrap { flex: 1 1 118px; }
+    .hs-select-wrap select { padding-left: 30px; padding-right: 24px; font-size: 12.5px; }
+    .hs-keyword-wrap input { font-size: 12.5px; }
+    /* Trimming the filter button is what gives "Бүх байршил" enough room to render in
+       full instead of ellipsing to "Бүх байр…" on a 320px screen. */
+    .hs-adv-toggle { padding: 0 10px; font-size: 12px; gap: 4px; }
+    .hs-location-select { flex: 1 1 58%; }
+    .his-item strong { font-size: 17px; }
+  }
+
   /* ============ MOBILE BOTTOM NAV ============ */
   .mobile-sticky-call {
     display: none;
@@ -4034,6 +4202,16 @@
     position: relative;
   }
   .mbn-btn.active, .mbn-btn:active { color: var(--primary); }
+  /* The active tab was previously only a colour change on a 9px uppercase label — barely
+     readable as "you are here". A brand-blue rule across the top of the tab plus a bolder
+     icon stroke makes the current tab unmistakable without adding chrome. */
+  .mbn-btn.active::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary);
+  }
+  .mbn-btn.active svg { stroke-width: 2.4; }
+  /* .mbn-add carries its own blue circle, so the rule above would double up on it. */
+  .mbn-btn.mbn-add::before { content: none; }
   .mbn-btn svg { flex-shrink: 0; }
   .mbn-fav-badge {
     position: absolute; top: 4px; right: calc(50% - 16px);
@@ -4044,8 +4222,15 @@
   }
   @media (max-width: 768px) {
     .mobile-bottom-nav { display: block; }
-    body { padding-bottom: 58px; }
-    #pwaBanner { bottom: 68px; }
+    /* 58px is the bar itself; the inset is the home-indicator strip the bar pads itself
+       with, which the old flat 58px did not account for — on an iPhone that left the last
+       ~34px of page content sitting underneath the bar. */
+    /* 58px bar + 1px top border + 5px of breathing room, so the last line of page content
+       clears the bar instead of ending flush against its border. The inset is the home-
+       indicator strip the bar pads itself with, which the old flat 58px never accounted
+       for — on an iPhone that left ~34px of content sitting underneath the bar. */
+    body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    #pwaBanner { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
   }
 
   /* ============ AUTH MODAL ============ */

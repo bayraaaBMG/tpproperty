@@ -373,6 +373,7 @@
     document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
     const activeLink = document.querySelector(`.nav-links a[onclick*="'${target}'"]`);
     if (activeLink) activeLink.classList.add('active');
+    syncMobileBottomNav(target);
     window.scrollTo(0, 0);
     // The compact admin-only chrome (see css .admin-mode rules) only ever applies while
     // guardAdminRoute() below confirms access — leaving /admin for any other page always
@@ -382,6 +383,31 @@
     if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()
         && typeof renderAdminDashboard === 'function') renderAdminDashboard();
+  }
+
+  // The mobile bottom nav has always had a styled .active state that nothing ever set, so
+  // no tab was ever highlighted. Only the tabs that actually correspond to a page are
+  // mapped — "Хадгалсан" opens a panel rather than navigating, so it never sticks on.
+  const MBN_PAGE_MAP = {
+    home: 'mbn-home',
+    listings: 'mbn-listings',
+    dashboard: 'mbn-me',
+    'my-listings': 'mbn-me'
+  };
+  // The bottom nav's markup sits AFTER init.js in index.html, so the router's first
+  // showPage() call runs before those buttons exist — without this re-sync the very first
+  // page a visitor lands on would show no highlighted tab at all until they navigated.
+  let _currentPageId = 'home';
+  document.addEventListener('DOMContentLoaded', function() { syncMobileBottomNav(_currentPageId); });
+  function syncMobileBottomNav(target) {
+    _currentPageId = target;
+    document.querySelectorAll('.mbn-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(MBN_PAGE_MAP[target] || '');
+    if (btn) {
+      btn.classList.add('active');
+      btn.setAttribute('aria-current', 'page');
+    }
+    document.querySelectorAll('.mbn-btn:not(.active)').forEach(b => b.removeAttribute('aria-current'));
   }
 
   function scrollToSection(id) {

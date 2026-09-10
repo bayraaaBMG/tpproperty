@@ -33,10 +33,10 @@
 <body>
 
 <!-- ============ BETA BAR ============ -->
-<div id="betaBar" style="background:#1E5BFF;color:#fff;font-family:'Manrope',sans-serif;font-size:13px;font-weight:500;text-align:center;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;z-index:200;">
-  <span style="background:rgba(255,255,255,0.2);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;letter-spacing:.5px;">BETA</span>
-  <span>Туршилтын хувилбар — дата болон нөхцөлүүд demo горимд байна</span>
-  <button onclick="document.getElementById('betaBar').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;line-height:1;padding:0;position:absolute;right:16px;" aria-label="Хаах">✕</button>
+<div id="betaBar" class="beta-bar">
+  <span class="beta-bar-badge">BETA</span>
+  <span class="beta-bar-text">Туршилтын хувилбар — дата болон нөхцөлүүд demo горимд байна</span>
+  <button class="beta-bar-close" onclick="document.getElementById('betaBar').style.display='none'" aria-label="Хаах">✕</button>
 </div>
 
 <!-- ============ EMAIL VERIFY BANNER ============ -->
