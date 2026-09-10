@@ -120,7 +120,7 @@
     if (d.areaMax && document.getElementById('fAreaMax')) document.getElementById('fAreaMax').value = d.areaMax;
     if (d.rooms && document.getElementById('fRooms')) document.getElementById('fRooms').value = d.rooms;
     if (d.keyword) { searchText = d.keyword; const f = document.getElementById('fSearch'); if(f) f.value = d.keyword; }
-    if (d.category) { currentCat = d.category; document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === d.category)); }
+    if (d.category) setSearchCategory(d.category);
     if (d.toggles) {
       activeFilterToggles = d.toggles;
       document.querySelectorAll('.filter-toggle').forEach(t => t.classList.toggle('active', activeFilterToggles.includes(t.dataset.ftoggle)));

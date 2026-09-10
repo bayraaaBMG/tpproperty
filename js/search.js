@@ -19,8 +19,7 @@
     // Sync onto the real Listings-page filter panel, then let getFilteredListings()
     // (filters-advanced.js) do the actual filtering — same pattern the category-tile
     // shortcuts elsewhere on the home page already use.
-    currentCat = cat;
-    document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === cat));
+    setSearchCategory(cat);
 
     const fDistrict = document.getElementById('fDistrict');
     if (fDistrict) fDistrict.value = district;

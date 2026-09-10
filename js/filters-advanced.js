@@ -353,8 +353,7 @@
   function searchByDistrict(district) {
     if (document.getElementById('fDistrict')) document.getElementById('fDistrict').value = district;
     // Reset category to all
-    currentCat = 'all';
-    document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === 'all'));
+    setSearchCategory('all');
     const results = getFilteredListings();
     renderListings(results);
     updateFilterCount();
@@ -374,8 +373,14 @@
     areaFilter = null;
     if (radiusCircle && radiusMap) { radiusMap.removeLayer(radiusCircle); radiusCircle = null; }
     if (radiusMarker && radiusMap) { radiusMap.removeLayer(radiusMarker); radiusMarker = null; }
-    currentCat = 'all';
-    document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === 'all'));
+    setSearchCategory('all');
+    // The home search bar's own fields are part of "all filters" too — leaving the
+    // keyword box populated after a reset meant the next category tile tap immediately
+    // re-applied the keyword the user had just cleared.
+    const hKeyword = document.getElementById('hSearchKeyword');
+    if (hKeyword) hKeyword.value = '';
+    const hDistrict = document.getElementById('hSearchDistrict');
+    if (hDistrict) hDistrict.value = 'all';
     const sel = document.getElementById('sortSelect');
     if (sel) sel.value = 'default';
     currentSort = 'default';

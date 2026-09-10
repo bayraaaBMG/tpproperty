@@ -356,8 +356,7 @@
   // already used everywhere else this state is set (home.js, search.js, saved-searches.js).
   document.querySelectorAll('.filter-pill[data-cat]').forEach(t => {
     t.addEventListener('click', () => {
-      currentCat = t.dataset.cat;
-      document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === currentCat));
+      setSearchCategory(t.dataset.cat);
       applyListingFilter();
     });
   });

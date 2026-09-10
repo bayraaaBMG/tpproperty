@@ -147,13 +147,24 @@
   // Shared by every home-category tile: jump to Listings pre-filtered to the tile's
   // bucket (fine-grained propertyType tiles land on their parent bucket — see the note
   // on renderHomeCategoryCounts above).
+  // The category shortcut tiles under the home search bar. setSearchCategory() also
+  // writes the choice back into the Ангилал <select>, without which the tile's category
+  // was thrown away by the very next Хайх press (the select still read "Ангилал", and
+  // performSearch takes the select as the source of truth).
   function goHomeCategory(cat) {
+    setSearchCategory(cat);
+    // Read the keyword box rather than trusting the module-level `searchText`. The two
+    // drift apart the moment the user edits the box without pressing Хайх, and the tile
+    // would then silently filter by a keyword that is no longer anywhere on screen — an
+    // "Орон сууц" tap returning 2 of 8 listings with nothing to explain why. Reading the
+    // live input also means an empty box shows the whole category, which is what tapping
+    // a category tile should do.
+    const keyword = (document.getElementById('hSearchKeyword')?.value || '').trim();
+    searchText = keyword;
+    const fSearch = document.getElementById('fSearch');
+    if (fSearch) fSearch.value = keyword;
     showPage('listings');
-    setTimeout(() => {
-      currentCat = cat;
-      document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === cat));
-      applyListingFilter();
-    }, 100);
+    setTimeout(() => { applyListingFilter(); }, 100);
   }
 
   // ===== SITE-FACING ADVERTISING PLACEMENTS =====

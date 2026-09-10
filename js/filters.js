@@ -3,6 +3,36 @@
   let currentSort = 'default';
   let searchText = '';
 
+  // The one place that writes the chosen category. Three separate surfaces pick a
+  // category — the home search bar's Ангилал <select>, the category shortcut tiles
+  // under it, and the Listings page's .filter-pill rows — and each of them used to set
+  // `currentCat` and repaint the pills on its own, with nothing keeping the <select> in
+  // step. That is what made the dropdown look broken: choosing a category on one surface
+  // left the others displaying something else, and the next Хайх press read the stale
+  // <select> value and silently overwrote the user's actual choice.
+  // Slugs are the shared contract here: 'all' | 'apartment' | 'house' | 'land' |
+  // 'office' | 'rent' — the <option> values in index.html, the data-cat pill values, and
+  // listing.cat (data.js maps it straight from the Firestore `category` field, which
+  // my-listings.js writes as propertyTypeBucket()/'rent') all use exactly these.
+  function setSearchCategory(cat) {
+    const c = cat || 'all';
+    currentCat = c;
+    const sel = document.getElementById('hSearchType');
+    if (sel && sel.value !== c) sel.value = c;
+    document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === c));
+  }
+
+  // Fired by the Ангилал <select>'s change event (index.html). Without this the select
+  // was inert until Хайх was pressed: currentCat, the filter pills and the active-filter
+  // tags all still said "Бүгд" while the control on screen said "Түрээс".
+  function onHomeCategoryChange() {
+    setSearchCategory(document.getElementById('hSearchType')?.value || 'all');
+    // Keep the Listings page's tag row/count honest even though it isn't on screen yet,
+    // so it's already correct the moment Хайх navigates there.
+    if (typeof renderFilterTags === 'function') renderFilterTags();
+    if (typeof updateFilterCount === 'function') updateFilterCount();
+  }
+
   function applyListingFilter() {
     const filtered = getFilteredListings();
     renderListings(filtered);
@@ -14,7 +44,7 @@
   function clearFilterTag(type, val) {
     if (type === 'district') { const el=document.getElementById('fDistrict'); if(el)el.value='all'; }
     else if (type === 'search') { searchText=''; const f=document.getElementById('fSearch'); if(f)f.value=''; }
-    else if (type === 'cat') { currentCat='all'; document.querySelectorAll('.filter-pill[data-cat]').forEach(x=>x.classList.toggle('active',x.dataset.cat==='all')); }
+    else if (type === 'cat') { setSearchCategory('all'); }
     else if (type === 'toggle') { const i=activeFilterToggles.indexOf(val); if(i>-1)activeFilterToggles.splice(i,1); document.querySelectorAll('.filter-toggle').forEach(el=>el.classList.toggle('active',activeFilterToggles.includes(el.dataset.ftoggle))); }
     else if (type === 'priceMin') { const el=document.getElementById('fPriceMin'); if(el)el.value=''; }
     else if (type === 'priceMax') { const el=document.getElementById('fPriceMax'); if(el)el.value=''; }
