@@ -112,46 +112,6 @@
   }
   html { overflow-x: hidden; }
   .display { font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; }
-  /* ============ BETA BAR ============ */
-  /* Lived as inline styles on #betaBar until now, which no media query could override —
-     which is why it stayed a two-line, 56px-tall block on every phone. The close button is
-     absolutely positioned, so the bar needs right padding wider than the button or the text
-     runs underneath it. safe-area-inset-top matters only in installed-PWA standalone mode,
-     where this bar is the topmost element on screen. */
-  .beta-bar {
-    background: #1E5BFF; color: #fff; font-family: 'Manrope', sans-serif;
-    font-size: 13px; font-weight: 500; text-align: center; line-height: 1.35;
-    padding: 8px 44px; padding-top: calc(8px + env(safe-area-inset-top, 0px));
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    position: relative; z-index: 200;
-  }
-  .beta-bar-badge {
-    background: rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 8px;
-    font-size: 11px; font-weight: 700; letter-spacing: .5px; flex-shrink: 0;
-  }
-  .beta-bar-close {
-    background: none; border: none; color: rgba(255,255,255,0.75); cursor: pointer;
-    font-size: 16px; line-height: 1; padding: 0; position: absolute;
-    right: 10px; top: calc(50% + env(safe-area-inset-top, 0px) / 2); transform: translateY(-50%);
-    width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px;
-  }
-  .beta-bar-close:hover { color: #fff; background: rgba(255,255,255,0.14); }
-  @media (max-width: 640px) {
-    /* One line at every phone width: smaller type, tighter padding, and the badge/text gap
-       closed up. 12px/1.3 fits the full sentence on one line down to 320px. */
-    .beta-bar {
-      font-size: 11px; gap: 6px; line-height: 1.28;
-      padding: 5px 36px 5px 10px; padding-top: calc(5px + env(safe-area-inset-top, 0px));
-      text-align: left;
-    }
-    .beta-bar-badge { font-size: 9.5px; padding: 2px 6px; }
-    .beta-bar-text { min-width: 0; }
-    .beta-bar-close { right: 4px; width: 30px; height: 30px; font-size: 14px; }
-  }
-  @media (max-width: 360px) {
-    .beta-bar { font-size: 10.5px; padding-left: 8px; padding-right: 34px; }
-  }
-
   /* ============ NAV ============ */
   .nav {
     position: sticky; top: 0; z-index: 100;
@@ -1369,7 +1329,6 @@
      body.admin-mode below (toggled only once guardAdminRoute() actually passes, in
      js/permissions.js) and #adminHeaderBar (js/admin.js renderAdminHeaderBar()). */
   body.admin-mode nav.nav,
-  body.admin-mode #betaBar,
   body.admin-mode #emailVerifyBanner,
   body.admin-mode footer.footer,
   body.admin-mode #pwaBanner,
