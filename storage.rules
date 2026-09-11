@@ -2,17 +2,44 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Who may author listing content at all. firestore.rules gates listings/{id} create
+    // on isApprovedAgent() && !isBlocked(); this mirrors that same gate for the bucket, so
+    // the two halves of "publish a listing" cannot disagree. Without it, any account that
+    // could sign up — including one an admin had blocked — could upload unlimited 12MB
+    // images into its own folder and serve them from the project's public bucket, with no
+    // listing and no moderation anywhere in the picture. Cross-service reads into Firestore
+    // are the same mechanism deal-documents below already uses; "(default)" is the correct
+    // literal for this project's single unnamed database.
+    function storageUserDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function isStorageOwner() {
+      return request.auth != null && request.auth.token.email == 'bbayraaa20@gmail.com';
+    }
+    function isApprovedUploader() {
+      return request.auth != null && (
+        isStorageOwner() ||
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+          && storageUserDoc().get('blocked', false) == false
+          && (storageUserDoc().get('agentActive', false) == true
+              || storageUserDoc().get('role', 'user') == 'admin'))
+      );
+    }
+
     // Listing photos — path is scoped by the uploader's own uid, mirroring how
     // firestore.rules scopes every listing write to request.auth.uid == ownerId.
     // Public read: listing photos are shown to logged-out visitors on the public
-    // site (same as `allow read: if true` on listings/{listingId} in Firestore),
-    // but only the owner can ever write into their own folder, and only real
-    // images under 12MB — matching the client-side size guard in my-listings.js.
+    // site, but only an approved, unblocked agent (or admin/owner) can write into
+    // their own folder, and only real images under 12MB — matching the client-side
+    // size guard in my-listings.js.
     match /listing-images/{uid}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid
+                   && isApprovedUploader()
                    && request.resource.size < 12 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      // Delete stays scoped to the folder's owner without the agent check: an agent whose
+      // access was later revoked must still be able to clean up their own old uploads.
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 

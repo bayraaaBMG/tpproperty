@@ -64,10 +64,30 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/agentInvites/$(request.auth.token.email))
       );
 
-      // Self-update: every field is free to edit except `role`, which must stay exactly what
-      // it already is — a signed-in user can never grant themselves admin (or owner) this way.
+      // Self-update: profile fields only. Every field that grants privilege, marks
+      // verification, or records a moderation decision must come back byte-identical.
+      //
+      // This used to pin `role` alone, which was not enough by a wide margin: the same
+      // write path let any account set agentActive:true on itself (becoming an approved
+      // agent, and with it the right to publish listings/projects and create CRM records),
+      // set blocked:false on itself (undoing an admin block outright), or set
+      // sellerVerified/phoneVerified/verifiedPhone:true to paint trust badges it had not
+      // earned. Each of those is now immutable on this path; the only ways they change are
+      // the admin/owner rules below (role, blocked), the invite-checked create rule above
+      // (agentActive), and an admin action (the verification flags — nothing client-side
+      // writes users/{uid}.verifiedPhone at all today, see js/dashboard.js).
+      //
+      // `.get(field, default)` on both sides, not `resource.data.field`: a doc that simply
+      // has never carried the field would otherwise make the whole rule error out and deny
+      // every legitimate profile edit.
       allow update: if isSignedIn() && request.auth.uid == uid
-                    && request.resource.data.role == resource.data.role;
+                    && request.resource.data.get('role', 'user') == resource.data.get('role', 'user')
+                    && request.resource.data.get('agentActive', false) == resource.data.get('agentActive', false)
+                    && request.resource.data.get('blocked', false) == resource.data.get('blocked', false)
+                    && request.resource.data.get('sellerVerified', false) == resource.data.get('sellerVerified', false)
+                    && request.resource.data.get('phoneVerified', false) == resource.data.get('phoneVerified', false)
+                    && request.resource.data.get('verifiedPhone', false) == resource.data.get('verifiedPhone', false)
+                    && request.resource.data.get('listingVerified', false) == resource.data.get('listingVerified', false);
 
       // Owner self-heal: the create rule above only ever runs once, the moment a profile doc
       // is first created — an owner account whose doc already existed before this role system
@@ -133,16 +153,55 @@ service cloud.firestore {
     // in data.js), so this field is what actually gates visibility — not a separate
     // "published" flag.
     match /listings/{listingId} {
-      allow read: if true;
+      // `allow read: if true` published EVERY listing to anonymous visitors regardless of
+      // status — pending submissions awaiting review, rejected ones (together with the
+      // moderator's rejectionReason), expired ones, and sold/rented history, all of which
+      // carry the seller's name, phone and address. Only `active` is public now; an owner
+      // still sees their own listings in any status, and admin/owner see everything.
+      //
+      // Query shape matters as much as the rule: Firestore fails an entire list() whose
+      // results it cannot prove the rule allows, so each of the app's queries has to land
+      // on exactly one of these branches. They do — the public feed filters
+      // status=='active' (js/data.js), "my listings" filters ownerId==uid (js/auth.js),
+      // and every unfiltered/by-status query is admin-only (js/admin.js). Verified against
+      // the emulator, list() and get() both.
+      //
+      // Written as a plain `resource.data.status` comparison rather than
+      // `resource.data.get('status', ...)` ON PURPOSE, and this is not a style choice: the
+      // query analyser has to statically match this condition against a query's `where`
+      // filters to decide whether a list() is safe, and it cannot see through the get()
+      // helper. With get() the emulator ALLOWED an unfiltered anonymous list and handed
+      // back pending and rejected documents; with the direct comparison the same query is
+      // denied. A listing that somehow carries no `status` at all makes this branch error,
+      // which denies — the safe direction, and every writer in the app sets the field.
+      allow read: if resource.data.status == 'active'
+                  || (isSignedIn() && resource.data.ownerId == request.auth.uid)
+                  || isAdminOrOwner();
 
       // A brand-new listing can't already be admin-verified or start out publicly visible —
       // otherwise a malicious owner could just set listingVerified/status themselves. Blocked
       // users can't create listings at all. Only an approved agent (or admin/owner) may author
       // a listing — a merely-signed-in account with no agentActive flag cannot.
+      // The three verification flags are what the public card renders its trust badges
+      // from, and all three used to be plain client-supplied booleans: my-listings.js
+      // computes them in the browser, so a hand-rolled write could simply assert
+      // sellerVerified/phoneVerified true. They are now bound to claims the Firebase ID
+      // token itself carries, which the client cannot forge:
+      //   sellerVerified -> request.auth.token.email_verified
+      //   phoneVerified  -> may only be true if the token actually carries a phone_number
+      //   listingVerified-> false at create; only the admin/owner moderation rule sets it
+      // This keeps the badges working for genuinely verified accounts (the client already
+      // computes exactly these values) while making a spoofed payload fail server-side.
+      function verificationFlagsHonest() {
+        return request.resource.data.get('sellerVerified', false) == request.auth.token.get('email_verified', false)
+            && (request.resource.data.get('phoneVerified', false) == false
+                || request.auth.token.get('phone_number', '') != '');
+      }
       allow create: if isSignedIn()
                     && isApprovedAgent()
                     && request.resource.data.ownerId == request.auth.uid
                     && request.resource.data.get('listingVerified', false) == false
+                    && verificationFlagsHonest()
                     && request.resource.data.get('status', 'pending') == 'pending'
                     && !isBlocked();
 
@@ -163,6 +222,9 @@ service cloud.firestore {
                     && !isBlocked()
                     && !(request.resource.data.get('listingVerified', false) == true
                          && resource.data.get('listingVerified', false) != true)
+                    // Same token binding as create — an edit was otherwise a second, wide
+                    // open door to setting sellerVerified/phoneVerified on an existing doc.
+                    && verificationFlagsHonest()
                     && request.resource.data.get('reportCount', 0) == resource.data.get('reportCount', 0)
                     && (
                          request.resource.data.get('status', 'pending') == resource.data.get('status', 'pending') ||
