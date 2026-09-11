@@ -45,6 +45,17 @@
        regardless of theme, exactly as they are today. */
     --ink-fixed: #0A1628;
     --ink-2-fixed: #112240;
+
+    /* ===== ONE PAGE GRID FOR THE WHOLE SITE =====
+       Every section's inner wrapper, plus the header and footer bars, resolves its left and
+       right edge from these two values, so all of them land on the same vertical line at
+       every viewport width. Before this there were two competing widths: 1400px for the
+       home hero/search/listings wrappers and 1320px for .nav-inner, .section-inner,
+       .banks-inner and .footer-inner — which is why the header sat up to 72px inside the
+       content below it, and why #banks/#features/footer were off the same line ON the home
+       page too. Change the grid in one place here, not per component. */
+    --page-max: 1400px;
+    --page-pad: 32px;
   }
 
   /* ===== DARK THEME ===== */
@@ -144,8 +155,18 @@
     border-bottom: 1px solid var(--line);
   }
   .nav-inner {
-    max-width: 1320px; margin: 0 auto; padding: 18px 32px;
-    display: flex; align-items: center; justify-content: space-between; gap: 32px;
+    /* The header keeps its gutter as padding INSIDE the bar, while every section keeps its
+       gutter as padding OUTSIDE the inner wrapper. So to put the two on one line this box
+       has to be the content width plus both gutters — then its padding edge lands exactly
+       where a section's inner wrapper starts. Matching --page-max alone would still leave
+       the logo one gutter (32px) too far in. */
+    max-width: calc(var(--page-max) + var(--page-pad) * 2); margin: 0 auto;
+    padding: 18px var(--page-pad);
+    display: flex; align-items: center; justify-content: space-between;
+    /* Was a flat 32px, which at ~1170px wide (signed in, so the avatar and "Зар нэмэх" are
+       both present) squeezed the link row hard enough that "Зар хайх" and "Шинэ орон сууц"
+       wrapped onto two lines and made the bar taller. Scales with the viewport instead. */
+    gap: clamp(12px, 1.8vw, 32px);
   }
   .logo { display: flex; align-items: center; cursor: pointer; flex-shrink: 0; min-width: 0; }
   /* Horizontal wordmark carries the brand name itself, so there's no separate logo text
@@ -167,10 +188,15 @@
   .nav-links a {
     color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 14.5px;
     padding: 8px 14px; border-radius: 8px; transition: all 0.2s;
-    cursor: pointer;
+    cursor: pointer; white-space: nowrap;
   }
   .nav-links a:hover, .nav-links a.active { background: var(--primary-soft); color: var(--primary); }
   .nav-actions { display: flex; gap: 10px; align-items: center; }
+  /* "Зар нэмэх" is a 2-word label in a button narrow enough to wrap it, which made the
+     button 63px tall and the whole bar 99px — the header grew a second row for one button.
+     Nothing in this row should ever wrap; the row is sized by the widest control, not by
+     text reflow. */
+  .nav-actions .btn { white-space: nowrap; }
   .btn {
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
     padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px;
@@ -232,6 +258,22 @@
   .mobile-menu a { display: block; padding: 14px; color: var(--ink); text-decoration: none; font-weight: 500; border-radius: 8px; }
   .mobile-menu a:hover { background: var(--paper-2); }
 
+  /* Laptop band: the header's five groups (logo / links / icons / avatar / "Зар нэмэх")
+     add up to more than the content width once a user is signed in, so between the point
+     where the link row appears (1024px) and the point where the grid stops growing
+     (--page-max + gutters) everything is scaled down proportionally rather than letting
+     one group wrap or spill past the right-hand alignment line. Measured at 1172px signed
+     in: the row needed 151px more than it had. */
+  @media (min-width: 1025px) and (max-width: 1400px) {
+    .nav-inner { gap: clamp(10px, 1vw, 20px); }
+    .logo-wordmark { height: 26px; max-width: 210px; }
+    .nav-links { gap: 2px; }
+    .nav-links a { padding: 8px 9px; font-size: 13.5px; }
+    .nav-actions { gap: 6px; }
+    .nav-actions .notif-trigger { width: 38px; height: 38px; }
+    .nav-actions .btn { padding: 9px 13px; font-size: 13.5px; }
+  }
+
   /* ============ HERO ============ */
   .hero {
     position: relative; padding: 80px 32px 100px;
@@ -249,7 +291,7 @@
     pointer-events: none;
   }
   .hero-grid {
-    max-width: 1320px; margin: 0 auto; position: relative; z-index: 2;
+    max-width: var(--page-max); margin: 0 auto; position: relative; z-index: 2;
     display: grid; grid-template-columns: 1.1fr 1fr; gap: 60px; align-items: center;
   }
   .hero-tag {
@@ -315,8 +357,8 @@
   .chip.active { background: var(--primary); color: white; }
 
   /* ============ HOME HERO (search-first, unegui.mn-style) ============ */
-  .hero-compact { padding: 16px 32px 20px; }
-  .hero-compact-inner { max-width: 1400px; margin: 0 auto; position: relative; z-index: 2; }
+  .hero-compact { padding: 16px var(--page-pad) 20px; }
+  .hero-compact-inner { max-width: var(--page-max); margin: 0 auto; position: relative; z-index: 2; }
   h1.hero-compact-title {
     font-size: 20px; margin-bottom: 4px; font-weight: 700;
   }
@@ -494,10 +536,10 @@
   @media (max-width: 640px) { .home-listings-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; } }
 
   /* ============ SECTION ============ */
-  section { padding: 100px 32px; display: none; }
+  section { padding: 100px var(--page-pad); display: none; }
   section.page-active { display: block; }
-  .section-inner { max-width: 1320px; margin: 0 auto; }
-  .home-content-inner { max-width: 1400px; margin: 0 auto; }
+  .section-inner { max-width: var(--page-max); margin: 0 auto; }
+  .home-content-inner { max-width: var(--page-max); margin: 0 auto; }
   .section-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 48px; gap: 32px; flex-wrap: wrap; }
   .section-eyebrow {
     display: inline-block; font-size: 12px; font-weight: 700; color: var(--primary);
@@ -509,7 +551,7 @@
 
   /* ============ LISTINGS ============ */
   /* ============ HOME PORTAL ============ */
-  .home-portal-section { background: var(--paper); padding: 24px 32px 64px; }
+  .home-portal-section { background: var(--paper); padding: 24px var(--page-pad) 64px; }
   .portal-cats {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 56px;
   }
@@ -1106,7 +1148,7 @@
   .best-tag { background: var(--accent); color: var(--ink); padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
 
   /* ============ AFFORDABILITY ============ */
-  .afford-section { background: var(--surface); padding: 100px 32px; }
+  .afford-section { background: var(--surface); padding: 100px var(--page-pad); }
   .afford-card {
     background: linear-gradient(135deg, var(--ink-fixed) 0%, var(--ink-2-fixed) 100%);
     border-radius: var(--radius-xl); padding: 56px;
@@ -1144,7 +1186,7 @@
   .afford-result-detail { font-size: 13px; color: rgba(255, 255, 255, 0.7); }
 
   /* ============ INVESTMENT FORECAST ============ */
-  .forecast-section { padding: 100px 32px; background: var(--paper-2); }
+  .forecast-section { padding: 100px var(--page-pad); background: var(--paper-2); }
   .forecast-card {
     background: var(--surface); border-radius: var(--radius-xl); padding: 48px;
     box-shadow: var(--shadow-md); border: 1px solid var(--line);
@@ -1190,8 +1232,8 @@
   .feature-card p { color: var(--ink-3); font-size: 14px; line-height: 1.6; }
 
   /* ============ BANKS STRIP ============ */
-  .banks-section { padding: 60px 32px; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .banks-inner { max-width: 1320px; margin: 0 auto; }
+  .banks-section { padding: 60px var(--page-pad); background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .banks-inner { max-width: var(--page-max); margin: 0 auto; }
   .banks-label { text-align: center; font-size: 12px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 28px; }
   .banks-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; align-items: center; }
   .bank-pill {
@@ -1204,8 +1246,8 @@
   .bp-name { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 
   /* ============ FOOTER ============ */
-  .footer { background: var(--ink-fixed); color: rgba(255, 255, 255, 0.6); padding: 80px 32px 40px; }
-  .footer-inner { max-width: 1320px; margin: 0 auto; }
+  .footer { background: var(--ink-fixed); color: rgba(255, 255, 255, 0.6); padding: 80px var(--page-pad) 40px; }
+  .footer-inner { max-width: var(--page-max); margin: 0 auto; }
   .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 56px; }
   .footer-logo { display: flex; align-items: center; margin-bottom: 14px; }
   /* The footer is permanently dark, so it uses the white-on-dark wordmark — which needs no
@@ -1991,7 +2033,7 @@
   }
 
   /* ============ BUILDING & ECONOMICS EDUCATION ============ */
-  .edu-section { padding: 100px 32px; background: var(--surface); }
+  .edu-section { padding: 100px var(--page-pad); background: var(--surface); }
   .edu-tabs {
     display: flex; gap: 6px; background: var(--paper-2); padding: 6px; border-radius: 14px;
     margin-bottom: 32px; max-width: 560px;
@@ -2121,7 +2163,7 @@
   }
 
   /* ============ FIRST-TIME BUYER GUIDE ============ */
-  .guide-section { padding: 100px 32px; background: var(--paper); position: relative; overflow: hidden; }
+  .guide-section { padding: 100px var(--page-pad); background: var(--paper); position: relative; overflow: hidden; }
   .guide-hero {
     background: linear-gradient(135deg, var(--ink-fixed) 0%, var(--ink-2-fixed) 100%);
     border-radius: 24px; padding: 40px; color: white; margin-bottom: 40px;
@@ -2653,7 +2695,7 @@
   }
 
   /* ============ SOCIAL FEED ============ */
-  .feed-section { padding: 100px 32px; background: var(--paper); }
+  .feed-section { padding: 100px var(--page-pad); background: var(--paper); }
   .feed-layout {
     display: grid; grid-template-columns: 260px 1fr 300px; gap: 28px;
     align-items: start;
@@ -2897,7 +2939,7 @@
   .notif-footer a { color: var(--primary); font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; }
 
   /* ============ SELLER DASHBOARD ============ */
-  .dash-section { padding: 100px 32px; background: var(--paper-2); }
+  .dash-section { padding: 100px var(--page-pad); background: var(--paper-2); }
   .dash-header-card {
     background: linear-gradient(135deg, var(--ink-fixed), var(--ink-2-fixed)); color: white;
     border-radius: 20px; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden;
@@ -3147,7 +3189,7 @@
   @media (max-width: 640px) { .newdev-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; } }
 
   /* ============ BUY vs RENT CALCULATOR ============ */
-  .compare-section { padding: 100px 32px; background: var(--surface); }
+  .compare-section { padding: 100px var(--page-pad); background: var(--surface); }
   .compare-card {
     background: var(--ink-fixed); color: white; border-radius: var(--radius-xl);
     padding: 48px; position: relative; overflow: hidden;
@@ -3247,7 +3289,7 @@
   .compare-row-val.loser { color: rgba(255, 255, 255, 0.4); }
 
   /* ============ DEMOGRAPHICS DASHBOARD ============ */
-  .demo-section { padding: 100px 32px; background: var(--paper); }
+  .demo-section { padding: 100px var(--page-pad); background: var(--paper); }
   .demo-intro {
     padding: 24px 28px; background: linear-gradient(135deg, var(--primary-soft), white);
     border-radius: 16px; margin-bottom: 32px;
@@ -3968,7 +4010,10 @@
     .modal-info-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 640px) {
-    .hero, section { padding-left: 20px; padding-right: 20px; }
+    /* One phone gutter for everything — .nav-inner, .hero-compact, section and .footer all
+       read it, so the same vertical line holds on mobile too. Vertical padding is untouched. */
+    :root { --page-pad: 16px; }
+    .hero, section { padding-left: var(--page-pad); padding-right: var(--page-pad); }
     .listings-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .features-grid { grid-template-columns: 1fr; }
     .footer-grid { grid-template-columns: 1fr; }
@@ -3995,7 +4040,7 @@
     /* Compact mobile header: the 42px circles at an 18px row padding made the bar 71px
        tall for what is really a logo and four icons. 38px circles on a 10px row keep the
        same icon size and hit area (see the ::after tap target below) at 55px total. */
-    .nav-inner { padding: 10px 14px; gap: 8px; }
+    .nav-inner { padding: 10px var(--page-pad); gap: 8px; }
     /* 8px here nets out to a 6px visual gap (each button carries an inline -2px margin),
        giving a 44px button pitch — exactly the size of the tap target below, so the
        targets sit edge to edge without overlapping into each other. */
@@ -4064,7 +4109,7 @@
        major sections" — nothing else about the sections changes. */
     section { padding-top: 40px; padding-bottom: 40px; }
     .section-head { margin-bottom: 24px; gap: 14px; }
-    .hero-compact { padding: 10px 14px 14px; }
+    .hero-compact { padding: 10px var(--page-pad) 14px; }
     .home-search-bar { padding: 12px 12px; }
     .home-info-strip { padding: 14px 14px; margin-top: 10px; gap: 12px; }
 
@@ -4133,7 +4178,8 @@
   /* 320-375px: the two fields still share a line, just on tighter bases — stacking them
      would cost another 52px of card height for no gain in legibility. */
   @media (max-width: 380px) {
-    .hero, section { padding-left: 14px; padding-right: 14px; }
+    :root { --page-pad: 14px; }
+    .hero, section { padding-left: var(--page-pad); padding-right: var(--page-pad); }
     .hs-cat-select { flex: 0 1 112px; }
     .hs-keyword-wrap { flex: 1 1 118px; }
     .hs-select-wrap select { padding-left: 30px; padding-right: 24px; font-size: 12.5px; }
