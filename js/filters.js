@@ -70,6 +70,10 @@
     const district = document.getElementById('fDistrict')?.value;
     if (district && district !== 'all') tags.push({ label: districtLabels2[district]||district, onclick: `clearFilterTag('district','${district}')` });
     const q = (searchText || document.getElementById('fSearch')?.value || '').trim();
+    // The only tag label that is free user text rather than a fixed dictionary string --
+    // it used to reach innerHTML unescaped below, so searching for `<img src=x onerror=...>`
+    // executed it. esc() is applied at the render site so every label is covered, not just
+    // this one.
     if (q) tags.push({ label: '"' + q + '"', onclick: `clearFilterTag('search','')` });
     if (currentCat && currentCat !== 'all') {
       const catLabels2 = {apartment:'Орон сууц',house:'Хаус',land:'Газар',office:'Оффис',rent:'Түрээс'};
@@ -101,7 +105,7 @@
     wrap.style.display = 'flex';
     wrap.innerHTML = tags.map(t => `
       <span class="active-filter-chip" onclick="${t.onclick}">
-        ${t.label}
+        ${esc(t.label)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </span>
     `).join('') + `<button type="button" class="active-filter-clear-all" onclick="resetFilters()">Бүгдийг арилгах</button>`;

@@ -351,7 +351,7 @@
         <div class="modal-section">
           <h4>Floor plan</h4>
           <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px;">
-            ${p.floorPlans.map(fp => `<img src="${esc(fp)}" alt="Floor plan" style="width:100%; border-radius:10px; border:1px solid var(--line); display:block; cursor:zoom-in;" onclick="window.open('${esc(fp)}','_blank')" />`).join('')}
+            ${p.floorPlans.map(fp => `<img src="${esc(fp)}" alt="Floor plan" style="width:100%; border-radius:10px; border:1px solid var(--line); display:block; cursor:zoom-in;" onclick="openFloorPlan(this)" />`).join('')}
           </div>
         </div>
         ` : ''}
@@ -461,8 +461,32 @@
   }
   let addProjectState = defaultAddProjectState();
 
+  // Floor-plan images used to open via onclick="window.open('${esc(fp)}','_blank')". esc()
+  // is the wrong tool inside an inline handler: it turns `'` into `&#39;`, and the HTML
+  // parser decodes that back into a real quote BEFORE the JS is compiled, so a project
+  // author could close the string and append their own code (project content is
+  // user-submitted). Reading the already-parsed src off the element keeps the value out of
+  // any HTML/JS text context, and safeEmbedUrl() additionally refuses anything that isn't
+  // http(s) — a data:/javascript: src would otherwise be handed straight to window.open.
+  function openFloorPlan(img) {
+    if (!img) return;
+    const href = safeEmbedUrl(img.getAttribute('src') || '');
+    if (!href) return;
+    const w = window.open(href, '_blank', 'noopener,noreferrer');
+    if (w) w.opener = null;
+  }
+
   function openAddProject() {
     if (!currentUser) { showToast('Төсөл нэмэхийн тулд нэвтэрнэ үү'); openAuth(); return; }
+    // Mirrors the projects/{id} create rule (approved agent, not blocked) so an
+    // unauthorized account gets a clear message here instead of filling in the whole
+    // multi-step form and hitting permission-denied on the final save. The rule is the
+    // actual gate; this is only the courtesy check in front of it.
+    if (typeof isApprovedAgent === 'function' && !isApprovedAgent()) {
+      showToast('Төсөл нэмэхэд баталгаажсан агент эрх шаардлагатай');
+      return;
+    }
+    if (currentUser.blocked) { showToast('Таны бүртгэл түр хоригдсон байна'); return; }
     editingProjectId = null;
     addProjectState = defaultAddProjectState();
     addProjectState.company = currentUser.companyName || '';
@@ -1021,9 +1045,15 @@
 
     try {
       if (editingProjectId) {
-        await db.collection('projects').doc(editingProjectId).update(fsDoc);
+        // `status` belongs to moderation, not to the author. Re-sending 'active' on every
+        // edit would both fight the projects/{id} rule (which now pins status across an
+        // owner edit) and let an owner quietly undo an admin's hide by opening and saving
+        // the form. Dropped here so an edit only ever rewrites the project's own content.
+        const editDoc = Object.assign({}, fsDoc);
+        delete editDoc.status;
+        await db.collection('projects').doc(editingProjectId).update(editDoc);
         const idx = projects.findIndex(x => x.id === editingProjectId);
-        if (idx > -1) projects[idx] = Object.assign({}, projects[idx], fsDoc, { id: editingProjectId });
+        if (idx > -1) projects[idx] = Object.assign({}, projects[idx], editDoc, { id: editingProjectId });
       } else {
         fsDoc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         fsDoc.viewCount = 0; fsDoc.contactCount = 0;

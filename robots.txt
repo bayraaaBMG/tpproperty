@@ -1,0 +1,17 @@
+# TP Property — https://tpproperty.vercel.app/
+User-agent: *
+Allow: /
+
+# Signed-in-only areas. They are client-side routes behind Firebase Auth (and behind
+# firestore.rules server-side), so nothing here is reachable without credentials — these
+# lines just keep them out of the index and out of crawl budget.
+Disallow: /#admin
+Disallow: /#dashboard
+Disallow: /#my-listings
+Disallow: /#agent-crm
+
+# Not page content.
+Disallow: /scripts/
+Disallow: /sw.js
+
+Sitemap: https://tpproperty.vercel.app/sitemap.xml

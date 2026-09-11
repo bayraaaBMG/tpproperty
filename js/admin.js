@@ -850,8 +850,12 @@
   // deleted from the client. Full revocation (agentActive off + blocked) is the closest
   // equivalent: the person can no longer sign in to do anything meaningful, but their
   // historical listings and audit-log entries are preserved rather than orphaned/erased.
-  async function adminRevokeAgent(uid, name) {
+  async function adminRevokeAgent(uid) {
     if (!uid) return;
+    // Same reason as confirmGrantAdmin/confirmRevokeAdmin: the display name is
+    // user-controlled, so it is resolved here instead of being interpolated into the
+    // menu item's onclick attribute.
+    const name = adminUserNameByUid(uid);
     if (!confirm(`${name || 'Энэ агент'}-ийг бүрмөсөн цуцлах уу? Цаашид нэвтэрч зар нэмэх, засах боломжгүй болно.`)) return;
     try {
       await db.collection('users').doc(uid).set({ agentActive: false, blocked: true }, { merge: true });
@@ -975,10 +979,16 @@
     let primaryBtn = '';
     const menuActions = [];
     if (!isSelf && role !== 'owner') {
-      const nameJs = name.replace(/'/g, "\\'");
+      // `name` is a display name the user picks on their own profile (the users/{uid}
+      // self-update rule lets them write every field but `role`), so it is hostile input.
+      // Escaping only `'` for the JS string left two ways straight back out of this
+      // attribute: a double quote closes onclick= itself, and a trailing backslash eats the
+      // escape. esc() would be no fix either -- it turns `'` into `&#39;`, which the HTML
+      // parser decodes back into a real quote BEFORE the JS ever runs. Passing the uid
+      // alone and looking the name up at click time keeps user text out of the attribute.
       primaryBtn = role === 'admin'
-        ? `<button class="btn btn-ghost btn-danger" onclick="confirmRevokeAdmin('${u.uid}', '${nameJs}')">Admin эрх цуцлах</button>`
-        : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}', '${nameJs}')">Admin болгох</button>`;
+        ? `<button class="btn btn-ghost btn-danger" onclick="confirmRevokeAdmin('${u.uid}')">Admin эрх цуцлах</button>`
+        : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}')">Admin болгох</button>`;
       menuActions.push(u.blocked
         ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
         : { label: 'Блоклох', onclick: `adminBlockUser('${u.uid}')`, danger: true });
@@ -988,7 +998,7 @@
         menuActions.push(agentActive
           ? { label: 'Agent идэвхгүй болгох', onclick: `adminDeactivateAgent('${u.uid}')`, danger: true }
           : { label: 'Agent идэвхжүүлэх', onclick: `adminActivateAgent('${u.uid}')` });
-        menuActions.push({ label: 'Agent устгах', onclick: `adminRevokeAgent('${u.uid}', '${nameJs}')`, danger: true });
+        menuActions.push({ label: 'Agent устгах', onclick: `adminRevokeAgent('${u.uid}')`, danger: true });
       }
     }
     if (role === 'user') menuActions.push({ label: 'Дэлгэрэнгүй гүйцэтгэл', onclick: `openAgentPerformanceModal('${u.uid}')` });
@@ -1067,11 +1077,20 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function confirmGrantAdmin(uid, name) {
+  // Resolved here rather than threaded through the button's onclick attribute: the name is
+  // user-controlled text, and interpolating it into an inline handler was an XSS hole (see
+  // adminUserRow). confirm() renders as plain text, so the value is inert once it lands here.
+  function adminUserNameByUid(uid) {
+    const u = (_adminUsersCache || []).find(x => x.uid === uid);
+    return (u && (u.name || u.email)) || '';
+  }
+  function confirmGrantAdmin(uid) {
+    const name = adminUserNameByUid(uid);
     if (!confirm(`${name || 'Энэ хэрэглэгч'} хэрэглэгчид Admin эрх өгөх үү?`)) return;
     grantAdminRole(uid, name);
   }
-  function confirmRevokeAdmin(uid, name) {
+  function confirmRevokeAdmin(uid) {
+    const name = adminUserNameByUid(uid);
     if (!confirm(`${name || 'Энэ хэрэглэгч'}-ийн Admin эрхийг цуцлах уу?`)) return;
     revokeAdminRole(uid, name);
   }

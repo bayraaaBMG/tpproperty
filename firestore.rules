@@ -202,12 +202,30 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read: if true;
 
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      // Projects are publicly readable content, exactly like listings, so authoring one is
+      // gated exactly like authoring a listing: an approved agent (or admin/owner) who is
+      // not blocked. Previously this said only `isSignedIn()`, which meant ANY account that
+      // could sign up could publish to the public New Developments page, and a user an
+      // admin had blocked could keep publishing — neither matches the closed-brokerage
+      // model the listings rules enforce.
+      allow create: if isSignedIn() && isApprovedAgent() && !isBlocked()
+                    && request.resource.data.ownerId == request.auth.uid;
 
-      // Owner can edit/delete their own project; admin/owner can moderate (hide/edit/delete)
-      // any project the same way they moderate listings.
-      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Owner self-edit, with the same shape of guardrails the listings self-edit rule uses:
+      // ownerId can't be handed to someone else, `status` can't be moved at all (only the
+      // admin/owner moderation branch below does that — otherwise an owner could simply flip
+      // a project an admin had just hidden straight back to 'active'), and the two public
+      // counters can't be rewritten by the very account they measure.
+      allow update: if isSignedIn() && isApprovedAgent() && !isBlocked()
+                    && resource.data.ownerId == request.auth.uid
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && request.resource.data.get('status', 'active') == resource.data.get('status', 'active')
+                    && request.resource.data.get('viewCount', 0) == resource.data.get('viewCount', 0)
+                    && request.resource.data.get('contactCount', 0) == resource.data.get('contactCount', 0);
+
       allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Admin/owner moderate (hide/unhide/edit/delete) any project, same as for listings.
       allow update, delete: if isAdminOrOwner();
 
       // Anyone (including logged-out viewers) may bump viewCount by exactly 1, nothing else.

@@ -121,7 +121,20 @@
       }
       const loadMoreWrap = document.getElementById('loadMoreListingsWrap');
       if (loadMoreWrap) loadMoreWrap.style.display = _publicListingsExhausted ? 'none' : 'block';
-    } catch(e) {}
+    } catch(e) {
+      // This is the query the entire public site is built on. Swallowing it silently made
+      // a rules/network failure indistinguishable from "there are genuinely no listings":
+      // the page rendered its empty state, nothing reached the console, and there was no
+      // way to tell the two apart from a bug report. Log it, and stop the pager from
+      // advertising a next page that will never load.
+      console.error('loadPublicListings failed:', e.code, e.message);
+      _publicListingsExhausted = true;
+      const loadMoreWrap = document.getElementById('loadMoreListingsWrap');
+      if (loadMoreWrap) loadMoreWrap.style.display = 'none';
+      if (loadMore && typeof showToast === 'function') {
+        showToast('Зар ачаалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : ''));
+      }
+    }
   }
 
   async function loadMorePublicListings() {
