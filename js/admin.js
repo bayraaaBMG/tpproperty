@@ -36,7 +36,8 @@
     crm_delete_client: 'Харилцагч устгасан', crm_reassign_client: 'Agent сольсон',
     crm_stage_change: 'Pipeline шат солисон', crm_close_deal: 'Гэрээ хаасан',
     cms_org_edit: 'Байгууллагын мэдээлэл засварласан', cms_draft_save: 'Хуудас ноорог хадгалсан',
-    cms_publish: 'Хуудас нийтэлсэн', cms_restore: 'Хуудас сэргээсэн'
+    cms_publish: 'Хуудас нийтэлсэн', cms_restore: 'Хуудас сэргээсэн',
+    cms_theme_publish: 'Дизайн нийтэлсэн', cms_nav_save: 'Цэс засварласан'
   };
 
   let _adminSection = 'overview';

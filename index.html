@@ -92,12 +92,12 @@
       <img class="logo-square brand-dark" src="/zurag/tp-logo-white.png" alt="TP Property" />
     </a>
     <div class="nav-links">
-      <a onclick="showPage('listings')">Зар хайх</a>
-      <a onclick="showPage('rent')">Түрээс</a>
-      <a onclick="showPage('newdev')">Шинэ орон сууц</a>
-      <a onclick="showPage('calc')">Тооцоолуур</a>
-      <a onclick="showPage('resources')">Зөвлөгөө</a>
-      <a class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth()">Миний самбар</a>
+      <a data-nav-key="listings" onclick="showPage('listings')">Зар хайх</a>
+      <a data-nav-key="rent" onclick="showPage('rent')">Түрээс</a>
+      <a data-nav-key="newdev" onclick="showPage('newdev')">Шинэ орон сууц</a>
+      <a data-nav-key="calc" onclick="showPage('calc')">Тооцоолуур</a>
+      <a data-nav-key="resources" onclick="showPage('resources')">Зөвлөгөө</a>
+      <a data-nav-key="dashboard" class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth()">Миний самбар</a>
     </div>
     <div class="nav-actions">
       <button class="notif-trigger" id="themeToggleBtn" onclick="toggleTheme()" style="margin-right:-2px;" aria-label="Харанхуй горим руу шилжих">
@@ -178,13 +178,13 @@
     </div>
   </div>
   <div class="mobile-menu" id="mobileMenu">
-    <a onclick="showPage('listings'); toggleMobileMenu()">Зар хайх</a>
-    <a onclick="showPage('rent'); toggleMobileMenu()">Түрээс</a>
-    <a onclick="showPage('newdev'); toggleMobileMenu()">Шинэ орон сууц</a>
+    <a data-nav-key="listings" onclick="showPage('listings'); toggleMobileMenu()">Зар хайх</a>
+    <a data-nav-key="rent" onclick="showPage('rent'); toggleMobileMenu()">Түрээс</a>
+    <a data-nav-key="newdev" onclick="showPage('newdev'); toggleMobileMenu()">Шинэ орон сууц</a>
     <a onclick="showPage('compare'); toggleMobileMenu()">Авах vs Түрээслэх</a>
-    <a onclick="showPage('calc'); toggleMobileMenu()">Зээл тооцоолуур</a>
-    <a onclick="showPage('resources'); toggleMobileMenu()">Зөвлөгөө</a>
-    <a class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth(); toggleMobileMenu()">Миний самбар</a>
+    <a data-nav-key="calc" onclick="showPage('calc'); toggleMobileMenu()">Зээл тооцоолуур</a>
+    <a data-nav-key="resources" onclick="showPage('resources'); toggleMobileMenu()">Зөвлөгөө</a>
+    <a data-nav-key="dashboard" class="authed-cta" onclick="currentUser ? showPage('dashboard') : openAuth(); toggleMobileMenu()">Миний самбар</a>
   </div>
 </nav>
 

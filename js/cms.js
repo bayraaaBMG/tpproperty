@@ -33,14 +33,16 @@
                 fields: [ ['title', 'Гарчиг', 'text'], ['subtitle', 'Дэд гарчиг', 'textarea'],
                           ['buttonText', 'Товч 1 нэр', 'text'], ['buttonUrl', 'Товч 1 холбоос', 'url'],
                           ['button2Text', 'Товч 2 нэр', 'text'], ['button2Url', 'Товч 2 холбоос', 'url'],
-                          ['backgroundImage', 'Дэвсгэр зураг', 'image'] ] },
+                          ['backgroundType', 'Дэвсгэрийн төрөл', 'bgtype'],
+                          ['backgroundImage', 'Дэвсгэр зураг', 'image'],
+                          ['backgroundVideo', 'Дэвсгэр видео (YouTube/Vimeo/MP4)', 'url'] ] },
     banks:    { label: 'Хамтрагч банк, санхүү', kind: 'repeater', togglable: true,
                 itemFields: [ ['name', 'Нэр', 'text'], ['short', 'Товч (лого дээрх)', 'text'],
                               ['color', 'Лого өнгө', 'color'], ['url', 'Холбоос', 'url'] ] },
     features: { label: 'Онцлох давуу тал', kind: 'repeater', togglable: true,
                 itemFields: [ ['title', 'Гарчиг', 'text'], ['description', 'Тайлбар', 'textarea'] ] },
     text:     { label: 'Текст', kind: 'fields', togglable: true, addable: true,
-                fields: [ ['title', 'Гарчиг', 'text'], ['body', 'Текст', 'textarea'], ['align', 'Байрлал', 'align'] ] },
+                fields: [ ['title', 'Гарчиг', 'text'], ['bodyHtml', 'Текст', 'richtext'], ['align', 'Байрлал', 'align'] ] },
     cta:      { label: 'Уриалга (CTA)', kind: 'fields', togglable: true, addable: true,
                 fields: [ ['title', 'Гарчиг', 'text'], ['description', 'Тайлбар', 'textarea'],
                           ['buttonText', 'Товчны нэр', 'text'], ['buttonUrl', 'Товчны холбоос', 'url'] ] },
@@ -170,6 +172,57 @@
       if (/\.mp4($|\?)/i.test(u.pathname)) return { kind: 'video', src: safe };
       return null;
     } catch (e) { return null; }
+  }
+
+  // ---- Rich text: strict allowlist sanitizer ----
+  // Parses admin-entered HTML in an INERT document (DOMParser never runs scripts or fetches
+  // resources) and REBUILDS a fresh tree from an allowlist — the output contains only nodes
+  // we created, so no event handler, script, style, iframe or javascript: URL can survive.
+  const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, ul:1, ol:1, li:1, blockquote:1, a:1 };
+  const CMS_RT_ALIAS = { b: 'strong', i: 'em', strike: 'em', div: 'p' };            // normalise execCommand output
+  const CMS_RT_DROP = { script:1, style:1, iframe:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1, img:1 };
+  function cmsRtLinkHref(raw) {
+    const v = String(raw || '').trim();
+    if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(v)) return v;
+    return cmsSafeUrl(v);                                                            // http/https only
+  }
+  // Build a safe DocumentFragment from an HTML string.
+  function cmsRichFragment(html) {
+    const frag = document.createDocumentFragment();
+    if (!html || typeof html !== 'string') return frag;
+    let parsed;
+    try { parsed = new DOMParser().parseFromString(html, 'text/html'); } catch (e) { return frag; }
+    const walk = (srcNode, destParent) => {
+      srcNode.childNodes.forEach(node => {
+        if (node.nodeType === 3) { destParent.appendChild(document.createTextNode(node.nodeValue)); return; }   // text
+        if (node.nodeType !== 1) return;                                             // drop comments/others
+        let tag = node.tagName.toLowerCase();
+        if (CMS_RT_DROP[tag]) return;                                                // drop element AND its subtree
+        if (CMS_RT_ALIAS[tag]) tag = CMS_RT_ALIAS[tag];
+        if (!CMS_RT_TAGS[tag]) { walk(node, destParent); return; }                   // unknown tag: unwrap, keep children
+        const el = document.createElement(tag);
+        if (tag === 'a') {
+          const href = cmsRtLinkHref(node.getAttribute('href'));
+          if (!href) { walk(node, destParent); return; }                            // bad link: unwrap to text
+          el.setAttribute('href', href); el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer nofollow');
+        }
+        walk(node, el);
+        destParent.appendChild(el);
+      });
+    };
+    walk(parsed.body, frag);
+    return frag;
+  }
+  // Serialise sanitized HTML back to a string (for storage). Input is re-sanitized, so the
+  // returned string only ever contains allowlisted, clean markup.
+  function cmsSanitizeRichHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.appendChild(cmsRichFragment(html));
+    return tmp.innerHTML.slice(0, 20000);
+  }
+  function cmsRichIsEmpty(html) {
+    const tmp = document.createElement('div'); tmp.appendChild(cmsRichFragment(html));
+    return !(tmp.textContent || '').trim() && !tmp.querySelector('br, img, a, li');
   }
 
   // ===================================================================================
@@ -359,7 +412,11 @@
     if (s.type === 'text') {
       if (c.align) wrap.style.textAlign = ['left', 'center', 'right'].includes(c.align) ? c.align : 'left';
       if (c.title) { const h = document.createElement('h3'); h.className = 'cms-pub-title'; h.textContent = c.title; wrap.appendChild(h); }
-      if (c.body) { const p = document.createElement('p'); p.className = 'cms-pub-body'; p.textContent = c.body; wrap.appendChild(p); }
+      if (c.bodyHtml && !cmsRichIsEmpty(c.bodyHtml)) {
+        const rich = document.createElement('div'); rich.className = 'cms-pub-rich';
+        rich.appendChild(cmsRichFragment(c.bodyHtml));   // re-sanitized DOM nodes only
+        wrap.appendChild(rich);
+      } else if (c.body) { const p = document.createElement('p'); p.className = 'cms-pub-body'; p.textContent = c.body; wrap.appendChild(p); }
       return wrap;
     }
     if (s.type === 'cta') {
@@ -394,7 +451,26 @@
     if (s.type === 'hero') {
       wrap.classList.add('cms-pub-hero');
       const bg = cmsSafeUrl(c.backgroundImage);
+      const useVideo = c.backgroundType === 'video' && cmsVideoEmbed(c.backgroundVideo);
       if (bg) { wrap.classList.add('cms-pub-hero-bg'); wrap.style.backgroundImage = 'url("' + encodeURI(bg) + '")'; }
+      if (useVideo) {
+        wrap.classList.add('cms-pub-hero-bg', 'cms-pub-hero-video');
+        const vwrap = document.createElement('div'); vwrap.className = 'cms-pub-hero-vidwrap'; vwrap.setAttribute('aria-hidden', 'true');
+        if (useVideo.kind === 'video') {
+          const v = document.createElement('video'); v.src = useVideo.src; v.muted = true; v.autoplay = true; v.loop = true;
+          v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.setAttribute('loop', ''); v.setAttribute('preload', 'metadata');
+          if (bg) v.setAttribute('poster', encodeURI(bg));
+          v.onerror = function () { const w = this.closest('.cms-pub-hero-vidwrap'); if (w) w.style.display = 'none'; };
+          vwrap.appendChild(v);
+        } else {
+          const f = document.createElement('iframe');
+          const sep = useVideo.src.indexOf('?') === -1 ? '?' : '&';
+          f.src = useVideo.src + sep + 'autoplay=1&mute=1&loop=1&controls=0&playsinline=1&background=1';
+          f.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture'); f.setAttribute('title', 'Дэвсгэр видео'); f.setAttribute('tabindex', '-1'); f.setAttribute('loading', 'lazy');
+          vwrap.appendChild(f);
+        }
+        wrap.appendChild(vwrap);
+      }
       if (c.title) { const h = document.createElement('h1'); h.className = 'cms-pub-hero-title'; cmsRenderBrandTitle(h, String(c.title)); wrap.appendChild(h); }
       if (c.subtitle) { const p = document.createElement('p'); p.className = 'cms-pub-hero-sub'; p.textContent = c.subtitle; wrap.appendChild(p); }
       const hb = document.createElement('div'); hb.className = 'cms-pub-hero-btns';
@@ -404,7 +480,7 @@
       return wrap;
     }
     if (s.type === 'features') {
-      const items = Array.isArray(c.items) ? c.items : [];
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.visible !== false);
       if (!items.length) return null;
       const grid = document.createElement('div'); grid.className = 'cms-pub-features';
       items.forEach(it => {
@@ -417,7 +493,7 @@
       wrap.appendChild(grid); return wrap;
     }
     if (s.type === 'banks') {
-      const items = Array.isArray(c.items) ? c.items : [];
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.visible !== false);
       if (!items.length) return null;
       if (c.label) { const l = document.createElement('div'); l.className = 'cms-pub-caption'; l.textContent = c.label; wrap.appendChild(l); }
       const row = document.createElement('div'); row.className = 'cms-pub-banks';
@@ -434,21 +510,26 @@
       wrap.appendChild(row); return wrap;
     }
     if (s.type === 'gallery') {
-      const items = (Array.isArray(c.items) ? c.items : []).filter(it => cmsSafeUrl(it.imageUrl));
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.visible !== false && cmsSafeUrl(it.imageUrl));
       if (!items.length) return null;
+      const shots = items.map(it => ({ src: cmsSafeUrl(it.imageUrl), caption: String(it.caption || ''), alt: String(it.alt || it.caption || '') }));
       const grid = document.createElement('div'); grid.className = 'cms-pub-gallery';
-      items.forEach(it => {
+      shots.forEach((shot, i) => {
         const fig = document.createElement('figure'); fig.className = 'cms-pub-gal-item';
-        const img = document.createElement('img'); img.src = cmsSafeUrl(it.imageUrl); img.alt = String(it.alt || it.caption || ''); img.loading = 'lazy';
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'cms-pub-gal-btn';
+        btn.setAttribute('aria-label', shot.caption || ('Зураг ' + (i + 1)));
+        const img = document.createElement('img'); img.src = shot.src; img.alt = shot.alt; img.loading = 'lazy';
         img.onerror = function () { const f = this.closest('.cms-pub-gal-item'); if (f) f.style.display = 'none'; };
-        fig.appendChild(img);
-        if (it.caption) { const cap = document.createElement('figcaption'); cap.textContent = String(it.caption); fig.appendChild(cap); }
+        btn.appendChild(img);
+        btn.addEventListener('click', () => cmsOpenLightbox(shots, i));
+        fig.appendChild(btn);
+        if (shot.caption) { const cap = document.createElement('figcaption'); cap.textContent = shot.caption; fig.appendChild(cap); }
         grid.appendChild(fig);
       });
       wrap.appendChild(grid); return wrap;
     }
     if (s.type === 'faq') {
-      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.question);
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.visible !== false && it.question);
       if (!items.length) return null;
       const list = document.createElement('div'); list.className = 'cms-pub-faq';
       items.forEach(it => {
@@ -460,7 +541,7 @@
       wrap.appendChild(list); return wrap;
     }
     if (s.type === 'stats') {
-      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.number || it.label);
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.visible !== false && (it.number || it.label));
       if (!items.length) return null;
       const grid = document.createElement('div'); grid.className = 'cms-pub-stats';
       items.forEach(it => {
@@ -518,10 +599,52 @@
     blocks.forEach(s => { const node = cmsBuildBlockNode(s); if (node) { hostEl.appendChild(node); rendered++; } });
     return rendered > 0;
   }
+  // ---- Header / navigation CMS ----
+  // Routes stay code-controlled; the CMS only relabels/hides/reorders the EXISTING anchors,
+  // matched by their fixed data-nav-key. No new route or URL is ever created from CMS data.
+  function cmsDefaultNav() {
+    return { items: [
+      { key: 'listings', label: 'Зар хайх', visible: true },
+      { key: 'rent', label: 'Түрээс', visible: true },
+      { key: 'newdev', label: 'Шинэ орон сууц', visible: true },
+      { key: 'calc', label: 'Тооцоолуур', visible: true },
+      { key: 'resources', label: 'Зөвлөгөө', visible: true },
+      { key: 'dashboard', label: 'Миний самбар', visible: true }
+    ] };
+  }
+  function cmsNavKnownKeys() { const m = {}; cmsDefaultNav().items.forEach(d => { m[d.key] = d.label; }); return m; }
+  let _cmsNavCache = null;
+  async function cmsLoadNav() {
+    if (_cmsNavCache) return _cmsNavCache;
+    let nav = cmsDefaultNav();
+    try { const snap = await db.collection('siteSettings').doc('navigation').get(); if (snap.exists && snap.data() && Array.isArray(snap.data().items)) nav = snap.data(); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadNav failed:', e.code, e.message); }
+    _cmsNavCache = nav; return nav;
+  }
+  function cmsApplyNav(nav) {
+    const known = cmsNavKnownKeys();
+    const items = (nav && Array.isArray(nav.items) && nav.items.length) ? nav.items : cmsDefaultNav().items;
+    ['.nav-links', '.mobile-menu'].forEach(sel => {
+      const container = document.querySelector(sel); if (!container) return;
+      items.forEach(it => {
+        if (!it || !known[it.key]) return;                                 // ignore any unknown/injected key
+        const a = container.querySelector('a[data-nav-key="' + it.key + '"]'); if (!a) return;
+        if (typeof it.label === 'string' && it.label.trim()) a.textContent = it.label;   // textContent — no HTML
+        a.hidden = it.visible === false;
+        container.appendChild(a);                                          // reorder to config order
+      });
+    });
+  }
+  function cmsApplyLogo(org) {
+    const logo = cmsSafeUrl(org && org.logoUrl); if (!logo) return;
+    document.querySelectorAll('.nav .logo img.logo-wordmark, .nav .logo img.logo-square').forEach(img => { img.src = logo; img.alt = (org && org.name) || 'TP Property'; });
+  }
+
   function cmsApplyOrganization(org) {
     if (!org) return;
     const desc = document.querySelector('.footer-desc'); if (desc && org.description) desc.textContent = org.description;
     const fb = document.querySelector('.footer a[aria-label="Facebook"]'); if (fb) { const u = cmsSafeUrl(org.facebook); if (u) fb.setAttribute('href', u); }
+    cmsApplyLogo(org);
   }
   function cmsApplySectionOrder(sections) {
     const togglable = (sections || []).filter(s => ['banks', 'features'].includes(s.type)).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -532,13 +655,63 @@
   }
   async function applySiteCms() {
     try {
-      const [sections, org, theme] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme()]);
+      const [sections, org, theme, nav] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features);
-      cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections);
+      cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
+  }
+
+  // ---- Gallery lightbox (safe DOM only; keyboard + prev/next/close, mobile friendly) ----
+  let _cmsLb = { shots: [], idx: 0, el: null, onKey: null };
+  function cmsBuildLightbox() {
+    const ov = document.createElement('div'); ov.className = 'cms-lightbox'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    const img = document.createElement('img'); img.className = 'cms-lb-img'; img.alt = '';
+    const cap = document.createElement('div'); cap.className = 'cms-lb-cap';
+    const btnClose = document.createElement('button'); btnClose.type = 'button'; btnClose.className = 'cms-lb-close'; btnClose.setAttribute('aria-label', 'Хаах'); btnClose.textContent = '\u2715';
+    const btnPrev = document.createElement('button'); btnPrev.type = 'button'; btnPrev.className = 'cms-lb-nav cms-lb-prev'; btnPrev.setAttribute('aria-label', 'Өмнөх'); btnPrev.textContent = '\u2039';
+    const btnNext = document.createElement('button'); btnNext.type = 'button'; btnNext.className = 'cms-lb-nav cms-lb-next'; btnNext.setAttribute('aria-label', 'Дараах'); btnNext.textContent = '\u203A';
+    btnClose.addEventListener('click', cmsCloseLightbox);
+    btnPrev.addEventListener('click', (e) => { e.stopPropagation(); cmsLbStep(-1); });
+    btnNext.addEventListener('click', (e) => { e.stopPropagation(); cmsLbStep(1); });
+    ov.addEventListener('click', (e) => { if (e.target === ov) cmsCloseLightbox(); });
+    const stage = document.createElement('div'); stage.className = 'cms-lb-stage';
+    stage.appendChild(btnPrev); stage.appendChild(img); stage.appendChild(btnNext);
+    ov.appendChild(btnClose); ov.appendChild(stage); ov.appendChild(cap);
+    ov._img = img; ov._cap = cap;
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function cmsLbRender() {
+    const el = _cmsLb.el; if (!el) return;
+    const shot = _cmsLb.shots[_cmsLb.idx]; if (!shot) return;
+    el._img.src = shot.src; el._img.alt = shot.alt || '';
+    el._cap.textContent = shot.caption || '';
+    el._cap.style.display = shot.caption ? '' : 'none';
+    const multi = _cmsLb.shots.length > 1;
+    el.querySelectorAll('.cms-lb-nav').forEach(b => { b.style.display = multi ? '' : 'none'; });
+  }
+  function cmsLbStep(d) { const n = _cmsLb.shots.length; if (!n) return; _cmsLb.idx = (_cmsLb.idx + d + n) % n; cmsLbRender(); }
+  function cmsOpenLightbox(shots, startIdx) {
+    if (!Array.isArray(shots) || !shots.length) return;
+    _cmsLb.shots = shots; _cmsLb.idx = Math.max(0, Math.min(startIdx || 0, shots.length - 1));
+    if (!_cmsLb.el) _cmsLb.el = cmsBuildLightbox();
+    _cmsLb.el.classList.add('open'); document.body.classList.add('cms-lb-lock');
+    cmsLbRender();
+    _cmsLb.onKey = (e) => {
+      if (e.key === 'Escape') cmsCloseLightbox();
+      else if (e.key === 'ArrowLeft') cmsLbStep(-1);
+      else if (e.key === 'ArrowRight') cmsLbStep(1);
+    };
+    document.addEventListener('keydown', _cmsLb.onKey);
+    const c = _cmsLb.el.querySelector('.cms-lb-close'); if (c) c.focus();
+  }
+  function cmsCloseLightbox() {
+    if (_cmsLb.el) _cmsLb.el.classList.remove('open');
+    document.body.classList.remove('cms-lb-lock');
+    if (_cmsLb.onKey) { document.removeEventListener('keydown', _cmsLb.onKey); _cmsLb.onKey = null; }
   }
 
   // ===================================================================================
@@ -570,11 +743,13 @@
     } catch (e) { el.innerHTML = adminErrorState('CMS мэдээлэл татахад алдаа гарлаа.', 'renderAdminCmsSection()'); return; }
     _cmsOrgDraft = Object.assign(cmsDefaultOrganization(), org);
     _cmsThemeDraft = Object.assign(cmsDefaultTheme(), theme);
+    _cmsNavDraft = await cmsLoadNav().then(n => cmsCleanNav(n)).catch(() => cmsDefaultNav());
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
           <button class="mytab active" onclick="cmsSwitchTab(this,'pages')">Хуудсууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'theme')">Дизайн ба өнгө</button>
         </div>
         <div id="cmsTab-pages">
@@ -591,13 +766,15 @@
           <div class="admin-panel"><div class="admin-panel-head">Байгууллагын мэдээлэл</div>
             <div id="cmsOrgEditor">${cmsOrgEditorHtml(_cmsOrgDraft)}</div></div>
         </div>
+        <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
         <div id="cmsTab-theme" hidden><div id="cmsThemeEditor">${cmsThemeEditorHtml(_cmsThemeDraft)}</div></div>
       </div>`;
+    cmsRenderNavEditor();
   }
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'org', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'org', 'nav', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
   function cmsPageRowHtml(pg, meta) {
@@ -626,6 +803,12 @@
         ${cmsOrgField('YouTube', 'youtube', org.youtube, 'url')} ${cmsOrgField('TikTok', 'tiktok', org.tiktok, 'url')}
         ${cmsOrgField('Google Maps', 'mapUrl', org.mapUrl, 'url')}
       </div>
+      <div class="cms-field" style="margin-top:10px;"><label class="cms-label">Лого (толгойд харагдана)</label>
+        <div class="cms-img-row">
+          ${cmsSafeUrl(org.logoUrl) ? `<img class="cms-img-preview" src="${esc(cmsSafeUrl(org.logoUrl))}" alt="" onerror="this.style.display='none'">` : ''}
+          <input type="text" class="form-input" id="cmsOrg-logoUrl" placeholder="Логоны холбоос" value="${esc(org.logoUrl || '')}" oninput="_cmsOrgDraft.logoUrl=this.value" />
+          <label class="btn btn-ghost btn-sm cms-upload-btn">Лого оруулах<input type="file" accept="image/*" hidden onchange="cmsHandleOrgLogoUpload(event)"></label>
+        </div></div>
       <div class="cms-field" style="margin-top:10px;"><label class="cms-label">Тайлбар</label>
         <textarea class="form-input" id="cmsOrg-description" rows="2">${esc(org.description || '')}</textarea></div>
       <div style="margin-top:12px;"><button class="btn btn-blue" onclick="cmsSaveOrganization()">Хадгалах</button></div>`;
@@ -650,6 +833,74 @@
       logAdminAction('cms_org_edit', 'siteSettings', 'organization', '');
       showToast('Байгууллагын мэдээлэл хадгалагдлаа', 'success');
     } catch (e) { console.error('cmsSaveOrganization failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+  async function cmsHandleOrgLogoUpload(ev) {
+    const file = ev.target && ev.target.files && ev.target.files[0]; if (!file) return;
+    showToast('Лого оруулж байна…');
+    const url = await cmsUploadImage(file); if (!url) return;
+    _cmsOrgDraft = _cmsOrgDraft || cmsDefaultOrganization(); _cmsOrgDraft.logoUrl = url;
+    const inp = document.getElementById('cmsOrg-logoUrl'); if (inp) inp.value = url;
+    const ed = document.getElementById('cmsOrgEditor'); if (ed) ed.innerHTML = cmsOrgEditorHtml(_cmsOrgDraft);
+    showToast('Лого орлоо', 'success');
+  }
+
+  // ---- Navigation editor ----
+  let _cmsNavDraft = null;
+  function cmsNavEditorHtml() {
+    const items = _cmsNavDraft.items || [];
+    const rows = items.map((it, idx) => `
+      <div class="cms-item ${it.visible === false ? 'cms-item-hidden' : ''}">
+        <div class="cms-item-head"><span><span class="cms-drag-handle" title="Чирж эрэмбэлэх" aria-hidden="true">&#10303;</span> ${esc(cmsNavKnownKeys()[it.key] || it.key)}${it.visible === false ? ' <span style="font-size:10px;color:var(--ink-3);">(нуусан)</span>' : ''}</span>
+          <div class="cms-block-controls">
+            <button class="cms-ctrl" title="Дээш" onclick="cmsNavMove(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
+            <button class="cms-ctrl" title="Доош" onclick="cmsNavMove(${idx}, 1)" ${idx === items.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="cms-ctrl" title="${it.visible === false ? 'Харагдуулах' : 'Нуух'}" onclick="cmsNavToggle(${idx})">${it.visible === false ? '🚫' : '👁'}</button>
+          </div></div>
+        <div class="cms-item-body"><div class="cms-field"><label class="cms-label">Нэр (шошго)</label>
+          <input class="form-input" type="text" value="${esc(it.label || '')}" oninput="cmsNavInput(${idx}, this.value)" /></div></div>
+      </div>`).join('');
+    return `<div class="admin-panel"><div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>Толгойн цэс (Navigation)</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="cmsNavRestore()">Анхны байдлаар</button>
+          <button class="btn btn-blue btn-sm" onclick="cmsSaveNav()">Хадгалах</button>
+        </div></div>
+      <div style="padding:12px 16px;">
+        <div style="font-size:12.5px;color:var(--ink-3);margin-bottom:10px;">Цэсний нэр, харагдац, эрэмбийг өөрчилнө. Хаяг (route) нь системийн хяналтад үлдэнэ.</div>
+        <div class="cms-items" id="cmsNavItems">${rows}</div>
+      </div></div>`;
+  }
+  function cmsRenderNavEditor() {
+    const host = document.getElementById('cmsNavEditor'); if (!host) return;
+    host.innerHTML = cmsNavEditorHtml();
+    const list = document.getElementById('cmsNavItems');
+    if (list) cmsSetupDragZone(list, '.cms-item', (from, to) => cmsNavReorder(from, to));
+  }
+  function cmsNavInput(idx, val) { if (_cmsNavDraft.items[idx]) { _cmsNavDraft.items[idx].label = val; cmsMarkDirty(); } }
+  function cmsNavToggle(idx) { const it = _cmsNavDraft.items[idx]; if (it) { it.visible = it.visible === false; cmsMarkDirty(); cmsRenderNavEditor(); } }
+  function cmsNavMove(idx, dir) { const j = idx + dir; const a = _cmsNavDraft.items; if (j < 0 || j >= a.length) return; const t = a[idx]; a[idx] = a[j]; a[j] = t; cmsMarkDirty(); cmsRenderNavEditor(); }
+  function cmsNavReorder(from, to) { if (cmsReorderArray(_cmsNavDraft.items, from, to)) { cmsMarkDirty(); cmsRenderNavEditor(); } }
+  function cmsNavRestore() { if (!confirm('Цэсийг анхны байдлаар сэргээх үү?')) return; _cmsNavDraft = cmsDefaultNav(); cmsMarkDirty(); cmsRenderNavEditor(); }
+  function cmsCleanNav(nav) {
+    const known = cmsNavKnownKeys(); const seen = {}; const out = [];
+    (nav && Array.isArray(nav.items) ? nav.items : []).forEach(it => {
+      if (!it || !known[it.key] || seen[it.key]) return; seen[it.key] = true;
+      const rawLabel = (typeof it.label === 'string' ? it.label.replace(/<[^>]*>/g, '').slice(0, 60).trim() : '');
+      out.push({ key: it.key, label: rawLabel || known[it.key], visible: it.visible !== false });
+    });
+    cmsDefaultNav().items.forEach(d => { if (!seen[d.key]) out.push({ key: d.key, label: d.label, visible: true }); });   // never drop a real route
+    return { items: out };
+  }
+  async function cmsSaveNav() {
+    if (!cmsRequireEditor()) return;
+    const nav = cmsCleanNav(_cmsNavDraft);
+    try {
+      await db.collection('siteSettings').doc('navigation').set(Object.assign(nav, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
+      _cmsNavCache = null;
+      logAdminAction('cms_nav_save', 'siteSettings', 'navigation', '');
+      showToast('Цэс хадгалагдлаа', 'success');
+      const nv = await cmsLoadNav(); cmsApplyNav(nv);
+    } catch (e) { console.error('cmsSaveNav failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
 
   // ---- Theme editor ----
@@ -760,6 +1011,8 @@
         </div>
         <div id="cmsSeoEditor" hidden>${cmsSeoEditorHtml(_cmsSeoDraft || cmsDefaultSeo(_cmsAdminPage))}</div>
       </div>`;
+    cmsInitRichEditors();
+    cmsWireDragDrop();
   }
   function cmsToggleSeo() { const e = document.getElementById('cmsSeoEditor'); if (e) e.hidden = !e.hidden; }
   const CMS_SEO_FIELDS = [
@@ -794,6 +1047,7 @@
         <div class="cms-block-head">
           <div class="cms-block-title">${esc(meta.label)}${block.visible === false ? ' <span style="font-size:11px;color:var(--ink-3);">(нуусан)</span>' : ''}</div>
           <div class="cms-block-controls">
+            <span class="cms-drag-handle" title="Чирж эрэмбэлэх" aria-hidden="true">&#10303;</span>
             <button class="cms-ctrl" title="Засах" onclick="cmsToggleExpand('${block.id}')">✎</button>
             <button class="cms-ctrl" title="Дээш" onclick="cmsMoveBlock(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
             <button class="cms-ctrl" title="Доош" onclick="cmsMoveBlock(${i}, 1)" ${i === _cmsDraft.length - 1 ? 'disabled' : ''}>↓</button>
@@ -820,6 +1074,8 @@
     if (type === 'textarea') return `<div class="cms-field"><label class="cms-label">${esc(label)}</label><textarea class="form-input" rows="2" oninput="${onin}">${esc(val)}</textarea></div>`;
     if (type === 'align') return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
       <select class="form-input" onchange="${onin}">${['left', 'center', 'right'].map(a => `<option value="${a}" ${val === a ? 'selected' : ''}>${a === 'left' ? 'Зүүн' : a === 'center' ? 'Төв' : 'Баруун'}</option>`).join('')}</select></div>`;
+    if (type === 'bgtype') { const cur = val || 'image'; return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
+      <select class="form-input" onchange="${onin}">${[['image', 'Зураг'], ['video', 'Бичлэг']].map(([a, t]) => `<option value="${a}" ${cur === a ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`; }
     if (type === 'color') return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
       <div class="cms-theme-inputs"><input type="color" value="${cmsSafeHex(val) || '#000000'}" oninput="${onin}" /><input type="text" class="form-input" value="${esc(val)}" maxlength="7" oninput="${onin}" /></div></div>`;
     if (type === 'image') {
@@ -831,20 +1087,75 @@
           <label class="btn btn-ghost btn-sm cms-upload-btn">Зураг оруулах<input type="file" accept="image/*" hidden onchange="cmsHandleUpload(event, '${block.id}', ${itemIdx == null ? 'null' : itemIdx}, '${key}')"></label>
         </div></div>`;
     }
+    if (type === 'richtext') {
+      const B = (cmd, arg, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsRichCmd(this,'${cmd}'${arg ? ",'" + arg + "'" : ''})">${txt}</button>`;
+      return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
+        <div class="cms-rt-toolbar">
+          ${B('bold','','<b>B</b>','Тод')}${B('italic','','<i>I</i>','Налуу')}${B('underline','','<u>U</u>','Доогуур зураас')}
+          ${B('formatBlock','<h1>','H1','Гарчиг 1')}${B('formatBlock','<h2>','H2','Гарчиг 2')}${B('formatBlock','<h3>','H3','Гарчиг 3')}${B('formatBlock','<p>','¶','Догол мөр')}
+          ${B('insertUnorderedList','','&bull;','Цэгт жагсаалт')}${B('insertOrderedList','','1.','Дугаартай жагсаалт')}${B('formatBlock','<blockquote>','&ldquo;&rdquo;','Иш татах')}
+          <button type="button" class="cms-rt-btn" title="Холбоос" onmousedown="event.preventDefault()" onclick="cmsRichLink(this)">&#128279;</button>
+          <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsRichClear(this)">✕</button>
+        </div>
+        <div class="cms-rt-area form-input" contenteditable="true" data-block-id="${block.id}" data-key="${key}" oninput="cmsRichInput(this)" aria-label="${esc(label)}"></div>
+      </div>`;
+    }
     return `<div class="cms-field"><label class="cms-label">${esc(label)}</label><input class="form-input" type="text" value="${esc(val)}" oninput="${onin}" /></div>`;
+  }
+  // ---- Rich text editor (contenteditable + execCommand; every value re-sanitized on the way out) ----
+  function cmsRichCmd(btn, cmd, arg) {
+    const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
+    if (!area) return;
+    area.focus();
+    try { document.execCommand(cmd, false, arg || null); } catch (e) {}
+    cmsRichInput(area);
+  }
+  function cmsRichLink(btn) {
+    const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
+    if (!area) return;
+    const raw = prompt('Холбоос (http://, https:// эсвэл mailto:)', 'https://');
+    if (raw == null) return;
+    const href = cmsRtLinkHref(raw);
+    if (!href) { showToast('Холбоос буруу байна (http/https/mailto)'); return; }
+    area.focus();
+    try { document.execCommand('createLink', false, href); } catch (e) {}
+    cmsRichInput(area);
+  }
+  function cmsRichClear(btn) {
+    const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
+    if (!area) return;
+    area.focus();
+    try { document.execCommand('removeFormat'); document.execCommand('unlink'); } catch (e) {}
+    cmsRichInput(area);
+  }
+  function cmsRichInput(area) {
+    const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
+    if (!b) return;
+    b.content = b.content || {};
+    b.content[area.dataset.key] = cmsSanitizeRichHtml(area.innerHTML);   // store sanitized only
+    cmsMarkDirty();
+  }
+  function cmsInitRichEditors() {
+    document.querySelectorAll('.cms-rt-area').forEach(area => {
+      const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
+      const html = b && b.content ? b.content[area.dataset.key] : '';
+      area.textContent = '';
+      area.appendChild(cmsRichFragment(html || ''));   // safe DOM nodes only
+    });
   }
   function cmsRepeaterEditorHtml(block, meta) {
     block.content = block.content || {}; block.content.items = Array.isArray(block.content.items) ? block.content.items : [];
     const labelField = block.type === 'banks' ? `<div class="cms-field"><label class="cms-label">Тайлбар мөр</label><input class="form-input" type="text" value="${esc(block.content.label || '')}" oninput="cmsUpdateField('${block.id}','label', this.value)" /></div>` : '';
     const items = block.content.items.map((it, idx) => `
-      <div class="cms-item"><div class="cms-item-head"><span>${esc((it.name || it.title || ('Мөр ' + (idx + 1))))}</span>
+      <div class="cms-item ${it.visible === false ? 'cms-item-hidden' : ''}"><div class="cms-item-head"><span><span class="cms-drag-handle" title="Чирж эрэмбэлэх" aria-hidden="true">&#10303;</span> ${esc((it.name || it.title || it.question || it.caption || ('Мөр ' + (idx + 1))))}${it.visible === false ? ' <span style="font-size:10px;color:var(--ink-3);">(нуусан)</span>' : ''}</span>
         <div class="cms-block-controls">
           <button class="cms-ctrl" title="Дээш" onclick="cmsMoveItem('${block.id}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
           <button class="cms-ctrl" title="Доош" onclick="cmsMoveItem('${block.id}', ${idx}, 1)" ${idx === block.content.items.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="cms-ctrl" title="${it.visible === false ? 'Харагдуулах' : 'Нуух'}" onclick="cmsToggleItem('${block.id}', ${idx})">${it.visible === false ? '🚫' : '👁'}</button>
           <button class="cms-ctrl cms-ctrl-danger" title="Устгах" onclick="cmsDeleteItem('${block.id}', ${idx})">🗑</button>
         </div></div>
         <div class="cms-item-body">${meta.itemFields.map(f => cmsFieldHtml(block, f, idx)).join('')}</div></div>`).join('');
-    return `${labelField}<div class="cms-items">${items || '<div style="font-size:12px;color:var(--ink-3);padding:6px 0;">Мөр алга.</div>'}</div>
+    return `${labelField}<div class="cms-items" data-block-id="${block.id}">${items || '<div style="font-size:12px;color:var(--ink-3);padding:6px 0;">Мөр алга.</div>'}</div>
       <button class="btn btn-ghost btn-sm" onclick="cmsAddItem('${block.id}')">+ Нэмэх</button>`;
   }
 
@@ -857,6 +1168,36 @@
   function cmsAddItem(blockId) { const b = _cmsDraft.find(x => x.id === blockId); if (!b) return; b.content = b.content || {}; b.content.items = b.content.items || []; b.content.items.push({}); _cmsExpanded[blockId] = true; cmsMarkDirty(); cmsRenderEditor(); }
   function cmsDeleteItem(blockId, idx) { const b = _cmsDraft.find(x => x.id === blockId); if (!b || !b.content) return; if (!confirm('Энэ мөрийг устгах уу?')) return; b.content.items.splice(idx, 1); cmsMarkDirty(); cmsRenderEditor(); }
   function cmsMoveItem(blockId, idx, dir) { const b = _cmsDraft.find(x => x.id === blockId); if (!b || !b.content) return; const j = idx + dir; const items = b.content.items; if (j < 0 || j >= items.length) return; const t = items[idx]; items[idx] = items[j]; items[j] = t; cmsMarkDirty(); cmsRenderEditor(); }
+  function cmsToggleItem(blockId, idx) { const b = _cmsDraft.find(x => x.id === blockId); if (!b || !b.content || !b.content.items[idx]) return; const it = b.content.items[idx]; it.visible = it.visible === false; cmsMarkDirty(); cmsRenderEditor(); }
+  // ---- Drag & drop reordering (native HTML5 DnD; ↑/↓ buttons remain as fallback) ----
+  function cmsReorderArray(arr, from, to) { if (from < 0 || from >= arr.length || to < 0 || to >= arr.length || from === to) return false; const [m] = arr.splice(from, 1); arr.splice(to, 0, m); return true; }
+  function cmsReorderBlocks(from, to) { if (cmsReorderArray(_cmsDraft, from, to)) { _cmsDraft.forEach((b, k) => b.order = k + 1); cmsMarkDirty(); cmsRenderEditor(); } }
+  function cmsReorderItems(blockId, from, to) { const b = _cmsDraft.find(x => x.id === blockId); if (b && b.content && cmsReorderArray(b.content.items, from, to)) { cmsMarkDirty(); cmsRenderEditor(); } }
+  function cmsDragAfter(list, y) { let best = null, bestOff = -Infinity; list.forEach(el => { const r = el.getBoundingClientRect(); const off = y - (r.top + r.height / 2); if (off < 0 && off > bestOff) { bestOff = off; best = el; } }); return best; }
+  function cmsSetupDragZone(container, sel, onReorder) {
+    const items = () => Array.prototype.filter.call(container.children, el => el.matches && el.matches(sel));
+    container.querySelectorAll('.cms-drag-handle').forEach(handle => {
+      const item = handle.closest(sel); if (!item) return;
+      handle.addEventListener('mousedown', () => { item.setAttribute('draggable', 'true'); });
+      handle.addEventListener('touchstart', () => { item.setAttribute('draggable', 'true'); }, { passive: true });
+      item.addEventListener('dragstart', (e) => { item.classList.add('cms-dragging'); if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} } });
+      item.addEventListener('dragend', () => { item.classList.remove('cms-dragging'); item.removeAttribute('draggable'); });
+    });
+    container.addEventListener('dragover', (e) => { if (container.querySelector('.cms-dragging')) e.preventDefault(); });
+    container.addEventListener('drop', (e) => {
+      const dragging = container.querySelector('.cms-dragging'); if (!dragging) return;
+      e.preventDefault();
+      const list = items(); const from = list.indexOf(dragging);
+      const afterEl = cmsDragAfter(list, e.clientY);
+      let to = afterEl ? list.indexOf(afterEl) : list.length; if (from < to) to--;
+      if (from >= 0 && to >= 0 && from !== to) onReorder(from, to);
+    });
+  }
+  function cmsWireDragDrop() {
+    const host = document.getElementById('cmsBlocks');
+    if (host) cmsSetupDragZone(host, '.cms-block', (from, to) => cmsReorderBlocks(from, to));
+    document.querySelectorAll('.cms-items[data-block-id]').forEach(list => { const bid = list.dataset.blockId; cmsSetupDragZone(list, '.cms-item', (from, to) => cmsReorderItems(bid, from, to)); });
+  }
   function cmsShowAddBlock() {
     const wrap = document.getElementById('cmsAddBlockWrap'); if (!wrap) return;
     if (wrap.innerHTML) { wrap.innerHTML = ''; return; }
@@ -890,16 +1231,21 @@
     } catch (e) { console.error('cmsUploadImage failed:', e.code, e.message); showToast('Зураг оруулахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); return null; }
   }
 
+  function cmsSafeId(id, fallback) {
+    const clean = String(id == null ? '' : id).replace(/[^A-Za-z0-9_-]/g, '');
+    return clean || (fallback + '-' + Math.random().toString(36).slice(2, 8));
+  }
   function cmsNormaliseDraft(sections) {
-    return sections.map((b, idx) => ({ id: String(b.id), type: String(b.type), order: idx + 1, visible: b.visible !== false, content: cmsCleanContent(b.type, b.content) }));
+    return sections.map((b, idx) => ({ id: cmsSafeId(b.id, b.type || 'block'), type: String(b.type).replace(/[^a-z]/g, ''), order: idx + 1, visible: b.visible !== false, content: cmsCleanContent(b.type, b.content) }));
   }
   function cmsCleanContent(type, content) {
     content = content || {}; const out = {};
     Object.keys(content).forEach(k => { const v = content[k]; if (k === 'items') return; if (typeof v === 'string') out[k] = v.slice(0, 6000); else if (typeof v === 'number' || typeof v === 'boolean') out[k] = v; });
+    if (typeof out.bodyHtml === 'string') out.bodyHtml = cmsSanitizeRichHtml(out.bodyHtml);   // strict allowlist
     Object.keys(out).forEach(k => { if (/url$/i.test(k) && typeof out[k] === 'string') out[k] = cmsSafeUrl(out[k]); });
     if (out.color) out.color = cmsSafeHex(out.color);
     if (Array.isArray(content.items)) {
-      out.items = content.items.map(it => { const o = {}; Object.keys(it || {}).forEach(k => { const v = it[k]; if (typeof v === 'string') o[k] = v.slice(0, 2000); }); Object.keys(o).forEach(k => { if (/url$/i.test(k)) o[k] = cmsSafeUrl(o[k]); if (k === 'color') o[k] = cmsSafeHex(o[k]); }); return o; });
+      out.items = content.items.map(it => { const o = {}; Object.keys(it || {}).forEach(k => { const v = it[k]; if (typeof v === 'string') o[k] = v.slice(0, 2000); else if (k === 'visible' && typeof v === 'boolean') o[k] = v; }); Object.keys(o).forEach(k => { if (/url$/i.test(k)) o[k] = cmsSafeUrl(o[k]); if (k === 'color') o[k] = cmsSafeHex(o[k]); }); return o; });
     }
     return out;
   }
