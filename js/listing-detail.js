@@ -362,7 +362,7 @@
       <button class="modal-close" onclick="closeModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
-      <button class="modal-share-btn" id="detailFavBtn" onclick="event.stopPropagation(); toggleFavDetail(${l.id})" title="Хадгалах" style="right:104px;">
+      <button class="modal-share-btn" id="detailFavBtn" data-fav-id="${l.id}" onclick="event.stopPropagation(); toggleFavDetail(${l.id})" title="Хадгалах" style="right:104px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${favorites.includes(l.id) ? '#FF4757' : 'none'}" stroke="${favorites.includes(l.id) ? '#FF4757' : 'currentColor'}" stroke-width="2.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
       </button>
       <button class="modal-share-btn" onclick="shareListingModal(${l.id})" title="Хуваалцах">
@@ -401,7 +401,7 @@
           </div>
         </div>
         ${l.firestoreId && (!currentUser || l.ownerId !== currentUser.uid) ? `
-        <button id="priceAlertBtn-${l.id}" class="price-alert-btn ${favorites.includes(l.id) ? 'active' : ''}" onclick="togglePriceAlert(${l.id})">
+        <button id="priceAlertBtn-${l.id}" data-fav-id="${l.id}" class="price-alert-btn ${favorites.includes(l.id) ? 'active' : ''}" onclick="togglePriceAlert(${l.id})">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           ${favorites.includes(l.id) ? 'Үнийн мэдэгдэл идэвхтэй' : 'Үнэ буувал мэдэгд'}
         </button>
@@ -746,18 +746,11 @@
       if (stillOpen) stillOpen.innerHTML = `<div style="color:var(--ink-3);">Ойролцоох газруудыг татаж чадсангүй (сүлжээний алдаа). Дараа дахин оролдоно уу.</div>`;
     }
   }
-  // toggleFav() (favorites.js) toggles the .faved class, which the card layout styles
-  // via CSS — this header button instead renders its filled/outline state inline, so
-  // update that directly after the underlying favorite state has flipped.
+  // The header heart renders its filled/outline state inline rather than via .faved;
+  // syncFavoriteUI() (favorites.js) repaints it from the shared favorites state, so it
+  // also updates when the favorite is removed from the Хадгалсан modal.
   function toggleFavDetail(id) {
-    const btn = document.getElementById('detailFavBtn');
-    toggleFav(btn, id);
-    const svg = btn?.querySelector('svg');
-    if (svg) {
-      const isFav = favorites.includes(id);
-      svg.setAttribute('fill', isFav ? '#FF4757' : 'none');
-      svg.setAttribute('stroke', isFav ? '#FF4757' : 'currentColor');
-    }
+    toggleFav(document.getElementById('detailFavBtn'), id);
   }
 
   // Same underlying favorite (toggleFav writes priceAtSave, which drives the real price-drop
@@ -769,16 +762,6 @@
     const btn = document.getElementById('priceAlertBtn-' + id);
     toggleFav(btn, id);
     const nowFav = favorites.includes(id);
-    if (btn) {
-      btn.classList.toggle('active', nowFav);
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>${nowFav ? 'Үнийн мэдэгдэл идэвхтэй' : 'Үнэ буувал мэдэгд'}`;
-    }
-    const heartBtn = document.getElementById('detailFavBtn');
-    const svg = heartBtn?.querySelector('svg');
-    if (svg) {
-      svg.setAttribute('fill', nowFav ? '#FF4757' : 'none');
-      svg.setAttribute('stroke', nowFav ? '#FF4757' : 'currentColor');
-    }
     if (nowFav && !wasFav) showToast('Үнэ буурвал танд мэдэгдэнэ', 'success');
     else if (!nowFav && wasFav) showToast('Үнийн мэдэгдэл цуцлагдлаа');
   }

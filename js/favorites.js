@@ -3,24 +3,14 @@
     const l = listings.find(x => x.id === id);
     const idx = favorites.indexOf(id);
     if (idx > -1) {
-      favorites.splice(idx, 1);
-      btn.classList.remove('faved');
+      removeFavorite(id);
       showToast('Таалагдсанаас хаслаа');
-      if (l) l.favoriteCount = Math.max(0, (l.favoriteCount || 0) - 1);
-      if (currentUser) {
-        try {
-          const q = await db.collection('favorites')
-            .where('userId', '==', currentUser.uid)
-            .where('listingId', '==', id).get();
-          q.forEach(doc => doc.ref.delete());
-        } catch(e) {}
-      }
-      if (l?.firestoreId) {
-        db.collection('listings').doc(l.firestoreId).update({ favoriteCount: firebase.firestore.FieldValue.increment(-1) }).catch(() => {});
-      }
     } else {
       favorites.push(id);
-      btn.classList.add('faved');
+      // Repaint every copy of this listing's heart, not just the one clicked — the same
+      // listing is routinely on screen twice (Шинээр нэмэгдсэн + Онцлох, or a card plus the
+      // open detail page).
+      syncFavoriteUI();
       showToast('Таалагдсан зар хадгаллаа', 'success');
       if (l) l.favoriteCount = (l.favoriteCount || 0) + 1;
       if (currentUser) {
@@ -39,8 +29,65 @@
         db.collection('listings').doc(l.firestoreId).update({ favoriteCount: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
       }
     }
+    afterFavoritesChanged();
+  }
+
+  // ===== SHARED FAVORITE STATE =====
+  // `favorites` (data.js) is the single source of truth. Every path that changes it — the
+  // card heart, the detail-page heart, the price-alert button, the Хадгалсан modal's ✕ and
+  // "Бүгдийг хасах" — goes through these three, so the array, localStorage, Firestore, the
+  // badge counts and every heart on screen can never disagree.
+
+  // Removal used to exist only inside toggleFav(). removeFav()/clearAllFavs() (the modal)
+  // re-implemented it as a bare array filter, which is what caused the reported bug: no
+  // heart on the page was repainted, the Firestore favorites doc was never deleted (so for
+  // a signed-in user auth.js restored the favorite on the next load), and favoriteCount was
+  // never decremented. Local state changes synchronously; the network writes run behind it
+  // so the UI never waits on them, and a failure is logged instead of swallowed.
+  function removeFavorite(id) {
+    const idx = favorites.indexOf(id);
+    if (idx === -1) return;
+    favorites.splice(idx, 1);
+    const l = listings.find(x => x.id === id);
+    if (l) l.favoriteCount = Math.max(0, (l.favoriteCount || 0) - 1);
+    if (currentUser) {
+      db.collection('favorites')
+        .where('userId', '==', currentUser.uid)
+        .where('listingId', '==', id).get()
+        .then(q => Promise.all(q.docs.map(doc => doc.ref.delete())))
+        .catch(e => console.error('removeFavorite: Firestore delete failed:', e.code, e.message));
+    }
+    if (l?.firestoreId) {
+      db.collection('listings').doc(l.firestoreId).update({ favoriteCount: firebase.firestore.FieldValue.increment(-1) })
+        .catch(e => console.error('removeFavorite: favoriteCount update failed:', e.code, e.message));
+    }
+  }
+
+  // Repaints every favorite control currently in the DOM from the `favorites` array. Cheap
+  // (class/attribute flips only, no re-render), so it is safe to call after any change.
+  function syncFavoriteUI() {
+    document.querySelectorAll('.listing-fav[data-fav-id]').forEach(b => {
+      b.classList.toggle('faved', favorites.includes(Number(b.dataset.favId)));
+    });
+    const detailBtn = document.querySelector('#detailFavBtn[data-fav-id]');
+    const detailSvg = detailBtn?.querySelector('svg');
+    if (detailSvg) {
+      const isFav = favorites.includes(Number(detailBtn.dataset.favId));
+      detailSvg.setAttribute('fill', isFav ? '#FF4757' : 'none');
+      detailSvg.setAttribute('stroke', isFav ? '#FF4757' : 'currentColor');
+    }
+    document.querySelectorAll('.price-alert-btn[data-fav-id]').forEach(b => {
+      const isFav = favorites.includes(Number(b.dataset.favId));
+      if (b.classList.contains('active') === isFav) return;
+      b.classList.toggle('active', isFav);
+      b.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>${isFav ? 'Үнийн мэдэгдэл идэвхтэй' : 'Үнэ буувал мэдэгд'}`;
+    });
+  }
+
+  function afterFavoritesChanged() {
     try { localStorage.setItem('bairxFavorites', JSON.stringify(favorites)); } catch(e) {}
     updateFavCount();
+    syncFavoriteUI();
     if (typeof renderDashboard === 'function') renderDashboard();
   }
 
@@ -118,16 +165,14 @@
   }
 
   function removeFav(id) {
-    favorites = favorites.filter(x => x !== id);
-    try { localStorage.setItem('bairxFavorites', JSON.stringify(favorites)); } catch(e) {}
-    updateFavCount();
+    removeFavorite(id);
+    afterFavoritesChanged();
     openFavorites();
   }
 
   function clearAllFavs() {
-    favorites = [];
-    try { localStorage.setItem('bairxFavorites', JSON.stringify([])); } catch(e) {}
-    updateFavCount();
+    favorites.slice().forEach(removeFavorite);
+    afterFavoritesChanged();
     closeModal();
     showToast('Бүх хадгалсан зар хасагдлаа');
   }

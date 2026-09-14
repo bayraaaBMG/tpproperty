@@ -120,6 +120,9 @@
           fsIds.forEach(id => { if (!favorites.includes(id)) favorites.push(id); });
           try { localStorage.setItem('bairxFavorites', JSON.stringify(favorites)); } catch(e) {}
           updateFavCount();
+          // Cards may already be on screen from the public load; repaint their hearts now
+          // rather than waiting for a later re-render that only happens on some paths.
+          if (typeof syncFavoriteUI === 'function') syncFavoriteUI();
         }
       } catch(e) {}
 
