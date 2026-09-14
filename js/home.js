@@ -113,15 +113,19 @@
   // more precisely than the app currently can.
   function renderHomeCategoryCounts() {
     const active = listings.filter(l => !l._inactive);
+    // Counted with the canonical predicate (utils.js): the broad apartment/house/office
+    // counts now EXCLUDE the subtypes shown as their own tile (new-apartment/cottage/
+    // garage/commercial), so each tile's number equals what clicking it actually returns.
     const counts = {
-      apartment: active.filter(l => l.cat === 'apartment').length,
-      rent: active.filter(l => l.cat === 'rent').length,
-      office: active.filter(l => l.cat === 'office').length,
-      house: active.filter(l => l.cat === 'house').length,
-      land: active.filter(l => l.cat === 'land').length,
-      cottage: active.filter(l => l.propertyType === 'cottage').length,
-      garage: active.filter(l => l.propertyType === 'garage').length,
-      commercial: active.filter(l => l.propertyType === 'commercial').length,
+      apartment: active.filter(l => listingMatchesCategory(l, 'apartment')).length,
+      rent: active.filter(l => listingMatchesCategory(l, 'rent')).length,
+      office: active.filter(l => listingMatchesCategory(l, 'office')).length,
+      house: active.filter(l => listingMatchesCategory(l, 'house')).length,
+      land: active.filter(l => listingMatchesCategory(l, 'land')).length,
+      'new-apartment': active.filter(l => listingMatchesCategory(l, 'new-apartment')).length,
+      cottage: active.filter(l => listingMatchesCategory(l, 'cottage')).length,
+      garage: active.filter(l => listingMatchesCategory(l, 'garage')).length,
+      commercial: active.filter(l => listingMatchesCategory(l, 'commercial')).length,
       other: active.filter(l => l.propertyType === 'other').length,
     };
     Object.keys(counts).forEach(key => {

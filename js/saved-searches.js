@@ -24,10 +24,11 @@
     const hasFilter = district !== 'all' || priceMin || priceMax || areaMin || areaMax || rooms !== 'all' || keyword || currentCat !== 'all' || activeFilterToggles.length > 0;
     if (!hasFilter) { showToast('Эхлээд хайлтын нөхцөл тохируулна уу'); return; }
     const districtLabels = {'khan-uul':'Хан-Уул','sukhbaatar':'Сүхбаатар','chingeltei':'Чингэлтэй','bayanzurkh':'Баянзүрх','bayangol':'Баянгол','songinokhairkhan':'Сонгинохайрхан','nalaikh':'Налайх'};
-    const catLabels = {apartment:'Орон сууц',house:'Хаус',land:'Газар',office:'Оффис',rent:'Түрээс',all:'Бүгд'};
+    // Category label comes from the canonical config (utils.js catLabel) — a saved
+    // 'cottage' search reads back as 'Зуслан', never the raw slug.
     const parts = [];
     if (keyword) parts.push('"' + keyword + '"');
-    if (currentCat !== 'all') parts.push(catLabels[currentCat] || currentCat);
+    if (currentCat !== 'all') parts.push(catLabel(currentCat));
     if (district !== 'all') parts.push(districtLabels[district] || district);
     if (rooms !== 'all') parts.push(rooms + ' өрөө');
     if (priceMin || priceMax) parts.push((priceMin || '0') + '–' + (priceMax || '∞') + ' сая');

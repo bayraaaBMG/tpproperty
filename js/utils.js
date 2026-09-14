@@ -4,6 +4,77 @@
     return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+  // ===== CANONICAL CATEGORY TAXONOMY (single source of truth) =====
+  // One contract for every category selector in the app: the home dropdown (#hSearchType),
+  // the shortcut row, the home category tiles, the Listings-page filter pills, saved
+  // searches, filter tags, counts, and the listing create/edit flow.
+  //
+  // `bucket` is the value stored on the Firestore document's `category` field (and mirrored
+  // to the local `l.cat`) — the SAME five broad buckets existing data and firestore.rules
+  // already use, so nothing needs migrating. `propertyType` (when present) is the specific
+  // subtype, stored on the document's `propertyType` field. A category with a `propertyType`
+  // is a specialised view of its bucket (e.g. cottage is a kind of house); one without is
+  // the broad bucket itself, shown MINUS whatever subtypes appear as their own category.
+  const CATEGORY_CONFIG = {
+    all:             { label: 'Ангилал',            bucket: 'all' },
+    apartment:       { label: 'Орон сууц',          bucket: 'apartment' },
+    rent:            { label: 'Түрээс',             bucket: 'rent' },
+    'new-apartment': { label: 'Шинэ орон сууц',     bucket: 'apartment', propertyType: 'new-apartment' },
+    office:          { label: 'Оффис',              bucket: 'office' },
+    house:           { label: 'Хашаа байшин',       bucket: 'house' },
+    land:            { label: 'Газар',              bucket: 'land' },
+    cottage:         { label: 'Зуслан',             bucket: 'house',  propertyType: 'cottage' },
+    garage:          { label: 'Гараж',              bucket: 'house',  propertyType: 'garage' },
+    commercial:      { label: 'Худалдаа үйлчилгээ', bucket: 'office', propertyType: 'commercial' }
+  };
+  // Canonical order used everywhere (a component that excludes `all` just skips the first).
+  const CATEGORY_ORDER = ['all', 'apartment', 'rent', 'new-apartment', 'office', 'house', 'land', 'cottage', 'garage', 'commercial'];
+
+  // Per bucket, the subtypes that are surfaced as their own top-level category. A broad
+  // bucket filter (apartment/house/office) excludes these so a listing is only ever counted
+  // once. Derived from CATEGORY_CONFIG so adding a subtype above needs no change here.
+  const CATEGORY_SUBTYPES_BY_BUCKET = (() => {
+    const m = {};
+    Object.keys(CATEGORY_CONFIG).forEach(key => {
+      const cfg = CATEGORY_CONFIG[key];
+      if (cfg.propertyType) (m[cfg.bucket] = m[cfg.bucket] || []).push(cfg.propertyType);
+    });
+    return m;
+  })();
+
+  // Display label for any canonical key OR a raw bucket value (l.cat is always a bucket, and
+  // buckets are themselves canonical keys). Falls back to the raw value so a legacy/unknown
+  // slug never crashes a render — though the UI should never surface one.
+  function catLabel(key) {
+    return (CATEGORY_CONFIG[key] && CATEGORY_CONFIG[key].label) || key || '';
+  }
+  function catBucket(key) {
+    return (CATEGORY_CONFIG[key] && CATEGORY_CONFIG[key].bucket) || key;
+  }
+  function catSubtype(key) {
+    return (CATEGORY_CONFIG[key] && CATEGORY_CONFIG[key].propertyType) || null;
+  }
+
+  // The one category predicate. Every category filter/count in the app goes through this so
+  // the dropdown, shortcut, tile, pill, saved search and result set can never disagree.
+  //
+  // Backward compatibility: existing/demo listings store propertyType == category (the broad
+  // bucket) or omit it entirely — data.js maps `propertyType: d.propertyType || d.category`.
+  // Such a listing's propertyType is never one of the specialised subtype strings, so:
+  //   - it matches its broad bucket (apartment/house/office/land/rent) and stays visible;
+  //   - it never matches a specialised subtype filter (new-apartment/cottage/garage/
+  //     commercial), which only match listings explicitly created as those types.
+  // No listing disappears, and no database migration is required.
+  function listingMatchesCategory(l, key) {
+    if (!key || key === 'all') return true;
+    const cfg = CATEGORY_CONFIG[key];
+    if (!cfg) return l.cat === key;              // unknown key: legacy exact-match fallback
+    if (l.cat !== cfg.bucket) return false;
+    if (cfg.propertyType) return l.propertyType === cfg.propertyType;
+    const separated = CATEGORY_SUBTYPES_BY_BUCKET[cfg.bucket] || [];
+    return !separated.includes(l.propertyType);   // broad bucket minus its own-category subtypes
+  }
   // Shared "no results" empty state for buyer-facing browse grids (Listings/Rent/
   // New-dev) — previously each page hand-rolled its own icon/title sizing (64px/22px vs
   // 48px/18px vs 40px/18px); one shared look now, matching Listings' original (largest/

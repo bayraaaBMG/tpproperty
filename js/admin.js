@@ -1458,7 +1458,7 @@
     });
     let projectViews = 0, projectContacts = 0;
     if (projectsSnap) projectsSnap.forEach(doc => { const d = doc.data(); projectViews += d.viewCount || 0; projectContacts += d.contactCount || 0; });
-    const catLabels = { apartment: 'Орон сууц', house: 'Хаус', land: 'Газар', office: 'Оффис', rent: 'Түрээс' };
+    // Category labels come from the canonical config (utils.js catLabel).
 
     wrap.innerHTML = `
       <div class="admin-stat-grid">
@@ -1476,7 +1476,7 @@
         <div style="font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:8px;">Ангилалаар</div>
         ${Object.keys(byCat).map(c => `
           <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);">
-            <span>${esc(catLabels[c] || c)}</span><strong>${byCat[c]}</strong>
+            <span>${esc(catLabel(c))}</span><strong>${byCat[c]}</strong>
           </div>
         `).join('')}
       </div>` : ''}

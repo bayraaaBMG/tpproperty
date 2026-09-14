@@ -76,8 +76,9 @@
     // this one.
     if (q) tags.push({ label: '"' + q + '"', onclick: `clearFilterTag('search','')` });
     if (currentCat && currentCat !== 'all') {
-      const catLabels2 = {apartment:'Орон сууц',house:'Хаус',land:'Газар',office:'Оффис',rent:'Түрээс'};
-      tags.push({ label: catLabels2[currentCat]||currentCat, onclick: `clearFilterTag('cat','')` });
+      // Canonical label (utils.js) so a subtype filter shows "Зуслан", never the raw
+      // slug "cottage".
+      tags.push({ label: catLabel(currentCat), onclick: `clearFilterTag('cat','')` });
     }
     const priceMin = document.getElementById('fPriceMin')?.value;
     const priceMax = document.getElementById('fPriceMax')?.value;

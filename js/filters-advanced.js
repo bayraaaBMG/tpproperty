@@ -275,8 +275,10 @@
     if (activeFilterToggles.includes('pt-loan')) results = results.filter(l => Array.isArray(l.paymentTerms) && l.paymentTerms.includes('loan'));
     if (activeFilterToggles.includes('cash')) results = results.filter(l => Array.isArray(l.paymentTerms) && l.paymentTerms.includes('cash'));
 
-    // Category filter still applies
-    if (currentCat !== 'all') results = results.filter(l => l.cat === currentCat);
+    // Category filter — canonical taxonomy (utils.js). Handles broad buckets and the
+    // new-apartment/cottage/garage/commercial subtypes; a raw `l.cat === currentCat` would
+    // never match a subtype key (l.cat is always the broad bucket).
+    if (currentCat !== 'all') results = results.filter(l => listingMatchesCategory(l, currentCat));
 
     // Apply sort
     if (currentSort === 'price-asc') results.sort((a, b) => a.price - b.price);
@@ -333,9 +335,13 @@
   }
 
   function updateCatPillCounts() {
-    ['all', 'apartment', 'house', 'land', 'office', 'rent'].forEach(function(cat) {
+    // Every canonical category (utils.js CATEGORY_ORDER), counted with the same predicate
+    // the filter uses — so a pill's number always equals the number of results a click
+    // produces. A pill with no matching span in the DOM is simply skipped.
+    CATEGORY_ORDER.forEach(function(cat) {
       const el = document.getElementById('cnt-' + cat);
-      if (el) el.textContent = cat === 'all' ? listings.length : listings.filter(function(l) { return l.cat === cat; }).length;
+      if (!el) return;
+      el.textContent = cat === 'all' ? listings.length : listings.filter(function(l) { return listingMatchesCategory(l, cat); }).length;
     });
     const tlc = document.getElementById('totalListingCount');
     if (tlc) tlc.textContent = listings.length;

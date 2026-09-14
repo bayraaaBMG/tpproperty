@@ -84,13 +84,13 @@
 
   // ===== BREADCRUMB =====
   function ldBreadcrumbHtml(l, districtLabel) {
-    const catLabels = { apartment: 'Орон сууц', house: 'Хаус', land: 'Газар', office: 'Оффис', rent: 'Түрээс' };
+    // Canonical bucket label (utils.js). l.cat is always a broad bucket.
     return `
       <div class="ld-breadcrumb">
         <a onclick="closeModal(); showPage('home')">Нүүр</a>
         <span>/</span>
         <a onclick="closeModal(); showPage('listings')">Зарууд</a>
-        ${catLabels[l.cat] ? `<span>/</span><a onclick="closeModal(); showPage('listings')">${esc(catLabels[l.cat])}</a>` : ''}
+        ${CATEGORY_CONFIG[l.cat] ? `<span>/</span><a onclick="closeModal(); showPage('listings')">${esc(catLabel(l.cat))}</a>` : ''}
         ${districtLabel !== 'Дүүрэг' ? `<span>/</span><span>${esc(districtLabel)}</span>` : ''}
       </div>
     `;

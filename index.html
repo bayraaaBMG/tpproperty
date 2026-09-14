@@ -197,9 +197,13 @@
               <option value="all">Ангилал</option>
               <option value="apartment">Орон сууц</option>
               <option value="rent">Түрээс</option>
+              <option value="new-apartment">Шинэ орон сууц</option>
               <option value="office">Оффис</option>
               <option value="house">Хашаа байшин</option>
               <option value="land">Газар</option>
+              <option value="cottage">Зуслан</option>
+              <option value="garage">Гараж</option>
+              <option value="commercial">Худалдаа үйлчилгээ</option>
             </select>
             <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </div>
@@ -246,7 +250,7 @@
           <span class="hs-cs-icon" style="--cat-color:#C77700; --cat-color-soft:rgba(255,176,32,0.16);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3M17 6l3 3M14 9l2 2"/></svg></span>
           Түрээс
         </button>
-        <button type="button" class="hs-cat-shortcut" onclick="showPage('newdev')">
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('new-apartment')">
           <span class="hs-cs-icon" style="--cat-color:var(--primary); --cat-color-soft:var(--primary-soft);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M6 21V10a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11M9 21v-4h6v4"/><path d="M12 8V3m0 0h5m-5 0-3 3"/></svg></span>
           Шинэ орон сууц
         </button>
@@ -262,17 +266,17 @@
           <span class="hs-cs-icon" style="--cat-color:#009878; --cat-color-soft:rgba(0,152,120,0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
           Газар
         </button>
-        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('cottage')">
           <span class="hs-cs-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V11L12 4l8 7v10"/><path d="M9 21v-6h6v6"/></svg></span>
           Зуслан
         </button>
-        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('garage')">
           <span class="hs-cs-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M5 21v-8h14v8"/></svg></span>
           Гараж
         </button>
-        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('office')" title="Оффис бүсэд хайна">
+        <button type="button" class="hs-cat-shortcut" onclick="goHomeCategory('commercial')">
           <span class="hs-cs-icon" style="--cat-color:#7B2CBF; --cat-color-soft:rgba(123,44,191,0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5M4 9h16v11H4z"/><path d="M9 20v-6h6v6"/></svg></span>
-          Худалдаа, үйлчилгээ
+          Худалдаа үйлчилгээ
         </button>
       </div>
 
@@ -400,6 +404,13 @@
         <div class="home-cat-tile-name">Түрээс</div>
         <div class="home-cat-tile-count" id="homeCatCount-rent">0</div>
       </button>
+      <button class="home-cat-tile" onclick="goHomeCategory('new-apartment')">
+        <div class="home-cat-tile-icon" style="--cat-color:var(--primary); --cat-color-soft:var(--primary-soft);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M6 21V10a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11M9 21v-4h6v4"/><path d="M12 8V3m0 0h5m-5 0-3 3"/></svg>
+        </div>
+        <div class="home-cat-tile-name">Шинэ орон сууц</div>
+        <div class="home-cat-tile-count" id="homeCatCount-new-apartment">0</div>
+      </button>
       <button class="home-cat-tile" onclick="goHomeCategory('office')">
         <div class="home-cat-tile-icon" style="--cat-color:#7B2CBF; --cat-color-soft:rgba(123,44,191,0.12);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -421,25 +432,25 @@
         <div class="home-cat-tile-name">Газар</div>
         <div class="home-cat-tile-count" id="homeCatCount-land">0</div>
       </button>
-      <button class="home-cat-tile" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+      <button class="home-cat-tile" onclick="goHomeCategory('cottage')">
         <div class="home-cat-tile-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V11L12 4l8 7v10"/><path d="M9 21v-6h6v6"/></svg>
         </div>
         <div class="home-cat-tile-name">Зуслан</div>
         <div class="home-cat-tile-count" id="homeCatCount-cottage">0</div>
       </button>
-      <button class="home-cat-tile" onclick="goHomeCategory('house')" title="Хаус бүсэд хайна">
+      <button class="home-cat-tile" onclick="goHomeCategory('garage')">
         <div class="home-cat-tile-icon" style="--cat-color:#00A886; --cat-color-soft:rgba(0,212,170,0.14);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M5 21v-8h14v8"/></svg>
         </div>
         <div class="home-cat-tile-name">Гараж</div>
         <div class="home-cat-tile-count" id="homeCatCount-garage">0</div>
       </button>
-      <button class="home-cat-tile" onclick="goHomeCategory('office')" title="Оффис бүсэд хайна">
+      <button class="home-cat-tile" onclick="goHomeCategory('commercial')">
         <div class="home-cat-tile-icon" style="--cat-color:#7B2CBF; --cat-color-soft:rgba(123,44,191,0.12);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5M4 9h16v11H4z"/><path d="M9 20v-6h6v6"/></svg>
         </div>
-        <div class="home-cat-tile-name">Худалдаа, үйлчилгээ</div>
+        <div class="home-cat-tile-name">Худалдаа үйлчилгээ</div>
         <div class="home-cat-tile-count" id="homeCatCount-commercial">0</div>
       </button>
       <button class="home-cat-tile" onclick="showPage('listings')" title="Бүх зарыг харна">
@@ -940,10 +951,14 @@
     <div class="filter-bar">
       <button class="filter-pill active" data-cat="all">Бүгд <span class="count" id="cnt-all"></span></button>
       <button class="filter-pill" data-cat="apartment">Орон сууц <span class="count" id="cnt-apartment"></span></button>
-      <button class="filter-pill" data-cat="house">Хаус <span class="count" id="cnt-house"></span></button>
-      <button class="filter-pill" data-cat="land">Газар <span class="count" id="cnt-land"></span></button>
-      <button class="filter-pill" data-cat="office">Оффис <span class="count" id="cnt-office"></span></button>
       <button class="filter-pill" data-cat="rent">Түрээс <span class="count" id="cnt-rent"></span></button>
+      <button class="filter-pill" data-cat="new-apartment">Шинэ орон сууц <span class="count" id="cnt-new-apartment"></span></button>
+      <button class="filter-pill" data-cat="office">Оффис <span class="count" id="cnt-office"></span></button>
+      <button class="filter-pill" data-cat="house">Хашаа байшин <span class="count" id="cnt-house"></span></button>
+      <button class="filter-pill" data-cat="land">Газар <span class="count" id="cnt-land"></span></button>
+      <button class="filter-pill" data-cat="cottage">Зуслан <span class="count" id="cnt-cottage"></span></button>
+      <button class="filter-pill" data-cat="garage">Гараж <span class="count" id="cnt-garage"></span></button>
+      <button class="filter-pill" data-cat="commercial">Худалдаа үйлчилгээ <span class="count" id="cnt-commercial"></span></button>
     </div>
 
     <div class="listings-layout">
