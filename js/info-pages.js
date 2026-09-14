@@ -24,6 +24,19 @@
         <p><strong>Тоо баримтад тулгуурласан.</strong> Үнийн дүн шинжилгээ, ирээдүйн өгөөжийн тооцоолол, чадварын үнэлгээг дүрэм-суурьтай тооцооллоор нэг платформ дээр нэгтгэлээ (жинхэнэ AI/машин сургалт биш).</p>
       `
     },
+    services: {
+      title: 'Үйлчилгээ',
+      eyebrow: 'Бидний үйлчилгээ',
+      body: `
+        <p>TP Property нь үл хөдлөх хөрөнгийн худалдаа, түрээс, зуучлал, үнэлгээний иж бүрэн үйлчилгээг нэг дороос үзүүлдэг.</p>
+        <h4>Худалдаа зуучлал</h4>
+        <p>Орон сууц, газар, оффис, худалдаа үйлчилгээний зориулалттай үл хөдлөх хөрөнгийн худалдааг мэргэжлийн түвшинд зохион байгуулна.</p>
+        <h4>Түрээсийн үйлчилгээ</h4>
+        <p>Түрээслэгч, түрээслүүлэгчийг холбож, гэрээ, баримт бичгийн бүрдүүлэлтэд туслана.</p>
+        <h4>Үнэлгээ, зөвлөгөө</h4>
+        <p>Зах зээлийн бодит үнэлгээ, зээлийн нөхцөлийн харьцуулалт, зөвлөгөө өгнө.</p>
+      `
+    },
     career: {
       title: 'Карьер',
       eyebrow: 'Бидэнтэй ажиллах',
@@ -335,5 +348,10 @@
     `;
     document.getElementById('modal').classList.add('open');
     document.body.style.overflow = 'hidden';
+    // Overlay published CMS content (about/services/contact) when available; hardcoded body is the fallback.
+    if (typeof cmsRenderInfoPageBody === 'function') {
+      const bodyEl = document.querySelector('#modalContent .info-page-body');
+      if (bodyEl) cmsRenderInfoPageBody(key, bodyEl);
+    }
   }
 

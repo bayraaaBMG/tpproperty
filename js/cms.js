@@ -17,13 +17,23 @@
   // list of structured items, escaped at render (esc) or set via textContent. The project
   // had real stored-XSS incidents, so the CMS accepts structured fields only.
 
-  const CMS_PAGES = [ { id: 'home', title: 'Нүүр хуудас', editable: true } ];
+  const CMS_PAGES = [
+    { id: 'home', title: 'Нүүр хуудас', editable: true },
+    { id: 'about', title: 'Бидний тухай', editable: true, infoKey: 'about' },
+    { id: 'services', title: 'Үйлчилгээ', editable: true, infoKey: 'services' },
+    { id: 'newdev', title: 'Шинэ орон сууц', editable: true, target: 'newdev' },
+    { id: 'contact', title: 'Холбоо барих', editable: true, infoKey: 'contact' }
+  ];
+  const CMS_INFO_PAGE_IDS = { about: 'about', services: 'services', contact: 'contact' };
 
   // kind: 'fields' (flat) | 'repeater' (list of items). system: can't hide/remove.
   // addable: offered in the "+ Хэсэг нэмэх" picker. field: [key, label, type].
   const CMS_BLOCK_TYPES = {
     hero:     { label: 'Гарчиг (Hero)', kind: 'fields', system: true,
-                fields: [ ['title', 'Гарчиг', 'text'], ['subtitle', 'Дэд гарчиг', 'textarea'] ] },
+                fields: [ ['title', 'Гарчиг', 'text'], ['subtitle', 'Дэд гарчиг', 'textarea'],
+                          ['buttonText', 'Товч 1 нэр', 'text'], ['buttonUrl', 'Товч 1 холбоос', 'url'],
+                          ['button2Text', 'Товч 2 нэр', 'text'], ['button2Url', 'Товч 2 холбоос', 'url'],
+                          ['backgroundImage', 'Дэвсгэр зураг', 'image'] ] },
     banks:    { label: 'Хамтрагч банк, санхүү', kind: 'repeater', togglable: true,
                 itemFields: [ ['name', 'Нэр', 'text'], ['short', 'Товч (лого дээрх)', 'text'],
                               ['color', 'Лого өнгө', 'color'], ['url', 'Холбоос', 'url'] ] },
@@ -39,6 +49,16 @@
                           ['caption', 'Тайлбар', 'text'], ['linkUrl', 'Холбоос', 'url'] ] },
     video:    { label: 'Видео', kind: 'fields', togglable: true, addable: true,
                 fields: [ ['videoUrl', 'Видео (YouTube/Vimeo/MP4)', 'url'], ['title', 'Гарчиг', 'text'] ] },
+    gallery:  { label: 'Галерей', kind: 'repeater', togglable: true, addable: true,
+                itemFields: [ ['imageUrl', 'Зураг', 'image'], ['caption', 'Тайлбар', 'text'], ['alt', 'Alt текст', 'text'] ] },
+    faq:      { label: 'Түгээмэл асуулт (FAQ)', kind: 'repeater', togglable: true, addable: true,
+                itemFields: [ ['question', 'Асуулт', 'text'], ['answer', 'Хариулт', 'textarea'] ] },
+    stats:    { label: 'Статистик', kind: 'repeater', togglable: true, addable: true,
+                itemFields: [ ['number', 'Тоо', 'text'], ['label', 'Тайлбар', 'text'] ] },
+    contact:  { label: 'Холбоо барих (байгууллагаас)', kind: 'fields', togglable: true, addable: true,
+                fields: [ ['title', 'Гарчиг', 'text'], ['note', 'Тэмдэглэл', 'textarea'] ] },
+    map:      { label: 'Газрын зураг', kind: 'fields', togglable: true, addable: true,
+                fields: [ ['title', 'Гарчиг', 'text'], ['address', 'Хаяг', 'text'], ['lat', 'Өргөрөг', 'text'], ['lng', 'Уртраг', 'text'] ] },
     divider:  { label: 'Зай / Зураас', kind: 'fields', togglable: true, addable: true, fields: [] }
   };
 
@@ -62,6 +82,50 @@
       { id: 'banks', type: 'banks', order: 2, visible: true, content: { label: 'Банк дээр дарж шууд зээлийн хуудсанд нь орно уу', items: cmsDefaultBanks() } },
       { id: 'features', type: 'features', order: 3, visible: true, content: { items: [] } }
     ];
+  }
+  function cmsDefaultAboutSections() {
+    return [
+      { id: 'hero', type: 'hero', order: 1, visible: true, content: {
+          title: 'Бидний тухай', subtitle: 'Ти Пи Приват Проперти ХХК — үл хөдлөх хөрөнгө зуучлалын мэргэжлийн үйлчилгээ.' } },
+      { id: 'about-intro', type: 'text', order: 2, visible: true, content: {
+          title: 'Эрхэм зорилго',
+          body: 'Харилцагч, үйлчлүүлэгчдийн итгэлийг хүлээж, эрх ашгийг хамгаалсан, зах зээлийн бодит мэдээлэлд үндэслэсэн хурдан шуурхай, найдвартай үйлчилгээ үзүүлэх.', align: 'left' } },
+      { id: 'about-stats', type: 'stats', order: 3, visible: true, content: { items: [
+          { number: '2023', label: 'Байгуулагдсан он' }, { number: '10', label: 'Ажилтны тоо' },
+          { number: 'Сүхбаатар', label: 'Байршил' } ] } }
+    ];
+  }
+  function cmsDefaultServicesSections() {
+    return [
+      { id: 'hero', type: 'hero', order: 1, visible: true, content: {
+          title: 'Үйлчилгээ', subtitle: 'Худалдаа, түрээс, зуучлал, үнэлгээ — нэг дороос.' } },
+      { id: 'svc-features', type: 'features', order: 2, visible: true, content: { items: [
+          { title: 'Худалдаа зуучлал', description: 'Орон сууц, газар, оффисын худалдааг мэргэжлийн түвшинд зохион байгуулна.' },
+          { title: 'Түрээсийн үйлчилгээ', description: 'Түрээслэгч, түрээслүүлэгчийг холбож, гэрээ, баримт бичгийг бүрдүүлнэ.' },
+          { title: 'Үнэлгээ, зөвлөгөө', description: 'Зах зээлийн бодит үнэлгээ, зээлийн нөхцөлийн зөвлөгөө өгнө.' } ] } }
+    ];
+  }
+  function cmsDefaultNewdevSections() {
+    return [
+      { id: 'hero', type: 'hero', order: 1, visible: true, content: {
+          title: 'Шинэ орон сууц', subtitle: 'Хотхон, төслүүдийн мэдээллийг нэг дороос харна уу.' } }
+    ];
+  }
+  function cmsDefaultContactSections() {
+    return [
+      { id: 'hero', type: 'hero', order: 1, visible: true, content: {
+          title: 'Холбоо барих', subtitle: 'Бидэнтэй холбогдох мэдээлэл.' } },
+      { id: 'contact-main', type: 'contact', order: 2, visible: true, content: {
+          title: 'Холбоо барих мэдээлэл', note: 'Доорх мэдээллээр бидэнтэй холбогдоно уу.' } }
+    ];
+  }
+  function cmsDefaultSectionsFor(pageId) {
+    if (pageId === 'home') return cmsDefaultHomeSections();
+    if (pageId === 'about') return cmsDefaultAboutSections();
+    if (pageId === 'services') return cmsDefaultServicesSections();
+    if (pageId === 'newdev') return cmsDefaultNewdevSections();
+    if (pageId === 'contact') return cmsDefaultContactSections();
+    return [];
   }
   function cmsDefaultOrganization() {
     return {
@@ -116,14 +180,88 @@
   let _cmsThemeCache = null;
   let _cmsPreviewOverride = null;
   let _cmsThemePreview = null;
+  let _cmsPublicSeoCache = {};
+
+  function cmsDefaultSeo(pageId) {
+    const t = (CMS_PAGES.find(p => p.id === pageId) || {}).title || 'TP Property';
+    return { seoTitle: '', metaDescription: '', canonical: '', ogTitle: '', ogDescription: '', ogImage: '', twitterTitle: '', twitterDescription: '', noindex: false, _pageTitle: t };
+  }
+  async function cmsLoadPublishedSeo(pageId) {
+    if (_cmsPublicSeoCache[pageId]) return _cmsPublicSeoCache[pageId];
+    let seo = cmsDefaultSeo(pageId);
+    try {
+      const snap = await db.collection('sitePagesPublic').doc(pageId).get();
+      if (snap.exists && snap.data().seo && typeof snap.data().seo === 'object') seo = Object.assign(seo, snap.data().seo);
+    } catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadPublishedSeo failed:', e.code, e.message); }
+    _cmsPublicSeoCache[pageId] = seo;
+    return seo;
+  }
+  // Apply per-page SEO to <head>. Only ever writes plain text / validated URLs into meta content.
+  function cmsApplySeo(pageId, seo) {
+    if (!seo) return;
+    const org = _cmsOrgCache || cmsDefaultOrganization();
+    const setMeta = (sel, attr, key, val) => {
+      if (!val) return;
+      let el = document.head.querySelector(sel);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
+      el.setAttribute('content', String(val));
+    };
+    const title = seo.seoTitle || seo._pageTitle;
+    if (title) document.title = (pageId === 'home') ? title : title + ' | ' + (org.name || 'TP Property');
+    if (seo.metaDescription) setMeta('meta[name="description"]', 'name', 'description', seo.metaDescription);
+    // canonical
+    if (cmsSafeUrl(seo.canonical)) {
+      let link = document.head.querySelector('link[rel="canonical"]');
+      if (!link) { link = document.createElement('link'); link.setAttribute('rel', 'canonical'); document.head.appendChild(link); }
+      link.setAttribute('href', cmsSafeUrl(seo.canonical));
+    }
+    setMeta('meta[property="og:title"]', 'property', 'og:title', seo.ogTitle || title);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', seo.ogDescription || seo.metaDescription);
+    if (cmsSafeUrl(seo.ogImage)) setMeta('meta[property="og:image"]', 'property', 'og:image', cmsSafeUrl(seo.ogImage));
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', seo.twitterTitle || seo.ogTitle || title);
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', seo.twitterDescription || seo.ogDescription || seo.metaDescription);
+    // robots noindex
+    let robots = document.head.querySelector('meta[name="robots"]');
+    if (seo.noindex === true) {
+      if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name', 'robots'); document.head.appendChild(robots); }
+      robots.setAttribute('content', 'noindex, nofollow');
+    } else if (robots && /noindex/i.test(robots.getAttribute('content') || '')) {
+      robots.setAttribute('content', 'index, follow');
+    }
+  }
+  // Render CMS content into a content page (about/services/contact modal body, or newdev container).
+  // Falls back silently (returns false) when nothing is published, so hardcoded content stays.
+  async function cmsRenderContentPage(pageId, hostEl) {
+    if (!hostEl) return false;
+    try {
+      const [sections, org, seo] = await Promise.all([cmsLoadPublishedPage(pageId), cmsLoadOrganization(), cmsLoadPublishedSeo(pageId)]);
+      const publishedExists = !!(_cmsPublicCache[pageId] && _cmsPublicCache[pageId].__published);
+      const rendered = cmsRenderPageInto(hostEl, sections);
+      cmsApplySeo(pageId, seo);
+      return rendered;
+    } catch (e) { console.error('cmsRenderContentPage failed:', e && e.code, e && e.message); return false; }
+  }
+  // Called by openInfoPage for CMS-managed info pages (about/services/contact).
+  async function cmsRenderInfoPageBody(pageId, bodyEl) {
+    if (!bodyEl || !CMS_INFO_PAGE_IDS[pageId]) return;
+    const holder = document.createElement('div'); holder.className = 'cms-content-page';
+    const ok = await cmsRenderContentPage(pageId, holder);
+    if (ok) { bodyEl.textContent = ''; bodyEl.appendChild(holder); }
+  }
+  // Called when the newdev section is shown.
+  async function cmsApplyNewdev() {
+    const host = document.getElementById('cmsNewdevBlocks'); if (!host) return;
+    const ok = await cmsRenderContentPage('newdev', host);
+    host.hidden = !ok;
+  }
 
   async function cmsLoadPublishedPage(pageId) {
     if (_cmsPreviewOverride && _cmsPreviewOverride.pageId === pageId) return _cmsPreviewOverride.sections;
     if (_cmsPublicCache[pageId]) return _cmsPublicCache[pageId];
-    let sections = pageId === 'home' ? cmsDefaultHomeSections() : [];
+    let sections = cmsDefaultSectionsFor(pageId);
     try {
       const snap = await db.collection('sitePagesPublic').doc(pageId).get();
-      if (snap.exists && Array.isArray(snap.data().sections) && snap.data().sections.length) sections = snap.data().sections;
+      if (snap.exists && Array.isArray(snap.data().sections)) { if (snap.data().sections.length) sections = snap.data().sections; sections.__published = true; }
     } catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadPublishedPage failed:', e.code, e.message); }
     _cmsPublicCache[pageId] = sections;
     return sections;
@@ -207,7 +345,7 @@
   function cmsRenderAdditiveBlocks(sections) {
     const host = document.getElementById('cmsHomeBlocks'); if (!host) return;
     host.textContent = '';
-    const additive = (sections || []).filter(s => ['text', 'cta', 'image', 'video', 'divider'].includes(s.type) && s.visible !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const additive = (sections || []).filter(s => ['text', 'cta', 'image', 'video', 'divider', 'gallery', 'faq', 'stats', 'contact', 'map'].includes(s.type) && s.visible !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
     if (!additive.length) { host.hidden = true; return; }
     host.hidden = false;
     const inner = document.createElement('div'); inner.className = 'section-inner cms-blocks-inner';
@@ -253,7 +391,132 @@
       } else { const v = document.createElement('video'); v.src = embed.src; v.controls = true; v.setAttribute('playsinline', ''); frame.appendChild(v); }
       wrap.appendChild(frame); return wrap;
     }
+    if (s.type === 'hero') {
+      wrap.classList.add('cms-pub-hero');
+      const bg = cmsSafeUrl(c.backgroundImage);
+      if (bg) { wrap.classList.add('cms-pub-hero-bg'); wrap.style.backgroundImage = 'url("' + encodeURI(bg) + '")'; }
+      if (c.title) { const h = document.createElement('h1'); h.className = 'cms-pub-hero-title'; cmsRenderBrandTitle(h, String(c.title)); wrap.appendChild(h); }
+      if (c.subtitle) { const p = document.createElement('p'); p.className = 'cms-pub-hero-sub'; p.textContent = c.subtitle; wrap.appendChild(p); }
+      const hb = document.createElement('div'); hb.className = 'cms-pub-hero-btns';
+      const u1 = cmsSafeUrl(c.buttonUrl); if (c.buttonText && u1) { const a = document.createElement('a'); a.className = 'btn btn-blue'; a.textContent = c.buttonText; a.href = u1; a.target = '_blank'; a.rel = 'noopener noreferrer'; hb.appendChild(a); }
+      const u2 = cmsSafeUrl(c.button2Url); if (c.button2Text && u2) { const a = document.createElement('a'); a.className = 'btn btn-ghost'; a.textContent = c.button2Text; a.href = u2; a.target = '_blank'; a.rel = 'noopener noreferrer'; hb.appendChild(a); }
+      if (hb.children.length) wrap.appendChild(hb);
+      return wrap;
+    }
+    if (s.type === 'features') {
+      const items = Array.isArray(c.items) ? c.items : [];
+      if (!items.length) return null;
+      const grid = document.createElement('div'); grid.className = 'cms-pub-features';
+      items.forEach(it => {
+        const card = document.createElement('div'); card.className = 'cms-pub-feature';
+        const ic = document.createElement('div'); ic.className = 'cms-pub-feature-icon'; ic.textContent = '\u2605'; card.appendChild(ic);
+        if (it.title) { const h = document.createElement('h4'); h.textContent = String(it.title); card.appendChild(h); }
+        if (it.description) { const pp = document.createElement('p'); pp.textContent = String(it.description); card.appendChild(pp); }
+        grid.appendChild(card);
+      });
+      wrap.appendChild(grid); return wrap;
+    }
+    if (s.type === 'banks') {
+      const items = Array.isArray(c.items) ? c.items : [];
+      if (!items.length) return null;
+      if (c.label) { const l = document.createElement('div'); l.className = 'cms-pub-caption'; l.textContent = c.label; wrap.appendChild(l); }
+      const row = document.createElement('div'); row.className = 'cms-pub-banks';
+      items.forEach(it => {
+        const href = cmsSafeUrl(it.url);
+        const pill = document.createElement(href ? 'a' : 'div'); pill.className = 'bank-pill';
+        if (href) { pill.href = href; pill.target = '_blank'; pill.rel = 'noopener noreferrer'; }
+        const logo = document.createElement('div'); logo.className = 'bp-logo';
+        const col = cmsSafeHex(it.color); if (col) logo.style.background = col;
+        logo.textContent = String(it.short || '').slice(0, 4);
+        const nm = document.createElement('div'); nm.className = 'bp-name'; nm.textContent = String(it.name || '');
+        pill.appendChild(logo); pill.appendChild(nm); row.appendChild(pill);
+      });
+      wrap.appendChild(row); return wrap;
+    }
+    if (s.type === 'gallery') {
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => cmsSafeUrl(it.imageUrl));
+      if (!items.length) return null;
+      const grid = document.createElement('div'); grid.className = 'cms-pub-gallery';
+      items.forEach(it => {
+        const fig = document.createElement('figure'); fig.className = 'cms-pub-gal-item';
+        const img = document.createElement('img'); img.src = cmsSafeUrl(it.imageUrl); img.alt = String(it.alt || it.caption || ''); img.loading = 'lazy';
+        img.onerror = function () { const f = this.closest('.cms-pub-gal-item'); if (f) f.style.display = 'none'; };
+        fig.appendChild(img);
+        if (it.caption) { const cap = document.createElement('figcaption'); cap.textContent = String(it.caption); fig.appendChild(cap); }
+        grid.appendChild(fig);
+      });
+      wrap.appendChild(grid); return wrap;
+    }
+    if (s.type === 'faq') {
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.question);
+      if (!items.length) return null;
+      const list = document.createElement('div'); list.className = 'cms-pub-faq';
+      items.forEach(it => {
+        const d = document.createElement('details'); d.className = 'cms-pub-faq-item';
+        const sm = document.createElement('summary'); sm.textContent = String(it.question); d.appendChild(sm);
+        if (it.answer) { const pp = document.createElement('p'); pp.textContent = String(it.answer); d.appendChild(pp); }
+        list.appendChild(d);
+      });
+      wrap.appendChild(list); return wrap;
+    }
+    if (s.type === 'stats') {
+      const items = (Array.isArray(c.items) ? c.items : []).filter(it => it.number || it.label);
+      if (!items.length) return null;
+      const grid = document.createElement('div'); grid.className = 'cms-pub-stats';
+      items.forEach(it => {
+        const cell = document.createElement('div'); cell.className = 'cms-pub-stat';
+        const n = document.createElement('div'); n.className = 'cms-pub-stat-num'; n.textContent = String(it.number || ''); cell.appendChild(n);
+        const l = document.createElement('div'); l.className = 'cms-pub-stat-label'; l.textContent = String(it.label || ''); cell.appendChild(l);
+        grid.appendChild(cell);
+      });
+      wrap.appendChild(grid); return wrap;
+    }
+    if (s.type === 'contact') {
+      const org = _cmsOrgCache || cmsDefaultOrganization();
+      if (c.title) { const h = document.createElement('h3'); h.className = 'cms-pub-title'; h.textContent = c.title; wrap.appendChild(h); }
+      if (c.note) { const pp = document.createElement('p'); pp.className = 'cms-pub-body'; pp.textContent = c.note; wrap.appendChild(pp); }
+      const list = document.createElement('div'); list.className = 'cms-pub-contact';
+      const rowIf = (label, val, href) => {
+        if (!val) return;
+        const r = document.createElement('div'); r.className = 'cms-pub-contact-row';
+        const lb = document.createElement('span'); lb.className = 'cms-pub-contact-label'; lb.textContent = label; r.appendChild(lb);
+        if (href) { const a = document.createElement('a'); a.href = href; a.textContent = val; if (/^https?:/.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; } r.appendChild(a); }
+        else { const sp = document.createElement('span'); sp.textContent = val; r.appendChild(sp); }
+        list.appendChild(r);
+      };
+      rowIf('\u0423\u0442\u0430\u0441', org.phone, org.phone ? 'tel:' + String(org.phone).replace(/[^0-9+]/g, '') : '');
+      rowIf('\u0418-\u043c\u044d\u0439\u043b', org.email, org.email ? 'mailto:' + org.email : '');
+      rowIf('\u0425\u0430\u044f\u0433', org.address, '');
+      rowIf('\u0410\u0436\u043b\u044b\u043d \u0446\u0430\u0433', org.workingHours, '');
+      rowIf('Facebook', org.facebook ? 'Facebook \u0445\u0443\u0443\u0434\u0430\u0441' : '', cmsSafeUrl(org.facebook));
+      rowIf('\u0412\u0435\u0431\u0441\u0430\u0439\u0442', org.website ? org.website : '', cmsSafeUrl(org.website));
+      if (list.children.length) wrap.appendChild(list);
+      return wrap;
+    }
+    if (s.type === 'map') {
+      const lat = parseFloat(c.lat), lng = parseFloat(c.lng);
+      if (c.title) { const h = document.createElement('h3'); h.className = 'cms-pub-title'; h.textContent = c.title; wrap.appendChild(h); }
+      if (c.address) { const pp = document.createElement('p'); pp.className = 'cms-pub-body'; pp.textContent = c.address; wrap.appendChild(pp); }
+      if (isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        const frame = document.createElement('div'); frame.className = 'cms-pub-map';
+        const f = document.createElement('iframe');
+        const d = 0.01;
+        f.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (lng - d) + '%2C' + (lat - d) + '%2C' + (lng + d) + '%2C' + (lat + d) + '&layer=mapnik&marker=' + lat + '%2C' + lng;
+        f.setAttribute('loading', 'lazy'); f.setAttribute('title', String(c.title || '\u0413\u0430\u0437\u0440\u044b\u043d \u0437\u0443\u0440\u0430\u0433'));
+        frame.appendChild(f); wrap.appendChild(frame);
+      }
+      return (wrap.children.length ? wrap : null);
+    }
     return null;
+  }
+  // Generic renderer: render every visible block of a page into a host element (non-home pages).
+  function cmsRenderPageInto(hostEl, sections) {
+    if (!hostEl) return false;
+    hostEl.textContent = '';
+    const blocks = (sections || []).filter(s => s && s.visible !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
+    let rendered = 0;
+    blocks.forEach(s => { const node = cmsBuildBlockNode(s); if (node) { hostEl.appendChild(node); rendered++; } });
+    return rendered > 0;
   }
   function cmsApplyOrganization(org) {
     if (!org) return;
@@ -274,13 +537,14 @@
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections);
+      const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
   }
 
   // ===================================================================================
   //  ADMIN SIDE
   // ===================================================================================
-  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null;
+  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null;
   let _cmsExpanded = {}, _cmsDirty = false;
 
   function cmsRequireEditor() {
@@ -462,9 +726,10 @@
     if (!cmsRequireEditor()) return;
     const pg = CMS_PAGES.find(p => p.id === pageId); if (!pg || !pg.editable) return;
     _cmsAdminPage = pageId; _cmsDirty = false; _cmsExpanded = {};
-    let draft = pageId === 'home' ? cmsDefaultHomeSections() : [];
-    try { const snap = await db.collection('sitePages').doc(pageId).get(); if (snap.exists && snap.data().draft && Array.isArray(snap.data().draft.sections)) draft = snap.data().draft.sections; }
+    let draft = cmsDefaultSectionsFor(pageId); let seo = cmsDefaultSeo(pageId);
+    try { const snap = await db.collection('sitePages').doc(pageId).get(); if (snap.exists) { const dd = snap.data(); if (dd.draft && Array.isArray(dd.draft.sections)) draft = dd.draft.sections; if (dd.seo && typeof dd.seo === 'object') seo = Object.assign(seo, dd.seo); } }
     catch (e) { console.error('cmsOpenPageEditor load failed:', e.code, e.message); }
+    _cmsSeoDraft = seo;
     _cmsDraft = draft.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     cmsRenderEditor();
     const wrap = document.getElementById('cmsEditorWrap'); if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -487,7 +752,40 @@
         <div style="padding:12px 16px;"><button class="btn btn-ghost" onclick="cmsShowAddBlock()">+ Хэсэг нэмэх</button></div>
         <div id="cmsAddBlockWrap"></div>
         <div id="cmsVersionsWrap"></div>
+      </div>
+      <div class="admin-panel" style="margin-top:16px;">
+        <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span>Хайлтын тохиргоо (SEO)</span>
+          <button class="btn btn-ghost btn-sm" onclick="cmsToggleSeo()">Нээх / хаах</button>
+        </div>
+        <div id="cmsSeoEditor" hidden>${cmsSeoEditorHtml(_cmsSeoDraft || cmsDefaultSeo(_cmsAdminPage))}</div>
       </div>`;
+  }
+  function cmsToggleSeo() { const e = document.getElementById('cmsSeoEditor'); if (e) e.hidden = !e.hidden; }
+  const CMS_SEO_FIELDS = [
+    ['seoTitle', 'SEO гарчиг', 'text'], ['metaDescription', 'Тайлбар (meta description)', 'textarea'],
+    ['canonical', 'Canonical холбоос', 'url'], ['ogImage', 'OG зураг (холбоос)', 'url'],
+    ['ogTitle', 'OG гарчиг', 'text'], ['ogDescription', 'OG тайлбар', 'textarea'],
+    ['twitterTitle', 'Twitter гарчиг', 'text'], ['twitterDescription', 'Twitter тайлбар', 'textarea']
+  ];
+  function cmsSeoEditorHtml(seo) {
+    const rows = CMS_SEO_FIELDS.map(([k, lbl, t]) => {
+      const v = seo[k] || '';
+      if (t === 'textarea') return `<div class="cms-field"><label class="cms-label">${esc(lbl)}</label><textarea class="form-input" rows="2" oninput="cmsSeoInput('${k}', this.value)">${esc(v)}</textarea></div>`;
+      return `<div class="cms-field"><label class="cms-label">${esc(lbl)}</label><input class="form-input" type="text" value="${esc(v)}" oninput="cmsSeoInput('${k}', this.value)" /></div>`;
+    }).join('');
+    return `<div style="padding:12px 16px;"><div class="cms-grid">${rows}</div>
+      <label class="cms-field" style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <input type="checkbox" ${seo.noindex ? 'checked' : ''} onchange="cmsSeoInput('noindex', this.checked)" />
+        <span class="cms-label" style="margin:0;">Хайлтын системд индексжүүлэхгүй (noindex)</span></label></div>`;
+  }
+  function cmsSeoInput(key, value) { _cmsSeoDraft = _cmsSeoDraft || cmsDefaultSeo(_cmsAdminPage); _cmsSeoDraft[key] = value; cmsMarkDirty(); }
+  function cmsCleanSeo(seo) {
+    seo = seo || {}; const out = {};
+    ['seoTitle', 'metaDescription', 'ogTitle', 'ogDescription', 'twitterTitle', 'twitterDescription'].forEach(k => { if (typeof seo[k] === 'string') out[k] = seo[k].slice(0, 400).trim(); });
+    ['canonical', 'ogImage'].forEach(k => { out[k] = cmsSafeUrl(seo[k] || ''); });
+    out.noindex = seo.noindex === true;
+    return out;
   }
   function cmsBlockHtml(block, i) {
     const meta = CMS_BLOCK_TYPES[block.type] || { label: block.type, fields: [] };
@@ -619,7 +917,7 @@
     if (!cmsRequireEditor() || !_cmsAdminPage) return false;
     const sections = cmsNormaliseDraft(_cmsDraft);
     try {
-      await db.collection('sitePages').doc(_cmsAdminPage).set({ title: (CMS_PAGES.find(p => p.id === _cmsAdminPage) || {}).title || _cmsAdminPage, slug: _cmsAdminPage, status: 'draft', draft: { sections }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
+      await db.collection('sitePages').doc(_cmsAdminPage).set({ title: (CMS_PAGES.find(p => p.id === _cmsAdminPage) || {}).title || _cmsAdminPage, slug: _cmsAdminPage, status: 'draft', draft: { sections }, seo: cmsCleanSeo(_cmsSeoDraft), updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
       logAdminAction('cms_draft_save', 'sitePages', _cmsAdminPage, '');
       _cmsDirty = false; const f = document.getElementById('cmsDirtyFlag'); if (f) f.hidden = true;
       if (!silent) showToast('Ноорог хадгалагдлаа', 'success');
@@ -628,11 +926,18 @@
   }
   function cmsPreviewCurrentDraft() {
     if (!_cmsAdminPage) return;
-    _cmsPreviewOverride = { pageId: _cmsAdminPage, sections: cmsNormaliseDraft(_cmsDraft) }; _cmsPublicCache[_cmsAdminPage] = null;
+    const pageId = _cmsAdminPage;
+    _cmsPreviewOverride = { pageId, sections: cmsNormaliseDraft(_cmsDraft) }; _cmsPublicCache[pageId] = null;
     showToast('Урьдчилан харах — зөвхөн танд харагдана');
-    if (_cmsAdminPage === 'home') { showPage('home'); setTimeout(applySiteCms, 60); }
+    cmsGotoPublicPage(pageId);
   }
-  async function cmsPreviewPage(pageId) { _cmsPreviewOverride = null; _cmsPublicCache[pageId] = null; if (pageId === 'home') { showPage('home'); setTimeout(applySiteCms, 60); } }
+  async function cmsPreviewPage(pageId) { _cmsPreviewOverride = null; _cmsPublicCache[pageId] = null; _cmsPublicSeoCache[pageId] = null; cmsGotoPublicPage(pageId); }
+  // Navigate the public site to a given CMS page and (re)render its CMS content.
+  function cmsGotoPublicPage(pageId) {
+    if (pageId === 'home') { showPage('home'); setTimeout(applySiteCms, 60); return; }
+    if (pageId === 'newdev') { if (typeof showPage === 'function') showPage('newdev'); setTimeout(cmsApplyNewdev, 60); return; }
+    if (CMS_INFO_PAGE_IDS[pageId] && typeof openInfoPage === 'function') { openInfoPage(pageId); return; }
+  }
   async function cmsPublish() {
     if (!cmsRequireEditor() || !_cmsAdminPage) return;
     const sections = cmsNormaliseDraft(_cmsDraft);
@@ -645,13 +950,15 @@
       try { const prev = await db.collection('sitePages').doc(pageId).get(); if (prev.exists && Array.isArray(prev.data().versions)) versions = prev.data().versions; } catch (e) {}
       versions = versions.concat([{ publishedAt: new Date().toISOString(), publishedBy: currentUser.email || currentUser.uid, status: 'published', sections }]).slice(-15);
       const batch = db.batch();
-      batch.set(db.collection('sitePagesPublic').doc(pageId), { sections, publishedAt: firebase.firestore.FieldValue.serverTimestamp(), publishedBy: currentUser.uid });
-      batch.set(db.collection('sitePages').doc(pageId), { title: (CMS_PAGES.find(p => p.id === pageId) || {}).title || pageId, slug: pageId, status: 'published', draft: { sections }, versions, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
+      const seo = cmsCleanSeo(_cmsSeoDraft);
+      batch.set(db.collection('sitePagesPublic').doc(pageId), { sections, seo, publishedAt: firebase.firestore.FieldValue.serverTimestamp(), publishedBy: currentUser.uid });
+      batch.set(db.collection('sitePages').doc(pageId), { title: (CMS_PAGES.find(p => p.id === pageId) || {}).title || pageId, slug: pageId, status: 'published', draft: { sections }, seo, versions, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
       await batch.commit();
-      _cmsPreviewOverride = null; _cmsPublicCache[pageId] = null; _cmsDirty = false;
+      _cmsPreviewOverride = null; _cmsPublicCache[pageId] = null; _cmsPublicSeoCache[pageId] = null; _cmsDirty = false;
       logAdminAction('cms_publish', 'sitePages', pageId, '');
       showToast('Хуудас нийтлэгдлээ', 'success');
       if (pageId === 'home') setTimeout(applySiteCms, 60);
+      else if (pageId === 'newdev') setTimeout(cmsApplyNewdev, 60);
       renderAdminCmsSection();
     } catch (e) { console.error('cmsPublish failed:', e.code, e.message); showToast('Нийтлэхэд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
