@@ -4430,3 +4430,31 @@
     html.dark img.logo-square.brand-light { display: none; }
     html.dark img.logo-square.brand-dark { display: block; }
   }
+
+  /* ============ CMS — Хуудас удирдлага (admin module) ============ */
+  /* Scoped to the admin CMS module. Uses only existing design tokens — no new colours,
+     no change to the public site. Matches the admin dashboard's card/row style. */
+  .cms-wrap { display: flex; flex-direction: column; gap: 0; }
+  .cms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .cms-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .cms-label { font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+  #cmsOrgEditor { padding: 14px 16px; }
+  #cmsOrgEditor textarea.form-input { height: auto; min-height: 56px; padding: 10px 14px; resize: vertical; }
+  .cms-block { border: 1px solid var(--line); border-radius: var(--radius-md); margin: 12px 16px; background: var(--surface); overflow: hidden; }
+  .cms-block-hidden { opacity: 0.6; }
+  .cms-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+  .cms-block-title { font-size: 13px; font-weight: 700; color: var(--ink); min-width: 0; }
+  .cms-block-controls { display: flex; gap: 6px; flex-shrink: 0; }
+  .cms-ctrl {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line-2);
+    background: var(--surface); color: var(--ink-2); cursor: pointer; font-size: 14px;
+    display: grid; place-items: center; transition: all 0.15s;
+  }
+  .cms-ctrl:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .cms-ctrl:disabled { opacity: 0.35; cursor: not-allowed; }
+  .cms-block-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .cms-block-body textarea.form-input { height: auto; min-height: 56px; padding: 10px 14px; resize: vertical; }
+  @media (max-width: 640px) {
+    .cms-block, #cmsOrgEditor { margin-left: 0; margin-right: 0; }
+    .cms-block-head { flex-wrap: wrap; }
+  }

@@ -23,6 +23,9 @@
   loadProjects();
   renderAccountSidebar();
   renderSiteAds();
+  // Apply published CMS content (org profile + home sections) over the hardcoded
+  // defaults. Fails safe: if no CMS doc exists, the site keeps its current content.
+  if (typeof applySiteCms === 'function') applySiteCms();
 
   // Initialize page router + listing hash restore
   (function() {

@@ -65,6 +65,25 @@ service firebase.storage {
       allow delete: if request.auth != null && (request.auth.uid == agentId || isOwnerOrAdminStorage());
     }
 
+    // CMS media (page/organization images uploaded from the admin editor). Public read so
+    // the published site can show them; write/delete only for an admin or the owner, and
+    // only real images under 12MB. Mirrors the isOwnerOrAdminStorage() cross-service check
+    // already used by deal-documents. Path is admin-scoped, not tied to listing ownership.
+    match /cms-media/{fileName} {
+      function isCmsEditor() {
+        return request.auth != null && (
+          request.auth.token.email == 'bbayraaa20@gmail.com' ||
+          (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+            && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+      }
+      allow read: if true;
+      allow write: if isCmsEditor()
+                   && request.resource.size < 12 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if isCmsEditor();
+    }
+
     // Everything else stays closed by default.
     match /{allPaths=**} {
       allow read, write: if false;

@@ -564,5 +564,31 @@ service cloud.firestore {
       // silently vanishing) is the more honest audit-trail behavior.
       allow update, delete: if false;
     }
+
+    // ===== CMS: SITE-WIDE ORGANIZATION PROFILE =====
+    // One shared record (siteSettings/organization) that Footer/Contact/About read from —
+    // name, description, phone, email, address, working hours, social links. Public so the
+    // site can render it to every visitor; only admin/owner may edit. All fields are plain
+    // structured strings — never HTML — validated and escaped client-side before render.
+    match /siteSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
+
+    // ===== CMS: PAGES (admin working copy) =====
+    // The editor's draft + version history + metadata for each managed page. NOT public:
+    // a draft is only ever seen by an authorized admin (preview), never by a visitor. The
+    // published snapshot lives in sitePagesPublic below.
+    match /sitePages/{pageId} {
+      allow read, write: if isAdminOrOwner();
+    }
+
+    // ===== CMS: PUBLISHED PAGE SNAPSHOTS (what visitors see) =====
+    // A publish copies the admin draft here as an immutable-until-next-publish snapshot.
+    // World-readable (this IS the public website content); only admin/owner may publish.
+    match /sitePagesPublic/{pageId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
   }
 }

@@ -14,6 +14,7 @@
 
   const ADMIN_NAV = [
     { id: 'overview', label: 'Нүүр' },
+    { id: 'cms', label: 'Хуудас удирдлага' },
     { id: 'listings', label: 'Зарууд' },
     { id: 'crm', label: 'Харилцагч' },
     { id: 'users', label: 'Agent-ууд', ownerOnly: true },
@@ -33,7 +34,9 @@
     mark_sold: 'Зарагдсан болгосон', mark_rented: 'Түрээслэгдсэн болгосон',
     crm_add_client: 'Харилцагч нэмсэн', crm_edit_client: 'Харилцагч засварласан',
     crm_delete_client: 'Харилцагч устгасан', crm_reassign_client: 'Agent сольсон',
-    crm_stage_change: 'Pipeline шат солисон', crm_close_deal: 'Гэрээ хаасан'
+    crm_stage_change: 'Pipeline шат солисон', crm_close_deal: 'Гэрээ хаасан',
+    cms_org_edit: 'Байгууллагын мэдээлэл засварласан', cms_draft_save: 'Хуудас ноорог хадгалсан',
+    cms_publish: 'Хуудас нийтэлсэн', cms_restore: 'Хуудас сэргээсэн'
   };
 
   let _adminSection = 'overview';
@@ -65,6 +68,7 @@
     const s = _adminSection;
     if (s === 'overview') await renderAdminOverview();
     else if (s === 'listings') await renderAdminListingsSection();
+    else if (s === 'cms') await renderAdminCmsSection();
     else if (s === 'crm') await renderAdminCrmSection();
     else if (s === 'users' && owner) await renderAdminUsersSection();
     else if (s === 'projects') await renderAdminProjectsSection();
