@@ -23,10 +23,16 @@
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
           if (typeof checkNotificationTriggers === 'function') checkNotificationTriggers();
-        } catch(e) {}
+        } catch(e) {
+          // Best-effort like removeFavorite's sibling writes, but no longer silent: a failed
+          // save means this favorite won't sync to the user's other devices, which is worth
+          // a developer breadcrumb. Local state + the heart still reflect the intent.
+          console.error('toggleFav: Firestore favorites.add failed:', e.code, e.message);
+        }
       }
       if (l?.firestoreId) {
-        db.collection('listings').doc(l.firestoreId).update({ favoriteCount: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
+        db.collection('listings').doc(l.firestoreId).update({ favoriteCount: firebase.firestore.FieldValue.increment(1) })
+          .catch(e => console.error('toggleFav: favoriteCount increment failed:', e.code, e.message));
       }
     }
     afterFavoritesChanged();

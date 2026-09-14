@@ -1,19 +1,32 @@
 ﻿  // ===== COMPARE =====
   let compareList = [];
 
+  // Repaints every .listing-compare button in the DOM from `compareList`, so the same
+  // listing shown on two cards (Шинээр нэмэгдсэн + Онцлох, a card + the detail page's
+  // similar list) can never disagree. Buttons are matched by the id baked into their
+  // onclick, the same way removeFromCompare already did it.
+  function syncCompareButtons() {
+    document.querySelectorAll('.listing-compare').forEach(b => {
+      const m = (b.getAttribute('onclick') || '').match(/toggleCompare\((\d+)\s*,/);
+      if (m) b.classList.toggle('active', compareList.includes(Number(m[1])));
+    });
+  }
+
   function toggleCompare(id, btn) {
     const idx = compareList.indexOf(id);
     if (idx > -1) {
       compareList.splice(idx, 1);
-      btn.classList.remove('active');
     } else {
       if (compareList.length >= 4) {
         showToast('Хамгийн ихдээ 4 байр харьцуулна');
         return;
       }
       compareList.push(id);
-      btn.classList.add('active');
     }
+    // Repaint all copies, not just the clicked button — clicking a second copy of an
+    // already-compared listing used to remove it from the list while the first copy stayed
+    // highlighted, leaving the button and the bar out of sync.
+    syncCompareButtons();
     updateCompareBar();
   }
 
@@ -30,11 +43,17 @@
     bar.classList.add('show');
     items.innerHTML = compareList.map(id => {
       const l = listings.find(x => x.id === id);
+      // esc() on both: listing titles/images are agent-supplied, and this bar (unlike the
+      // compare modal, which already escapes) dropped them into innerHTML raw — a title of
+      // `<img src=x onerror=...>` executed, and a crafted img value broke out of the src
+      // attribute. The 20-char clamp is applied to the raw title BEFORE escaping so an
+      // entity like &amp; can't be sliced in half.
+      const titleShort = l.title.length > 20 ? l.title.slice(0, 20) + '...' : l.title;
       return `
         <div class="compare-bar-item">
-          <img src="${l.img}" alt="" />
+          <img src="${esc(l.img)}" alt="" />
           <div class="compare-bar-item-info">
-            <div class="compare-bar-item-title">${l.title.slice(0, 20)}${l.title.length > 20 ? '...' : ''}</div>
+            <div class="compare-bar-item-title">${esc(titleShort)}</div>
             <div class="compare-bar-item-price">${fmtPrice(l.price)}</div>
           </div>
           <button class="compare-bar-remove" onclick="removeFromCompare(${id})">
@@ -57,16 +76,13 @@
 
   function removeFromCompare(id) {
     compareList = compareList.filter(x => x !== id);
-    // Update card button state
-    document.querySelectorAll('.listing-compare').forEach(b => {
-      if (b.getAttribute('onclick').includes(`toggleCompare(${id},`)) b.classList.remove('active');
-    });
+    syncCompareButtons();
     updateCompareBar();
   }
 
   function clearCompare() {
     compareList = [];
-    document.querySelectorAll('.listing-compare').forEach(b => b.classList.remove('active'));
+    syncCompareButtons();
     updateCompareBar();
   }
 
