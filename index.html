@@ -68,6 +68,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="/css/main.css" />
+<!-- CMS theme overrides: populated at runtime by applySiteCms() from the published theme.
+     Empty by default so the hardcoded brand tokens in main.css remain the fallback. -->
+<style id="cmsThemeVars"></style>
 </head>
 <body>
 
@@ -2532,6 +2535,10 @@
     </div>
   </div>
 </section>
+
+<!-- CMS-managed additive content blocks for the home page (text/image/video/cta/etc).
+     Populated by applySiteCms(); empty and invisible when the CMS has no such blocks. -->
+<section class="home-cms-blocks-section" id="cmsHomeBlocks" hidden></section>
 
 <!-- ============ RESOURCES HUB ============ -->
 <section class="resources-section" id="resources">
