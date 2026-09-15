@@ -229,9 +229,18 @@
     renderNewdevActiveTags();
   }
 
+  // Initials for the company avatar — the project schema has no logo field, so a neutral
+  // navy monogram derived from the real company name stands in (never a fake/stock logo).
+  function ndCompanyInitials(name) {
+    const cleaned = String(name || '').replace(/\b(ХХК|ХК|ХЗХ|ХXK|LLC|Group|Construction)\b/gi, '').trim();
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    const chars = words.length >= 2 ? (words[0][0] + words[1][0]) : (cleaned.slice(0, 2));
+    return (chars || '?').toUpperCase();
+  }
   function projectCard(p) {
     const cover = (p.images && p.images[0]) || p.img || '';
     const priceText = p.pricePerSqm ? fmtPrice(p.pricePerSqm) : 'Үнэ асууна уу';
+    const typesText = ndUnitTypesText(p.unitTypes);   // only the real unit types on the doc
     return `
       <div class="newdev-card" onclick="openProjectDetail('${p.id}')">
         <div class="newdev-img">
@@ -241,15 +250,24 @@
           ${p.unitsRemaining != null && p.unitsRemaining !== '' ? `<span class="newdev-units-badge">${esc(String(p.unitsRemaining))} байр үлдсэн</span>` : ''}
         </div>
         <div class="newdev-body">
-          <div class="newdev-company">${esc(p.company)}</div>
+          <div class="newdev-company-row">
+            <div class="newdev-logo" aria-hidden="true">${esc(ndCompanyInitials(p.company))}</div>
+            <div class="newdev-company">${esc(p.company || '')}</div>
+          </div>
           <div class="newdev-title">${esc(p.projectName)}</div>
           <div class="newdev-loc">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             ${esc(ndDistrictLabel(p.district))}${p.address ? ' · ' + esc(p.address) : ''}
           </div>
+          ${typesText ? `<div class="newdev-tags">${esc(typesText)}</div>` : ''}
           <div class="newdev-price-row">
-            <div class="newdev-price">${priceText}</div>
-            <div class="newdev-price-unit">1м²</div>
+            <div>
+              <div class="newdev-price">${priceText}<span class="newdev-price-unit"> / м²</span></div>
+              ${p.completionDate ? `<div class="newdev-complete">Ашиглалтад: ${esc(p.completionDate)}</div>` : ''}
+            </div>
+            <span class="newdev-more">Дэлгэрэнгүй
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </span>
           </div>
         </div>
       </div>

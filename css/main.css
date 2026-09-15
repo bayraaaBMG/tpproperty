@@ -3172,7 +3172,7 @@
   .newdev-cta-content p { font-size: 14px; color: var(--ink-2); line-height: 1.55; max-width: 600px; }
   /* Compact grid — auto-fit like .listings-browse-grid, ~4/row desktop instead of the
      old fixed 3-column layout, so density matches the rest of the site. */
-  .newdev-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .newdev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; align-content: start; }
   .newdev-card {
     background: var(--surface); border-radius: var(--radius-lg); overflow: hidden;
     border: 1px solid var(--line); transition: all 0.3s ease; cursor: pointer; position: relative;
@@ -3196,23 +3196,34 @@
     font-size: 10px; font-weight: 700; color: var(--ink-2);
   }
   .newdev-body { padding: 14px; }
-  .newdev-company { font-size: 10.5px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .newdev-company-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-width: 0; }
+  .newdev-logo { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+    background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: 0.02em; }
+  .newdev-company { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.03em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .newdev-title {
-    font-size: 13.5px; font-weight: 700; margin-bottom: 5px; line-height: 1.3;
+    font-size: 14.5px; font-weight: 700; margin-bottom: 6px; line-height: 1.3;
     -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
   }
   .newdev-loc {
     font-size: 12px; color: var(--ink-3); margin-bottom: 8px; display: flex; align-items: center; gap: 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .newdev-price-row { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); }
-  .newdev-price { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 700; color: var(--ink); }
-  .newdev-price-unit { font-size: 11px; color: var(--ink-3); font-weight: 500; }
-  .newdev-complete { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .newdev-loc svg { flex: 0 0 auto; }
+  .newdev-tags { font-size: 11.5px; color: var(--ink-2); background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 3px 8px; display: inline-block; margin-bottom: 10px; max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .newdev-price-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .newdev-price { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+  .newdev-price-unit { font-family: var(--font-body, inherit); font-size: 11px; color: var(--ink-3); font-weight: 500; }
+  .newdev-complete { font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-top: 3px; }
+  .newdev-more { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700;
+    color: var(--primary); white-space: nowrap; }
+  .newdev-card:hover .newdev-more { text-decoration: underline; }
   .newdev-empty { text-align: center; padding: 60px 20px; color: var(--ink-3); }
   @media (max-width: 1280px) { .newdev-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
   @media (max-width: 900px) { .newdev-cta { grid-template-columns: 1fr; } }
-  @media (max-width: 640px) { .newdev-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; } }
+  @media (max-width: 640px) { .newdev-grid { grid-template-columns: 1fr; gap: 12px; } }
 
   /* ============ BUY vs RENT CALCULATOR ============ */
   .compare-section { padding: 100px var(--page-pad); background: var(--surface); }
