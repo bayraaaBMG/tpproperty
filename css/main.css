@@ -3179,7 +3179,11 @@
   }
   .newdev-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary); }
   .newdev-img { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--paper-2); }
-  .newdev-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+  .newdev-img img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+  /* Brand placeholder sits behind the cover image; a loaded image covers it, a missing or
+     failed one reveals it — no broken image, no misleading stock photo. */
+  .newdev-img-ph { position: absolute; inset: 0; z-index: 0; display: grid; place-items: center;
+    background: linear-gradient(135deg, #1B2D4F, #272B68); color: rgba(255, 255, 255, 0.55); }
   .newdev-card:hover .newdev-img img { transform: scale(1.05); }
   .newdev-badge {
     position: absolute; top: 10px; left: 10px; z-index: 2;

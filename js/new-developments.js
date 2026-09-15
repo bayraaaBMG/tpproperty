@@ -21,6 +21,11 @@
   function ndDistrictLabel(code) { return NEWDEV_DISTRICT_LABELS[code] || code || 'Тодорхойгүй'; }
   function ndUnitTypesText(arr) { return (arr || []).map(t => NEWDEV_UNIT_TYPE_LABELS[t] || t).join(', '); }
 
+  // Clean brand placeholder shown behind a project cover so a project WITHOUT an uploaded
+  // image (or one whose image fails to load) gets a navy TP-branded panel with a building
+  // glyph — never a broken image and never a misleading stock photo.
+  const ND_IMG_PLACEHOLDER = '<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/></svg>';
+
   // ===== LOAD (public, no auth required — same pattern as loadPublicListings) =====
   async function loadProjects() {
     // Unlike Listings/Rent (which always have synchronous demo data to show instantly),
@@ -204,7 +209,9 @@
       el.innerHTML = buyerEmptyState({
         icon: BUYER_EMPTY_ICON_BUILDING,
         title: 'Одоогоор нийтэлсэн төсөл алга',
-        sub: 'Барилгын компани мөн үү? Эхний төслөө нийтлээрэй.'
+        sub: 'Барилгын компани мөн үү? Төслөө TP Property дээр нийтэлж, худалдан авагчидтай шууд холбогдоорой.',
+        ctaLabel: 'Төсөл нэмэх',
+        ctaOnclick: 'openAddProject()'
       });
       return;
     }
@@ -223,12 +230,13 @@
   }
 
   function projectCard(p) {
-    const cover = (p.images && p.images[0]) || p.img || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80';
+    const cover = (p.images && p.images[0]) || p.img || '';
     const priceText = p.pricePerSqm ? fmtPrice(p.pricePerSqm) : 'Үнэ асууна уу';
     return `
       <div class="newdev-card" onclick="openProjectDetail('${p.id}')">
         <div class="newdev-img">
-          <img src="${esc(cover)}" alt="${esc(p.projectName)}" loading="lazy" onerror="this.style.background='var(--paper-2)';this.removeAttribute('src');" />
+          <div class="newdev-img-ph" aria-hidden="true">${ND_IMG_PLACEHOLDER}</div>
+          ${cover ? `<img src="${esc(cover)}" alt="${esc(p.projectName)}" loading="lazy" onerror="this.remove()" />` : ''}
           ${p.completionDate ? `<span class="newdev-badge">${esc(p.completionDate)}</span>` : ''}
           ${p.unitsRemaining != null && p.unitsRemaining !== '' ? `<span class="newdev-units-badge">${esc(String(p.unitsRemaining))} байр үлдсэн</span>` : ''}
         </div>
@@ -252,7 +260,7 @@
   function openProjectDetail(id) {
     const p = projects.find(x => x.id === id);
     if (!p) return;
-    const images = (p.images && p.images.length) ? p.images : [p.img || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80'];
+    const images = (p.images && p.images.length) ? p.images : [p.img || ''];
     mcImages = images; mcIdx = 0;
     const isOwner = !!(currentUser && p.ownerId === currentUser.uid);
     const tour3dEmbed = p.tour3d && videoEmbedUrl(p.tour3d);
