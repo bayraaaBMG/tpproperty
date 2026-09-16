@@ -4642,3 +4642,27 @@
   .hero-cta-btn { margin-top: 14px; align-self: flex-start; }
   .hero-cta-btn[hidden] { display: none !important; }
   @media (max-width: 640px) { .hero-has-bg { padding-top: 36px; padding-bottom: 36px; } }
+
+  /* ---- Featured agents (Онцлох агентууд) — replaces the old Категориуд grid ---- */
+  .portal-section-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+  .home-agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; align-content: start; }
+  .agent-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 20px 16px; text-align: center; display: flex; flex-direction: column; align-items: center;
+    gap: 6px; transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+  .agent-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary); }
+  .agent-avatar {
+    width: 72px; height: 72px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+    background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 22px; margin-bottom: 4px;
+    box-shadow: 0 0 0 3px var(--primary-soft); transition: box-shadow 0.22s ease;
+  }
+  .agent-card:hover .agent-avatar { box-shadow: 0 0 0 3px var(--primary-glow); }
+  .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .agent-name { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .agent-title { font-size: 12.5px; color: var(--primary); font-weight: 600; }
+  .agent-phone { font-size: 13px; color: var(--ink-2); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
+  .agent-phone:hover { color: var(--primary); }
+  .agent-count { font-size: 11.5px; font-weight: 700; color: var(--primary); background: var(--primary-soft); border-radius: 100px; padding: 3px 12px; margin-top: 2px; }
+  .agent-view-btn { margin-top: 10px; width: 100%; }
+  @media (max-width: 640px) { .home-agents-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; } }

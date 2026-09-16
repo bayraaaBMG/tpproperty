@@ -2,6 +2,7 @@
   let currentCat = 'all';
   let currentSort = 'default';
   let searchText = '';
+  let agentUidFilter = '';   // set by "Зарууд үзэх" on a featured-agent card; cleared on any category change
 
   // The one place that writes the chosen category. Three separate surfaces pick a
   // category — the home search bar's Ангилал <select>, the category shortcut tiles
@@ -17,6 +18,7 @@
   function setSearchCategory(cat) {
     const c = cat || 'all';
     currentCat = c;
+    agentUidFilter = '';   // choosing a category clears any agent-scoped view
     const sel = document.getElementById('hSearchType');
     if (sel && sel.value !== c) sel.value = c;
     document.querySelectorAll('.filter-pill[data-cat]').forEach(x => x.classList.toggle('active', x.dataset.cat === c));

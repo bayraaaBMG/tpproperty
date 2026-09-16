@@ -41,8 +41,7 @@
   const CMS_BLOCK_TYPES = {
     homeHeadings: { label: 'Хэсгийн гарчгууд', kind: 'fields', system: true,
                 fields: [ ['newTitle', '"Шинээр нэмэгдсэн зарууд" гарчиг', 'text'],
-                          ['featuredTitle', '"Онцлох зарууд" гарчиг', 'text'],
-                          ['catTitle', '"Категориуд" гарчиг', 'text'] ] },
+                          ['featuredTitle', '"Онцлох зарууд" гарчиг', 'text'] ] },
     hero:     { label: 'Гарчиг (Hero)', kind: 'fields', system: true,
                 fields: [ ['titleHtml', 'Гарчиг', 'herorich'], ['subtitleHtml', 'Дэд гарчиг', 'herorich'],
                           ['buttonText', 'Товч 1 нэр', 'text'], ['buttonUrl', 'Товч 1 холбоос', 'url'],
@@ -97,7 +96,7 @@
           subtitle: 'Орон сууц, түрээс, газар, оффисын зарыг нэг дороос.' } },
       { id: 'banks', type: 'banks', order: 2, visible: true, content: { label: 'Банк дээр дарж шууд зээлийн хуудсанд нь орно уу', items: cmsDefaultBanks() } },
       { id: 'features', type: 'features', order: 3, visible: true, content: { items: [] } },
-      { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { newTitle: '', featuredTitle: '', catTitle: '' } }
+      { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { newTitle: '', featuredTitle: '' } }
     ];
   }
   function cmsDefaultAboutSections() {
@@ -398,7 +397,7 @@
   // non-empty value, so the default styled headings stay untouched otherwise.
   function cmsApplyHomeHeadings(block) {
     if (!block || !block.content) return;
-    const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle', catTitle: 'homeCatTitle' };
+    const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
     Object.keys(map).forEach(k => {
       const v = block.content[k];
       if (typeof v === 'string' && v.trim()) { const el = document.getElementById(map[k]); if (el) el.textContent = v.trim(); }
@@ -781,6 +780,68 @@
     }
   }
 
+  // ---- Featured agents (site_settings/home_agents) — admin-curated PUBLIC fields only.
+  // The public site never reads the users collection (rules keep it private); the admin
+  // curates a small list of public display fields, and the active-listing count is computed
+  // from the already-loaded public listings[] (status=='active'), so no extra reads/indexes. ----
+  function cmsDefaultHomeAgents() {
+    return { show: false, title: '\u041e\u043d\u0446\u043b\u043e\u0445 \u0430\u0433\u0435\u043d\u0442\u0443\u0443\u0434', subtitle: '', agents: [] };
+  }
+  let _cmsHomeAgentsCache = null;
+  async function cmsLoadHomeAgents() {
+    if (_cmsHomeAgentsCache) return _cmsHomeAgentsCache;
+    let cfg = cmsDefaultHomeAgents();
+    try { const snap = await db.collection('site_settings').doc('home_agents').get(); if (snap.exists && snap.data()) cfg = Object.assign(cfg, snap.data()); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadHomeAgents failed:', e.code, e.message); }
+    _cmsHomeAgentsCache = cfg; return cfg;
+  }
+  function cmsAgentInitials(name) {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    const c = words.length >= 2 ? (words[0][0] + words[1][0]) : String(name || '').slice(0, 2);
+    return (c || '?').toUpperCase();
+  }
+  function cmsAgentActiveCount(uid) {
+    if (typeof listings === 'undefined' || !Array.isArray(listings) || !uid) return 0;
+    return listings.filter(l => l && !l._inactive && String(l.ownerId) === String(uid)).length;
+  }
+  function cmsBuildAgentCard(a) {
+    const card = document.createElement('div'); card.className = 'agent-card';
+    const av = document.createElement('div'); av.className = 'agent-avatar';
+    const photo = cmsSafeUrl(a.photoUrl);
+    if (photo) { const img = document.createElement('img'); img.src = photo; img.alt = String(a.name || ''); img.loading = 'lazy';
+      img.onerror = function () { const p = this.parentNode; if (p) { this.remove(); p.textContent = cmsAgentInitials(a.name); } }; av.appendChild(img); }
+    else av.textContent = cmsAgentInitials(a.name);
+    card.appendChild(av);
+    const nm = document.createElement('div'); nm.className = 'agent-name'; nm.textContent = String(a.name || ''); card.appendChild(nm);
+    if (a.title) { const t = document.createElement('div'); t.className = 'agent-title'; t.textContent = String(a.title); card.appendChild(t); }
+    const digits = String(a.phone || '').replace(/[^0-9+]/g, '');
+    if (digits) {
+      const ph = document.createElement('a'); ph.className = 'agent-phone'; ph.href = 'tel:' + digits;
+      ph.textContent = (/^\+/.test(digits) ? '' : '+976 ') + String(a.phone); card.appendChild(ph);
+    }
+    const badge = document.createElement('div'); badge.className = 'agent-count'; badge.textContent = cmsAgentActiveCount(a.uid) + ' \u0437\u0430\u0440\u0442\u0430\u0439'; card.appendChild(badge);
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-blue btn-sm agent-view-btn'; btn.textContent = '\u0417\u0430\u0440\u0443\u0443\u0434 \u04af\u0437\u044d\u0445';
+    btn.addEventListener('click', function () { if (typeof viewAgentListings === 'function') viewAgentListings(a.uid); });
+    card.appendChild(btn);
+    return card;
+  }
+  function cmsRenderHomeAgents(cfg) {
+    const grid = document.getElementById('homeAgentsGrid'), head = document.getElementById('homeAgentsHead');
+    if (!grid || !head) return;
+    const agents = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
+    const show = !!(cfg && cfg.show === true && agents.length);
+    if (!show) { grid.hidden = true; head.hidden = true; grid.textContent = ''; return; }
+    head.hidden = false; grid.hidden = false;
+    const titleEl = document.getElementById('homeAgentsTitle'); if (titleEl && cfg.title) titleEl.textContent = String(cfg.title);
+    const subEl = document.getElementById('homeAgentsSub');
+    if (subEl) { if (cfg.subtitle) { subEl.textContent = String(cfg.subtitle); subEl.hidden = false; } else { subEl.hidden = true; subEl.textContent = ''; } }
+    grid.textContent = '';
+    agents.slice(0, 8).forEach(a => grid.appendChild(cmsBuildAgentCard(a)));
+  }
+  async function applyHomeAgents() { const cfg = await cmsLoadHomeAgents(); cmsRenderHomeAgents(cfg); }
+  // Re-render (counts) once listings are loaded, without another Firestore read.
+  function cmsRefreshHomeAgents() { if (_cmsHomeAgentsCache) cmsRenderHomeAgents(_cmsHomeAgentsCache); }
+
   function cmsApplyNav(nav) {
     const known = cmsNavKnownKeys();
     const items = (nav && Array.isArray(nav.items) && nav.items.length) ? nav.items : cmsDefaultNav().items;
@@ -821,6 +882,7 @@
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
       cmsApplyHeroBanner(banner);
+      applyHomeAgents();
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
   }
@@ -879,6 +941,7 @@
   //  ADMIN SIDE
   // ===================================================================================
   let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null;
+  let _cmsAgentsDraft = null, _cmsAgentPool = null;
   let _cmsExpanded = {}, _cmsDirty = false;
 
   function cmsRequireEditor() {
@@ -906,6 +969,9 @@
     _cmsThemeDraft = Object.assign(cmsDefaultTheme(), theme);
     _cmsNavDraft = await cmsLoadNav().then(n => cmsCleanNav(n)).catch(() => cmsDefaultNav());
     _cmsHeroBannerDraft = await cmsLoadHeroBanner().then(b => Object.assign(cmsDefaultHeroBanner(), b)).catch(() => cmsDefaultHeroBanner());
+    _cmsHomeAgentsCache = null;
+    _cmsAgentsDraft = await cmsLoadHomeAgents().then(c => Object.assign(cmsDefaultHomeAgents(), c, { agents: (c.agents || []).slice() })).catch(() => cmsDefaultHomeAgents());
+    _cmsAgentPool = null;
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
@@ -913,6 +979,7 @@
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Гол баннер</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'agents')">Онцлох агентууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'theme')">Дизайн ба өнгө</button>
         </div>
         <div id="cmsTab-pages">
@@ -931,15 +998,18 @@
         </div>
         <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
         <div id="cmsTab-herobanner" hidden><div id="cmsHeroBannerEditor">${cmsHeroBannerEditorHtml(_cmsHeroBannerDraft)}</div></div>
+        <div id="cmsTab-agents" hidden><div id="cmsAgentsEditor"></div></div>
         <div id="cmsTab-theme" hidden><div id="cmsThemeEditor">${cmsThemeEditorHtml(_cmsThemeDraft)}</div></div>
       </div>`;
     cmsRenderNavEditor();
     cmsInitHeroEditors();
+    cmsRenderAgentsEditor();
   }
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'org', 'nav', 'herobanner', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'org', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    if (tab === 'agents' && !_cmsAgentPool) cmsFetchAgentPool();
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
   function cmsPageRowHtml(pg, meta) {
@@ -1145,6 +1215,89 @@
     } catch (e) { console.error('cmsSaveHeroBanner failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
 
+  // ---- Featured-agents editor (site_settings/home_agents) ----
+  // The admin (who alone can read the users collection) curates a small list; only the
+  // public display fields are ever written, so no private agent data reaches the public doc.
+  async function cmsFetchAgentPool() {
+    if (!cmsRequireEditor()) return;
+    try {
+      const snap = await db.collection('users').where('agentActive', '==', true).get();
+      _cmsAgentPool = snap.docs.map(d => { const u = d.data() || {};
+        const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.name || u.email || d.id;
+        return { uid: d.id, name: name, phone: u.verifiedPhone || u.phone || '', photoUrl: u.photoURL || '', blocked: u.blocked === true, role: u.role || 'user' };
+      }).filter(a => !a.blocked);
+    } catch (e) { console.error('cmsFetchAgentPool failed:', e.code, e.message); _cmsAgentPool = []; showToast('Агентуудыг татахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+    cmsRenderAgentsEditor();
+  }
+  function cmsAgentsFeatured(uid) { return (_cmsAgentsDraft.agents || []).find(a => String(a.uid) === String(uid)); }
+  function cmsRenderAgentsEditor() {
+    const host = document.getElementById('cmsAgentsEditor'); if (!host) return;
+    const d = _cmsAgentsDraft || cmsDefaultHomeAgents();
+    const poolRows = _cmsAgentPool == null
+      ? '<div style="font-size:12.5px;color:var(--ink-3);padding:8px 0;">Ачааллаж байна…</div>'
+      : (_cmsAgentPool.length === 0
+        ? '<div style="font-size:12.5px;color:var(--ink-3);padding:8px 0;">Идэвхтэй агент алга. Удирдлага → Хэрэглэгчид дотор агент идэвхжүүлнэ үү.</div>'
+        : _cmsAgentPool.map(a => { const f = cmsAgentsFeatured(a.uid); return `
+          <div class="cms-item ${f ? '' : 'cms-item-hidden'}">
+            <div class="cms-item-head"><span>
+              <input type="checkbox" ${f ? 'checked' : ''} onchange="cmsAgentToggle('${esc(a.uid)}', this.checked)" style="vertical-align:middle;margin-right:8px;" />
+              ${esc(a.name)}${a.phone ? ' · +976 ' + esc(a.phone) : ''}</span></div>
+            ${f ? `<div class="cms-item-body"><div class="cms-field"><label class="cms-label">Албан тушаал / Title</label>
+              <input type="text" class="form-input" value="${esc(f.title || '')}" maxlength="80" placeholder="Жишээ: Ахлах агент, Үл хөдлөхийн зөвлөх" oninput="cmsAgentTitleInput('${esc(a.uid)}', this.value)" /></div></div>` : ''}
+          </div>`; }).join(''));
+    host.innerHTML = `<div class="admin-panel">
+      <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>Онцлох агентууд</span>
+        <button class="btn btn-blue btn-sm" onclick="cmsSaveHomeAgents()">Хадгалах</button>
+      </div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+        <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" ${d.show ? 'checked' : ''} onchange="_cmsAgentsDraft.show=this.checked;cmsMarkDirty()" />
+          <span class="cms-label" style="margin:0;">Нүүр хуудсанд харуулах</span></label>
+        <div class="cms-field"><label class="cms-label">Хэсгийн гарчиг</label>
+          <input type="text" class="form-input" value="${esc(d.title || '')}" maxlength="120" oninput="_cmsAgentsDraft.title=this.value;cmsMarkDirty()" placeholder="Онцлох агентууд" /></div>
+        <div class="cms-field"><label class="cms-label">Дэд гарчиг (сонголтоор)</label>
+          <input type="text" class="form-input" value="${esc(d.subtitle || '')}" maxlength="300" oninput="_cmsAgentsDraft.subtitle=this.value;cmsMarkDirty()" placeholder="Жишээ: Манай шилдэг агентууд" /></div>
+        <div class="cms-field"><label class="cms-label">Агент сонгох (4–8)</label>
+          <div class="cms-items">${poolRows}</div></div>
+      </div></div>`;
+  }
+  function cmsAgentToggle(uid, on) {
+    _cmsAgentsDraft.agents = _cmsAgentsDraft.agents || [];
+    if (on) {
+      if (cmsAgentsFeatured(uid)) return;
+      const src = (_cmsAgentPool || []).find(a => String(a.uid) === String(uid)); if (!src) return;
+      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', phone: src.phone, photoUrl: src.photoUrl });
+    } else {
+      _cmsAgentsDraft.agents = _cmsAgentsDraft.agents.filter(a => String(a.uid) !== String(uid));
+    }
+    cmsMarkDirty(); cmsRenderAgentsEditor();
+  }
+  function cmsAgentTitleInput(uid, val) { const f = cmsAgentsFeatured(uid); if (f) { f.title = val; cmsMarkDirty(); } }
+  async function cmsSaveHomeAgents() {
+    if (!cmsRequireEditor()) return;
+    const d = _cmsAgentsDraft || cmsDefaultHomeAgents();
+    const clean = {
+      show: d.show === true,
+      title: (String(d.title || '').slice(0, 120).trim()) || 'Онцлох агентууд',
+      subtitle: String(d.subtitle || '').slice(0, 300).trim(),
+      agents: (d.agents || []).slice(0, 8).map(a => ({
+        uid: String(a.uid || ''),
+        name: String(a.name || '').slice(0, 80).trim(),
+        title: String(a.title || '').slice(0, 80).trim(),
+        phone: String(a.phone || '').replace(/[^0-9+]/g, '').slice(0, 20),
+        photoUrl: cmsSafeUrl(a.photoUrl || '')
+      })).filter(a => a.uid && a.name)
+    };
+    try {
+      await db.collection('site_settings').doc('home_agents').set(Object.assign({}, clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
+      _cmsAgentsDraft = Object.assign(cmsDefaultHomeAgents(), clean); _cmsHomeAgentsCache = null;
+      logAdminAction('cms_home_agents', 'site_settings', 'home_agents', '');
+      showToast('Онцлох агентууд хадгалагдлаа', 'success');
+      const cfg = await cmsLoadHomeAgents(); cmsRenderHomeAgents(cfg);
+    } catch (e) { console.error('cmsSaveHomeAgents failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+
   // ---- Theme editor ----
   const CMS_THEME_FIELDS = [ ['primary', 'Үндсэн өнгө'], ['primaryDeep', 'Hover / гүн өнгө'], ['primarySoft', 'Цайвар өнгө'], ['primaryGlow', 'Онцлох (dark)'], ['accent', 'Accent өнгө'] ];
   const CMS_THEME_VARMAP = { primary: '--primary', primaryDeep: '--primary-deep', primarySoft: '--primary-soft', primaryGlow: '--primary-glow', accent: '--accent' };
@@ -1224,7 +1377,7 @@
     catch (e) { console.error('cmsOpenPageEditor load failed:', e.code, e.message); }
     _cmsSeoDraft = seo;
     if (pageId === 'home' && !draft.some(b => b.type === 'homeHeadings')) {
-      draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { newTitle: '', featuredTitle: '', catTitle: '' } }]);
+      draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { newTitle: '', featuredTitle: '' } }]);
     }
     _cmsDraft = draft.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     cmsRenderEditor();

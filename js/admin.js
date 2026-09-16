@@ -38,7 +38,7 @@
     cms_org_edit: 'Байгууллагын мэдээлэл засварласан', cms_draft_save: 'Хуудас ноорог хадгалсан',
     cms_publish: 'Хуудас нийтэлсэн', cms_restore: 'Хуудас сэргээсэн',
     cms_theme_publish: 'Дизайн нийтэлсэн', cms_nav_save: 'Цэс засварласан',
-    cms_hero_banner: 'Гол баннер засварласан'
+    cms_hero_banner: 'Гол баннер засварласан', cms_home_agents: 'Онцлох агентууд засварласан'
   };
 
   let _adminSection = 'overview';

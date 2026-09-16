@@ -175,6 +175,7 @@
       });
     }
 
+    if (typeof agentUidFilter !== 'undefined' && agentUidFilter) results = results.filter(l => String(l.ownerId) === String(agentUidFilter));
     if (district !== 'all') results = results.filter(l => l.district === district);
     if (khoroo > 0) results = results.filter(l => l.khoroo === khoroo);
     if (complexQuery) results = results.filter(l => (l.complex || '').toLowerCase().includes(complexQuery));
@@ -394,5 +395,17 @@
     renderFilterTags();
     updateFilterCount();
     showToast('Шүүлтүүр цэвэрлэгдлээ');
+  }
+
+  // Show only a given featured agent's active listings (from the home "Онцлох агентууд"
+  // card). Clears other filters first so it is a clean agent-scoped view; picking any
+  // category afterwards clears it again (see setSearchCategory).
+  function viewAgentListings(uid) {
+    if (!uid) return;
+    if (typeof resetFilters === 'function') resetFilters();
+    agentUidFilter = String(uid);
+    if (typeof showPage === 'function') showPage('listings');
+    renderListings(getFilteredListings());
+    if (typeof updateFilterCount === 'function') updateFilterCount();
   }
 

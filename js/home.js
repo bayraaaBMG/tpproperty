@@ -132,6 +132,8 @@
       const el = document.getElementById('homeCatCount-' + key);
       if (el) el.textContent = fmt(counts[key]);
     });
+    // Featured-agent cards show a live active-listing count from listings[] — refresh it here.
+    if (typeof cmsRefreshHomeAgents === 'function') cmsRefreshHomeAgents();
 
     const heroStats = {
       all: active.length,
