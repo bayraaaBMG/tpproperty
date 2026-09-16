@@ -4618,3 +4618,10 @@
   .cms-lb-nav:hover { background: rgba(255,255,255,.26); }
   .cms-lb-close:focus-visible, .cms-lb-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   @media (max-width: 600px) { .cms-lb-nav { width: 38px; height: 38px; font-size: 22px; } .cms-lb-img { max-width: 94vw; } }
+
+  /* ---- Hero rich-text toolbar extras (colour swatches + native picker) ---- */
+  .cms-hero-swatches { display: inline-flex; align-items: center; gap: 4px; padding: 0 4px; }
+  .cms-hero-swatch { width: 20px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+  .cms-hero-swatch:hover { transform: scale(1.12); }
+  .cms-hero-pick { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; background: var(--surface, #fff); font-size: 13px; position: relative; overflow: hidden; }
+  .cms-hero-pick input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; border: 0; padding: 0; }

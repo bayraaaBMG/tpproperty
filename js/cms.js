@@ -44,7 +44,7 @@
                           ['featuredTitle', '"Онцлох зарууд" гарчиг', 'text'],
                           ['catTitle', '"Категориуд" гарчиг', 'text'] ] },
     hero:     { label: 'Гарчиг (Hero)', kind: 'fields', system: true,
-                fields: [ ['title', 'Гарчиг', 'text'], ['subtitle', 'Дэд гарчиг', 'textarea'],
+                fields: [ ['titleHtml', 'Гарчиг', 'herorich'], ['subtitleHtml', 'Дэд гарчиг', 'herorich'],
                           ['buttonText', 'Товч 1 нэр', 'text'], ['buttonUrl', 'Товч 1 холбоос', 'url'],
                           ['button2Text', 'Товч 2 нэр', 'text'], ['button2Url', 'Товч 2 холбоос', 'url'],
                           ['backgroundType', 'Дэвсгэрийн төрөл', 'bgtype'],
@@ -241,6 +241,74 @@
     return !(tmp.textContent || '').trim() && !tmp.querySelector('br, img, a, li');
   }
 
+  // ---- Hero rich text: a stricter allowlist just for the Hero title/subtitle. Allows only
+  // bold/italic and a VALIDATED inline colour + font-size. `style` is never passed through —
+  // it is rebuilt from re-validated tokens (a colour that parses to #hex, a font-size from a
+  // fixed list), so no CSS/URL/script injection can survive. Tags: strong/em/u/br/span only.
+  const CMS_HERO_TAGS = { strong: 1, em: 1, u: 1, br: 1, span: 1 };
+  const CMS_HERO_ALIAS = { b: 'strong', i: 'em', font: 'span' };
+  const CMS_HERO_SIZE_SET = { '0.75em':1, '0.85em':1, '0.9em':1, '1em':1, '1.1em':1, '1.15em':1, '1.25em':1, '1.35em':1, '1.5em':1, '1.6em':1, '1.75em':1, '2em':1, '2.5em':1 };
+  function cmsSafeColor(v) {
+    if (typeof v !== 'string') return '';
+    const t = v.trim();
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(t)) return t.toUpperCase();
+    const m = t.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i);
+    if (m) { const h = n => Math.max(0, Math.min(255, parseInt(n, 10))).toString(16).padStart(2, '0'); return ('#' + h(m[1]) + h(m[2]) + h(m[3])).toUpperCase(); }
+    return '';
+  }
+  function cmsSafeFontSize(v) { const t = String(v || '').trim().toLowerCase(); return CMS_HERO_SIZE_SET[t] ? t : ''; }
+  function cmsHeroBuildSpanStyle(el, srcEl) {
+    let color = '', size = '', weight = '', fstyle = '', deco = '';
+    const style = (srcEl.getAttribute && srcEl.getAttribute('style')) || '';
+    style.split(';').forEach(decl => {
+      const i = decl.indexOf(':'); if (i < 0) return;
+      const k = decl.slice(0, i).trim().toLowerCase(), val = decl.slice(i + 1).trim();
+      if (k === 'color') { const c = cmsSafeColor(val); if (c) color = c; }
+      else if (k === 'font-size') { const fz = cmsSafeFontSize(val); if (fz) size = fz; }
+      else if (k === 'font-weight' && /^(bold|700)$/i.test(val)) weight = 'bold';
+      else if (k === 'font-style' && /^italic$/i.test(val)) fstyle = 'italic';
+      else if (k === 'text-decoration' && /underline/i.test(val)) deco = 'underline';
+    });
+    if (srcEl.tagName && srcEl.tagName.toLowerCase() === 'font') { const fc = cmsSafeColor(srcEl.getAttribute('color') || ''); if (fc && !color) color = fc; }
+    if (color) el.style.color = color;
+    if (size) el.style.fontSize = size;
+    if (weight) el.style.fontWeight = weight;
+    if (fstyle) el.style.fontStyle = fstyle;
+    if (deco) el.style.textDecoration = deco;
+    return !!(color || size || weight || fstyle || deco);
+  }
+  function cmsHeroRichFragment(html) {
+    const frag = document.createDocumentFragment();
+    if (!html || typeof html !== 'string') return frag;
+    let parsed; try { parsed = new DOMParser().parseFromString(html, 'text/html'); } catch (e) { return frag; }
+    const walk = (src, dest) => {
+      src.childNodes.forEach(node => {
+        if (node.nodeType === 3) { dest.appendChild(document.createTextNode(node.nodeValue)); return; }
+        if (node.nodeType !== 1) return;
+        let tag = node.tagName.toLowerCase();
+        if (CMS_RT_DROP[tag]) return;                       // drop script/style/iframe/svg/img/… + subtree
+        if (CMS_HERO_ALIAS[tag]) tag = CMS_HERO_ALIAS[tag];
+        if (!CMS_HERO_TAGS[tag]) { walk(node, dest); return; }   // unwrap unknown tag, keep children
+        if (tag === 'br') { dest.appendChild(document.createElement('br')); return; }
+        const el = document.createElement(tag);
+        if (tag === 'span') { if (!cmsHeroBuildSpanStyle(el, node)) { walk(node, dest); return; } }
+        walk(node, el);
+        dest.appendChild(el);
+      });
+    };
+    walk(parsed.body, frag);
+    return frag;
+  }
+  function cmsSanitizeHeroHtml(html) {
+    const tmp = document.createElement('div'); tmp.appendChild(cmsHeroRichFragment(html));
+    return tmp.innerHTML.slice(0, 4000);
+  }
+  function cmsHeroHasContent(html) {
+    if (!html || typeof html !== 'string') return false;
+    const tmp = document.createElement('div'); tmp.appendChild(cmsHeroRichFragment(html));
+    return !!(tmp.textContent || '').trim() || !!tmp.querySelector('br');
+  }
+
   // ===================================================================================
   //  PUBLIC SIDE
   // ===================================================================================
@@ -377,9 +445,16 @@
   function cmsBySection(sections) { const m = {}; (sections || []).forEach(s => { m[s.id] = s; }); return m; }
   function cmsApplyHero(hero) {
     if (!hero || !hero.content) return;
+    const c = hero.content;
     const titleEl = document.querySelector('.hero-compact-title'), subEl = document.querySelector('.hero-compact-sub');
-    if (titleEl && typeof hero.content.title === 'string') cmsRenderBrandTitle(titleEl, hero.content.title);
-    if (subEl && typeof hero.content.subtitle === 'string') subEl.textContent = hero.content.subtitle;
+    if (titleEl) {
+      if (cmsHeroHasContent(c.titleHtml)) { titleEl.textContent = ''; titleEl.appendChild(cmsHeroRichFragment(c.titleHtml)); }
+      else if (typeof c.title === 'string') cmsRenderBrandTitle(titleEl, c.title);
+    }
+    if (subEl) {
+      if (cmsHeroHasContent(c.subtitleHtml)) { subEl.textContent = ''; subEl.appendChild(cmsHeroRichFragment(c.subtitleHtml)); }
+      else if (typeof c.subtitle === 'string') subEl.textContent = c.subtitle;
+    }
   }
   function cmsRenderBrandTitle(el, text) {
     const BRAND = 'TP Property'; el.textContent = '';
@@ -500,8 +575,10 @@
         }
         wrap.appendChild(vwrap);
       }
-      if (c.title) { const h = document.createElement('h1'); h.className = 'cms-pub-hero-title'; cmsRenderBrandTitle(h, String(c.title)); wrap.appendChild(h); }
-      if (c.subtitle) { const p = document.createElement('p'); p.className = 'cms-pub-hero-sub'; p.textContent = c.subtitle; wrap.appendChild(p); }
+      if (cmsHeroHasContent(c.titleHtml)) { const h = document.createElement('h1'); h.className = 'cms-pub-hero-title'; h.appendChild(cmsHeroRichFragment(c.titleHtml)); wrap.appendChild(h); }
+      else if (c.title) { const h = document.createElement('h1'); h.className = 'cms-pub-hero-title'; cmsRenderBrandTitle(h, String(c.title)); wrap.appendChild(h); }
+      if (cmsHeroHasContent(c.subtitleHtml)) { const p = document.createElement('p'); p.className = 'cms-pub-hero-sub'; p.appendChild(cmsHeroRichFragment(c.subtitleHtml)); wrap.appendChild(p); }
+      else if (c.subtitle) { const p = document.createElement('p'); p.className = 'cms-pub-hero-sub'; p.textContent = c.subtitle; wrap.appendChild(p); }
       const hb = document.createElement('div'); hb.className = 'cms-pub-hero-btns';
       const u1 = cmsSafeUrl(c.buttonUrl); if (c.buttonText && u1) { const a = document.createElement('a'); a.className = 'btn btn-blue'; a.textContent = c.buttonText; a.href = u1; a.target = '_blank'; a.rel = 'noopener noreferrer'; hb.appendChild(a); }
       const u2 = cmsSafeUrl(c.button2Url); if (c.button2Text && u2) { const a = document.createElement('a'); a.className = 'btn btn-ghost'; a.textContent = c.button2Text; a.href = u2; a.target = '_blank'; a.rel = 'noopener noreferrer'; hb.appendChild(a); }
@@ -1044,6 +1121,7 @@
         <div id="cmsSeoEditor" hidden>${cmsSeoEditorHtml(_cmsSeoDraft || cmsDefaultSeo(_cmsAdminPage))}</div>
       </div>`;
     cmsInitRichEditors();
+    cmsInitHeroEditors();
     cmsWireDragDrop();
   }
   function cmsToggleSeo() { const e = document.getElementById('cmsSeoEditor'); if (e) e.hidden = !e.hidden; }
@@ -1119,6 +1197,21 @@
           <label class="btn btn-ghost btn-sm cms-upload-btn">Зураг оруулах<input type="file" accept="image/*" hidden onchange="cmsHandleUpload(event, '${block.id}', ${itemIdx == null ? 'null' : itemIdx}, '${key}')"></label>
         </div></div>`;
     }
+    if (type === 'herorich') {
+      const plain = key === 'titleHtml' ? 'title' : 'subtitle';
+      const HB = (cmd, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsHeroCmd(this,'${cmd}')">${txt}</button>`;
+      const sw = CMS_HERO_COLORS.map(c => `<button type="button" class="cms-hero-swatch" title="${esc(c.label)}" style="background:${c.hex}" onmousedown="event.preventDefault()" onclick="cmsHeroColor(this,'${c.hex}')"></button>`).join('');
+      const sz = CMS_HERO_SIZES_UI.map(z => `<button type="button" class="cms-rt-btn" title="${esc(z.label)}" onmousedown="event.preventDefault()" onclick="cmsHeroSize(this,'${z.value}')">${esc(z.short)}</button>`).join('');
+      return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
+        <div class="cms-rt-toolbar">
+          ${HB('bold','<b>B</b>','Тод')}${HB('italic','<i>I</i>','Налуу')}
+          <span class="cms-hero-swatches">${sw}<label class="cms-hero-pick" title="Өнгө сонгох"><input type="color" onmousedown="event.preventDefault()" oninput="cmsHeroColor(this,this.value)">🎨</label></span>
+          ${sz}
+          <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsHeroClear(this)">✕</button>
+        </div>
+        <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-block-id="${block.id}" data-key="${key}" data-plain="${plain}" oninput="cmsHeroInput(this)" aria-label="${esc(label)}"></div>
+      </div>`;
+    }
     if (type === 'richtext') {
       const B = (cmd, arg, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsRichCmd(this,'${cmd}'${arg ? ",'" + arg + "'" : ''})">${txt}</button>`;
       return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
@@ -1167,8 +1260,48 @@
     b.content[area.dataset.key] = cmsSanitizeRichHtml(area.innerHTML);   // store sanitized only
     cmsMarkDirty();
   }
+  // ---- Hero rich text editor (Bold / Italic / colour / size); every value re-sanitized out ----
+  const CMS_HERO_COLORS = [
+    { hex: '#272B68', label: 'Үндсэн' }, { hex: '#7C83D0', label: 'Онцлох' }, { hex: '#00D4AA', label: 'Accent' },
+    { hex: '#E31E24', label: 'Улаан' }, { hex: '#C77700', label: 'Улбар шар' }, { hex: '#0A1628', label: 'Хар' }
+  ];
+  const CMS_HERO_SIZES_UI = [
+    { value: '0.85em', short: 'A−', label: 'Жижиг' }, { value: '1em', short: 'A', label: 'Энгийн' },
+    { value: '1.25em', short: 'A+', label: 'Том' }, { value: '1.5em', short: 'A++', label: 'Маш том' }
+  ];
+  function cmsHeroArea(btn) { const f = btn.closest('.cms-field'); return f && f.querySelector('.cms-hero-area'); }
+  function cmsHeroCmd(btn, cmd) { const area = cmsHeroArea(btn); if (!area) return; area.focus(); try { document.execCommand(cmd, false, null); } catch (e) {} cmsHeroInput(area); }
+  function cmsHeroWrapStyle(area, prop, value) {
+    area.focus();
+    const sel = window.getSelection(); if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed || !area.contains(range.commonAncestorContainer)) { showToast('Эхлээд форматлах текстээ сонгоно уу'); return; }
+    const span = document.createElement('span'); span.style[prop] = value;
+    try { range.surroundContents(span); } catch (e) { const frag = range.extractContents(); span.appendChild(frag); range.insertNode(span); }
+    sel.removeAllRanges(); const r = document.createRange(); r.selectNodeContents(span); sel.addRange(r);
+    cmsHeroInput(area);
+  }
+  function cmsHeroColor(el, hex) { const area = cmsHeroArea(el); const c = cmsSafeColor(hex); if (area && c) cmsHeroWrapStyle(area, 'color', c); }
+  function cmsHeroSize(btn, value) { const area = cmsHeroArea(btn); const z = cmsSafeFontSize(value); if (area && z) cmsHeroWrapStyle(area, 'fontSize', z); }
+  function cmsHeroClear(btn) { const area = cmsHeroArea(btn); if (!area) return; area.focus(); try { document.execCommand('removeFormat'); } catch (e) {} cmsHeroInput(area); }
+  function cmsHeroInput(area) {
+    const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId); if (!b) return;
+    b.content = b.content || {};
+    b.content[area.dataset.key] = cmsSanitizeHeroHtml(area.innerHTML);   // store sanitized only
+    cmsMarkDirty();
+  }
+  function cmsInitHeroEditors() {
+    document.querySelectorAll('.cms-hero-area').forEach(area => {
+      const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
+      const c = (b && b.content) || {};
+      area.textContent = '';
+      const html = c[area.dataset.key];
+      if (cmsHeroHasContent(html)) area.appendChild(cmsHeroRichFragment(html));      // safe DOM nodes
+      else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); }
+    });
+  }
   function cmsInitRichEditors() {
-    document.querySelectorAll('.cms-rt-area').forEach(area => {
+    document.querySelectorAll('.cms-rt-area:not(.cms-hero-area)').forEach(area => {
       const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
       const html = b && b.content ? b.content[area.dataset.key] : '';
       area.textContent = '';
@@ -1274,6 +1407,8 @@
     content = content || {}; const out = {};
     Object.keys(content).forEach(k => { const v = content[k]; if (k === 'items') return; if (typeof v === 'string') out[k] = v.slice(0, 6000); else if (typeof v === 'number' || typeof v === 'boolean') out[k] = v; });
     if (typeof out.bodyHtml === 'string') out.bodyHtml = cmsSanitizeRichHtml(out.bodyHtml);   // strict allowlist
+    if (typeof out.titleHtml === 'string') out.titleHtml = cmsSanitizeHeroHtml(out.titleHtml);
+    if (typeof out.subtitleHtml === 'string') out.subtitleHtml = cmsSanitizeHeroHtml(out.subtitleHtml);
     Object.keys(out).forEach(k => { if (/url$/i.test(k) && typeof out[k] === 'string') out[k] = cmsSafeUrl(out[k]); });
     if (out.color) out.color = cmsSafeHex(out.color);
     if (Array.isArray(content.items)) {
