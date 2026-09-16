@@ -727,6 +727,60 @@
     catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadNav failed:', e.code, e.message); }
     _cmsNavCache = nav; return nav;
   }
+  // ---- Hero banner (site_settings/hero_banner) — a dedicated, admin-managed record that
+  // drives the home hero: background image + dark overlay, rich headline/subheadline,
+  // search-widget visibility and a CTA button. Empty fields fall back to the existing hero. ----
+  function cmsDefaultHeroBanner() {
+    return { backgroundImageUrl: '', overlayOpacity: 40, headlineHtml: '', subheadlineHtml: '', showSearchWidget: true, ctaText: '', ctaLink: '', showCta: false };
+  }
+  let _cmsHeroBannerCache = null;
+  async function cmsLoadHeroBanner() {
+    if (_cmsHeroBannerCache) return _cmsHeroBannerCache;
+    let hb = cmsDefaultHeroBanner();
+    try { const snap = await db.collection('site_settings').doc('hero_banner').get(); if (snap.exists && snap.data()) hb = Object.assign(hb, snap.data()); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadHeroBanner failed:', e.code, e.message); }
+    _cmsHeroBannerCache = hb; return hb;
+  }
+  // CTA link: an internal hash route (#agents) or a validated http/https URL — nothing else.
+  function cmsSafeCtaLink(v) {
+    const t = String(v || '').trim();
+    if (/^#[a-z0-9_-]{1,40}$/i.test(t)) return t;
+    return cmsSafeUrl(t);
+  }
+  function cmsApplyHeroBanner(banner) {
+    const section = document.getElementById('home'); if (!section) return;
+    const b = banner || cmsDefaultHeroBanner();
+    const bgLayer = document.getElementById('heroBgLayer');
+    const bg = cmsSafeUrl(b.backgroundImageUrl);
+    if (bg && bgLayer) {
+      section.classList.add('hero-has-bg');
+      bgLayer.style.backgroundImage = 'url("' + encodeURI(bg) + '")';
+      const op = Math.max(0, Math.min(80, Number(b.overlayOpacity) || 0)) / 100;
+      section.style.setProperty('--hero-overlay', String(op));
+    } else if (bgLayer) {
+      section.classList.remove('hero-has-bg');
+      bgLayer.style.backgroundImage = '';
+    }
+    // Rich headline / subheadline override the block-hero title only when set (sanitized nodes).
+    const titleEl = document.querySelector('.hero-compact-title'), subEl = document.querySelector('.hero-compact-sub');
+    if (titleEl && cmsHeroHasContent(b.headlineHtml)) { titleEl.textContent = ''; titleEl.appendChild(cmsHeroRichFragment(b.headlineHtml)); }
+    if (subEl && cmsHeroHasContent(b.subheadlineHtml)) { subEl.textContent = ''; subEl.appendChild(cmsHeroRichFragment(b.subheadlineHtml)); }
+    // Search widget visibility
+    const sw = document.getElementById('homeSearchWidget'); if (sw) sw.hidden = b.showSearchWidget === false;
+    // CTA button
+    const cta = document.getElementById('heroCtaBtn');
+    if (cta) {
+      const raw = String(b.ctaLink || '').trim();
+      const internal = /^#[a-z0-9_-]{1,40}$/i.test(raw) ? raw.slice(1) : '';
+      const href = internal ? raw : cmsSafeUrl(raw);
+      if (b.showCta && b.ctaText && href) {
+        cta.hidden = false; cta.textContent = String(b.ctaText); cta.setAttribute('href', href);
+        if (internal) { cta.onclick = function (e) { e.preventDefault(); if (typeof showPage === 'function') showPage(internal); }; cta.removeAttribute('target'); cta.removeAttribute('rel'); }
+        else { cta.onclick = null; cta.setAttribute('target', '_blank'); cta.setAttribute('rel', 'noopener noreferrer'); }
+      } else { cta.hidden = true; cta.textContent = ''; cta.removeAttribute('href'); cta.onclick = null; }
+    }
+  }
+
   function cmsApplyNav(nav) {
     const known = cmsNavKnownKeys();
     const items = (nav && Array.isArray(nav.items) && nav.items.length) ? nav.items : cmsDefaultNav().items;
@@ -761,11 +815,12 @@
   }
   async function applySiteCms() {
     try {
-      const [sections, org, theme, nav] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav()]);
+      const [sections, org, theme, nav, banner] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
+      cmsApplyHeroBanner(banner);
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
   }
@@ -823,7 +878,7 @@
   // ===================================================================================
   //  ADMIN SIDE
   // ===================================================================================
-  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null;
+  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null;
   let _cmsExpanded = {}, _cmsDirty = false;
 
   function cmsRequireEditor() {
@@ -850,12 +905,14 @@
     _cmsOrgDraft = Object.assign(cmsDefaultOrganization(), org);
     _cmsThemeDraft = Object.assign(cmsDefaultTheme(), theme);
     _cmsNavDraft = await cmsLoadNav().then(n => cmsCleanNav(n)).catch(() => cmsDefaultNav());
+    _cmsHeroBannerDraft = await cmsLoadHeroBanner().then(b => Object.assign(cmsDefaultHeroBanner(), b)).catch(() => cmsDefaultHeroBanner());
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
           <button class="mytab active" onclick="cmsSwitchTab(this,'pages')">Хуудсууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Гол баннер</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'theme')">Дизайн ба өнгө</button>
         </div>
         <div id="cmsTab-pages">
@@ -873,14 +930,16 @@
             <div id="cmsOrgEditor">${cmsOrgEditorHtml(_cmsOrgDraft)}</div></div>
         </div>
         <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
+        <div id="cmsTab-herobanner" hidden><div id="cmsHeroBannerEditor">${cmsHeroBannerEditorHtml(_cmsHeroBannerDraft)}</div></div>
         <div id="cmsTab-theme" hidden><div id="cmsThemeEditor">${cmsThemeEditorHtml(_cmsThemeDraft)}</div></div>
       </div>`;
     cmsRenderNavEditor();
+    cmsInitHeroEditors();
   }
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'org', 'nav', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'org', 'nav', 'herobanner', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
   function cmsPageRowHtml(pg, meta) {
@@ -1007,6 +1066,83 @@
       showToast('Цэс хадгалагдлаа', 'success');
       const nv = await cmsLoadNav(); cmsApplyNav(nv);
     } catch (e) { console.error('cmsSaveNav failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+
+  // ---- Hero banner editor (site_settings/hero_banner) ----
+  function cmsHeroBannerEditorHtml(hb) {
+    hb = hb || cmsDefaultHeroBanner();
+    const op = Math.max(0, Math.min(80, Number(hb.overlayOpacity) || 0));
+    const bg = cmsSafeUrl(hb.backgroundImageUrl);
+    return `<div class="admin-panel">
+      <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>Гол баннер (Hero)</span>
+        <button class="btn btn-blue btn-sm" onclick="cmsSaveHeroBanner()">Хадгалах</button>
+      </div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="cms-field"><label class="cms-label">Дэвсгэр зураг</label>
+          <div class="cms-img-row">
+            ${bg ? `<img class="cms-img-preview" src="${esc(bg)}" alt="" onerror="this.style.display='none'">` : ''}
+            <input type="text" class="form-input" id="hbBgUrl" placeholder="Зургийн холбоос (https://…)" value="${esc(hb.backgroundImageUrl || '')}" oninput="_cmsHeroBannerDraft.backgroundImageUrl=this.value" />
+            <label class="btn btn-ghost btn-sm cms-upload-btn">Зураг оруулах<input type="file" accept="image/*" hidden onchange="cmsHandleBannerBgUpload(event)"></label>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-3);margin-top:4px;">Хоосон бол одоогийн цайвар hero хэвээр үлдэнэ.</div></div>
+        <div class="cms-field"><label class="cms-label">Дэвсгэрийн харанхуйжуулалт: <span id="hbOverlayVal">${op}%</span></label>
+          <input type="range" min="0" max="80" step="5" value="${op}" oninput="cmsBannerOverlayInput(this.value)" style="width:100%;" aria-label="Overlay opacity" /></div>
+        <div class="cms-field"><label class="cms-label">Гарчиг (Title)</label>${cmsHeroToolbarHtml()}
+          <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-banner-key="headlineHtml" oninput="cmsHeroInput(this)" aria-label="Гарчиг"></div></div>
+        <div class="cms-field"><label class="cms-label">Дэд гарчиг (Subtitle)</label>${cmsHeroToolbarHtml()}
+          <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-banner-key="subheadlineHtml" oninput="cmsHeroInput(this)" aria-label="Дэд гарчиг"></div></div>
+        <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" ${hb.showSearchWidget !== false ? 'checked' : ''} onchange="_cmsHeroBannerDraft.showSearchWidget=this.checked" />
+          <span class="cms-label" style="margin:0;">Хайлтын хэсгийг харуулах</span></label>
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">CTA товчны нэр</label>
+            <input type="text" class="form-input" value="${esc(hb.ctaText || '')}" maxlength="120" oninput="_cmsHeroBannerDraft.ctaText=this.value" placeholder="Жишээ: Агенттай холбогдоорой" /></div>
+          <div class="cms-field"><label class="cms-label">CTA холбоос</label>
+            <input type="text" class="form-input" value="${esc(hb.ctaLink || '')}" oninput="_cmsHeroBannerDraft.ctaLink=this.value" placeholder="#agents эсвэл https://…" /></div>
+        </div>
+        <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" ${hb.showCta ? 'checked' : ''} onchange="_cmsHeroBannerDraft.showCta=this.checked" />
+          <span class="cms-label" style="margin:0;">CTA товч харуулах</span></label>
+      </div></div>`;
+  }
+  function cmsBannerOverlayInput(v) {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    const n = Math.max(0, Math.min(80, parseInt(v, 10) || 0));
+    _cmsHeroBannerDraft.overlayOpacity = n;
+    const lbl = document.getElementById('hbOverlayVal'); if (lbl) lbl.textContent = n + '%';
+    cmsMarkDirty();
+  }
+  async function cmsHandleBannerBgUpload(ev) {
+    const file = ev.target && ev.target.files && ev.target.files[0]; if (!file) return;
+    showToast('Зураг оруулж байна…');
+    const url = await cmsUploadImage(file, 'site-assets'); if (!url) return;
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    _cmsHeroBannerDraft.backgroundImageUrl = url;
+    const ed = document.getElementById('cmsHeroBannerEditor'); if (ed) { ed.innerHTML = cmsHeroBannerEditorHtml(_cmsHeroBannerDraft); cmsInitHeroEditors(); }
+    showToast('Зураг орлоо', 'success');
+  }
+  async function cmsSaveHeroBanner() {
+    if (!cmsRequireEditor()) return;
+    const d = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    if (d.ctaLink && d.ctaLink.trim() && !cmsSafeCtaLink(d.ctaLink)) { showToast('CTA холбоос буруу байна (#хуудас эсвэл http/https)'); return; }
+    const clean = {
+      backgroundImageUrl: cmsSafeUrl(d.backgroundImageUrl || ''),
+      overlayOpacity: Math.max(0, Math.min(80, parseInt(d.overlayOpacity, 10) || 0)),
+      headlineHtml: cmsSanitizeHeroHtml(d.headlineHtml || ''),
+      subheadlineHtml: cmsSanitizeHeroHtml(d.subheadlineHtml || ''),
+      showSearchWidget: d.showSearchWidget !== false,
+      ctaText: String(d.ctaText || '').slice(0, 120).trim(),
+      ctaLink: cmsSafeCtaLink(d.ctaLink || ''),
+      showCta: d.showCta === true
+    };
+    try {
+      await db.collection('site_settings').doc('hero_banner').set(Object.assign({}, clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
+      _cmsHeroBannerDraft = Object.assign(cmsDefaultHeroBanner(), clean); _cmsHeroBannerCache = null;
+      logAdminAction('cms_hero_banner', 'site_settings', 'hero_banner', '');
+      showToast('Гол баннер хадгалагдлаа', 'success');
+      const hb = await cmsLoadHeroBanner(); cmsApplyHeroBanner(hb);
+    } catch (e) { console.error('cmsSaveHeroBanner failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
 
   // ---- Theme editor ----
@@ -1199,16 +1335,8 @@
     }
     if (type === 'herorich') {
       const plain = key === 'titleHtml' ? 'title' : 'subtitle';
-      const HB = (cmd, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsHeroCmd(this,'${cmd}')">${txt}</button>`;
-      const sw = CMS_HERO_COLORS.map(c => `<button type="button" class="cms-hero-swatch" title="${esc(c.label)}" style="background:${c.hex}" onmousedown="event.preventDefault()" onclick="cmsHeroColor(this,'${c.hex}')"></button>`).join('');
-      const sz = CMS_HERO_SIZES_UI.map(z => `<button type="button" class="cms-rt-btn" title="${esc(z.label)}" onmousedown="event.preventDefault()" onclick="cmsHeroSize(this,'${z.value}')">${esc(z.short)}</button>`).join('');
       return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
-        <div class="cms-rt-toolbar">
-          ${HB('bold','<b>B</b>','Тод')}${HB('italic','<i>I</i>','Налуу')}
-          <span class="cms-hero-swatches">${sw}<label class="cms-hero-pick" title="Өнгө сонгох"><input type="color" onmousedown="event.preventDefault()" oninput="cmsHeroColor(this,this.value)">🎨</label></span>
-          ${sz}
-          <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsHeroClear(this)">✕</button>
-        </div>
+        ${cmsHeroToolbarHtml()}
         <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-block-id="${block.id}" data-key="${key}" data-plain="${plain}" oninput="cmsHeroInput(this)" aria-label="${esc(label)}"></div>
       </div>`;
     }
@@ -1269,6 +1397,12 @@
     { value: '0.85em', short: 'A−', label: 'Жижиг' }, { value: '1em', short: 'A', label: 'Энгийн' },
     { value: '1.25em', short: 'A+', label: 'Том' }, { value: '1.5em', short: 'A++', label: 'Маш том' }
   ];
+  function cmsHeroToolbarHtml() {
+    const HB = (cmd, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsHeroCmd(this,'${cmd}')">${txt}</button>`;
+    const sw = CMS_HERO_COLORS.map(c => `<button type="button" class="cms-hero-swatch" title="${esc(c.label)}" style="background:${c.hex}" onmousedown="event.preventDefault()" onclick="cmsHeroColor(this,'${c.hex}')"></button>`).join('');
+    const sz = CMS_HERO_SIZES_UI.map(z => `<button type="button" class="cms-rt-btn" title="${esc(z.label)}" onmousedown="event.preventDefault()" onclick="cmsHeroSize(this,'${z.value}')">${esc(z.short)}</button>`).join('');
+    return `<div class="cms-rt-toolbar">${HB('bold','<b>B</b>','Тод')}${HB('italic','<i>I</i>','Налуу')}<span class="cms-hero-swatches">${sw}<label class="cms-hero-pick" title="Өнгө сонгох"><input type="color" onmousedown="event.preventDefault()" oninput="cmsHeroColor(this,this.value)">🎨</label></span>${sz}<button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsHeroClear(this)">✕</button></div>`;
+  }
   function cmsHeroArea(btn) { const f = btn.closest('.cms-field'); return f && f.querySelector('.cms-hero-area'); }
   function cmsHeroCmd(btn, cmd) { const area = cmsHeroArea(btn); if (!area) return; area.focus(); try { document.execCommand(cmd, false, null); } catch (e) {} cmsHeroInput(area); }
   function cmsHeroWrapStyle(area, prop, value) {
@@ -1285,16 +1419,21 @@
   function cmsHeroSize(btn, value) { const area = cmsHeroArea(btn); const z = cmsSafeFontSize(value); if (area && z) cmsHeroWrapStyle(area, 'fontSize', z); }
   function cmsHeroClear(btn) { const area = cmsHeroArea(btn); if (!area) return; area.focus(); try { document.execCommand('removeFormat'); } catch (e) {} cmsHeroInput(area); }
   function cmsHeroInput(area) {
+    const sanitized = cmsSanitizeHeroHtml(area.innerHTML);   // store sanitized only
+    if (area.dataset.bannerKey) { _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner(); _cmsHeroBannerDraft[area.dataset.bannerKey] = sanitized; cmsMarkDirty(); return; }
     const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId); if (!b) return;
-    b.content = b.content || {};
-    b.content[area.dataset.key] = cmsSanitizeHeroHtml(area.innerHTML);   // store sanitized only
-    cmsMarkDirty();
+    b.content = b.content || {}; b.content[area.dataset.key] = sanitized; cmsMarkDirty();
   }
   function cmsInitHeroEditors() {
     document.querySelectorAll('.cms-hero-area').forEach(area => {
+      area.textContent = '';
+      if (area.dataset.bannerKey) {
+        const hb = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+        if (cmsHeroHasContent(hb[area.dataset.bannerKey])) area.appendChild(cmsHeroRichFragment(hb[area.dataset.bannerKey]));
+        return;
+      }
       const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
       const c = (b && b.content) || {};
-      area.textContent = '';
       const html = c[area.dataset.key];
       if (cmsHeroHasContent(html)) area.appendChild(cmsHeroRichFragment(html));      // safe DOM nodes
       else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); }
@@ -1385,12 +1524,13 @@
     if (itemIdx == null || itemIdx === 'null') cmsUpdateField(blockId, key, url); else cmsUpdateItemField(blockId, Number(itemIdx), key, url);
     cmsRenderEditor(); showToast('Зураг орлоо', 'success');
   }
-  async function cmsUploadImage(file) {
+  async function cmsUploadImage(file, folder) {
     if (!cmsRequireEditor()) return null;
     if (!file || !/^image\//.test(file.type)) { showToast('Зөвхөн зураг оруулна уу'); return null; }
     if (file.size > 12 * 1024 * 1024) { showToast('Зургийн хэмжээ 12MB-аас бага байх ёстой'); return null; }
     try {
-      const path = 'cms-media/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const dir = folder === 'site-assets' ? 'site-assets' : 'cms-media';
+      const path = dir + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const snap = await firebase.storage().ref().child(path).put(file);
       return await snap.ref.getDownloadURL();
     } catch (e) { console.error('cmsUploadImage failed:', e.code, e.message); showToast('Зураг оруулахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); return null; }

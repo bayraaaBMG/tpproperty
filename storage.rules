@@ -84,6 +84,23 @@ service firebase.storage {
       allow delete: if isCmsEditor();
     }
 
+    // Hero-banner (and other admin-managed site imagery) — same gate as cms-media:
+    // public read, admin/owner-only image writes under 12MB.
+    match /site-assets/{fileName} {
+      function isCmsEditor() {
+        return request.auth != null && (
+          request.auth.token.email == 'bbayraaa20@gmail.com' ||
+          (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+            && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+      }
+      allow read: if true;
+      allow write: if isCmsEditor()
+                   && request.resource.size < 12 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if isCmsEditor();
+    }
+
     // Everything else stays closed by default.
     match /{allPaths=**} {
       allow read, write: if false;

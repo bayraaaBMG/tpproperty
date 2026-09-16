@@ -575,6 +575,14 @@ service cloud.firestore {
       allow write: if isAdminOrOwner();
     }
 
+    // Dedicated hero-banner (and any future site_settings/*) doc. Same posture as
+    // siteSettings above — public read so the home hero renders for everyone; only
+    // admin/owner may edit. Content is sanitized client-side before render.
+    match /site_settings/{docId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
+
     // ===== CMS: PAGES (admin working copy) =====
     // The editor's draft + version history + metadata for each managed page. NOT public:
     // a draft is only ever seen by an authorized admin (preview), never by a visitor. The

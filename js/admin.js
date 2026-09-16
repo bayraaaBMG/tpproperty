@@ -37,7 +37,8 @@
     crm_stage_change: 'Pipeline шат солисон', crm_close_deal: 'Гэрээ хаасан',
     cms_org_edit: 'Байгууллагын мэдээлэл засварласан', cms_draft_save: 'Хуудас ноорог хадгалсан',
     cms_publish: 'Хуудас нийтэлсэн', cms_restore: 'Хуудас сэргээсэн',
-    cms_theme_publish: 'Дизайн нийтэлсэн', cms_nav_save: 'Цэс засварласан'
+    cms_theme_publish: 'Дизайн нийтэлсэн', cms_nav_save: 'Цэс засварласан',
+    cms_hero_banner: 'Гол баннер засварласан'
   };
 
   let _adminSection = 'overview';

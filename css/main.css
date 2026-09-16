@@ -4625,3 +4625,20 @@
   .cms-hero-swatch:hover { transform: scale(1.12); }
   .cms-hero-pick { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; background: var(--surface, #fff); font-size: 13px; position: relative; overflow: hidden; }
   .cms-hero-pick input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+
+  /* ---- Full-width hero banner (site_settings/hero_banner driven) ---- */
+  .hero-bg-layer { display: none; }
+  .hero-has-bg { position: relative; overflow: hidden; padding-top: 56px; padding-bottom: 56px; }
+  .hero-has-bg .hero-bg-layer { display: block; position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; }
+  .hero-has-bg .hero-bg-layer::after { content: ''; position: absolute; inset: 0; background: #0A1628; opacity: var(--hero-overlay, 0.4); }
+  /* suppress the light-hero decorative radial gradients when a background image is set */
+  .hero-has-bg::before, .hero-has-bg::after { display: none !important; }
+  .hero-has-bg .hero-compact-title, .hero-has-bg .hero-compact-sub { color: #fff; }
+  .hero-has-bg .hero-compact-title em { color: var(--primary-glow); }
+  /* In banner mode the info strip is not a white card — let the headline sit on the overlay. */
+  .hero-has-bg .home-info-strip { background: transparent; border-color: transparent; box-shadow: none; padding-left: 0; padding-right: 0; }
+  .hero-has-bg .home-info-strip, .hero-has-bg .home-info-stats-inline, .hero-has-bg .his-item { color: rgba(255, 255, 255, 0.85); }
+  .hero-has-bg .his-item strong { color: #fff; }
+  .hero-cta-btn { margin-top: 14px; align-self: flex-start; }
+  .hero-cta-btn[hidden] { display: none !important; }
+  @media (max-width: 640px) { .hero-has-bg { padding-top: 36px; padding-bottom: 36px; } }
