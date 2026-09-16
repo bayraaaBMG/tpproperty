@@ -454,7 +454,7 @@
     // guardAdminRoute() below confirms access — leaving /admin for any other page always
     // restores the normal site nav/footer immediately, not just on the next admin check.
     if (target !== 'admin') document.body.classList.remove('admin-mode');
-    if (target === 'newdev' && typeof cmsApplyNewdev === 'function') cmsApplyNewdev();
+    if (typeof cmsApplyTargetPage === 'function' && ['newdev', 'listings', 'rent', 'calc', 'resources'].includes(target)) cmsApplyTargetPage(target);
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
     if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()

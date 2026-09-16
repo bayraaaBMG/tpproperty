@@ -367,7 +367,7 @@
     <div id="homeAdBanner"></div>
     <div class="portal-section-head">
       <div>
-        <h2 class="portal-section-title display">Шинээр нэмэгдсэн <em>зарууд</em></h2>
+        <h2 class="portal-section-title display" id="homeNewTitle">Шинээр нэмэгдсэн <em>зарууд</em></h2>
       </div>
       <button class="btn btn-ghost" onclick="showPage('listings')">
         Бүгдийг үзэх
@@ -378,7 +378,7 @@
 
     <div class="portal-section-head portal-section-head-spaced">
       <div>
-        <h2 class="portal-section-title display">Онцлох <em>зарууд</em></h2>
+        <h2 class="portal-section-title display" id="homeFeaturedTitle">Онцлох <em>зарууд</em></h2>
       </div>
       <button class="btn btn-ghost" onclick="showPage('listings')">
         Бүгдийг үзэх
@@ -389,7 +389,7 @@
 
     <div class="portal-section-head portal-section-head-spaced">
       <div>
-        <h2 class="portal-section-title display">Категориуд</h2>
+        <h2 class="portal-section-title display" id="homeCatTitle">Категориуд</h2>
       </div>
     </div>
     <div class="home-cat-grid">
@@ -932,6 +932,8 @@
       <h1 class="listings-page-title display">Идэвхтэй <em>зарууд</em></h1>
     </div>
 
+    <div class="cms-content-page" id="cmsListingsBlocks" hidden></div>
+
     <!-- 2. Compact search bar (same component classes as the home search bar) -->
     <div class="listings-search-bar">
       <div class="hs-keyword-wrap">
@@ -1427,6 +1429,8 @@
       <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Түрээс</span></div>
       <h1 class="listings-page-title display">Түрээслүүлэх <em>зарууд</em></h1>
     </div>
+
+    <div class="cms-content-page" id="cmsRentBlocks" hidden></div>
 
     <div class="rent-cta">
       <div class="rent-cta-content">
@@ -2141,6 +2145,8 @@
       <p style="font-size:13.5px; color:var(--ink-3); margin-top:6px; max-width:640px; line-height:1.5;">Параметрүүдээ оруулаад сар бүрийн төлбөр, нийт хүү, орлогын дарамтаа тооцоол. Доор зарим томоохон банкны албан ёсны вэбсайтаас шалгасан нөхцөлийг («Шалгасан» тэмдэгтэй) харьцуулж үзээрэй.</p>
     </div>
 
+    <div class="cms-content-page" id="cmsCalcBlocks" hidden></div>
+
     <div class="calc-grid">
       <!-- Inputs -->
       <div class="calc-inputs">
@@ -2552,6 +2558,8 @@
     </div>
     <p class="section-sub">Анхлан авагчаас дэвшилтэт хөрөнгө оруулагч хүртэл бүгдэд зориулсан контент.</p>
   </div>
+
+    <div class="cms-content-page" id="cmsResourcesBlocks" hidden></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:48px;">
     <div class="feature-card" style="cursor:pointer;" onclick="showPage('guide')">
       <div class="feature-icon" style="background:var(--primary-soft);">

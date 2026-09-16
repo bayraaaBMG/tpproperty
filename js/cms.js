@@ -19,16 +19,30 @@
 
   const CMS_PAGES = [
     { id: 'home', title: 'Нүүр хуудас', editable: true },
+    { id: 'listings', title: 'Зар хайх', editable: true, target: 'listings' },
+    { id: 'rent', title: 'Түрээс', editable: true, target: 'rent' },
+    { id: 'newdev', title: 'Шинэ орон сууц', editable: true, target: 'newdev' },
+    { id: 'calc', title: 'Тооцоолуур', editable: true, target: 'calc' },
+    { id: 'resources', title: 'Зөвлөгөө', editable: true, target: 'resources' },
     { id: 'about', title: 'Бидний тухай', editable: true, infoKey: 'about' },
     { id: 'services', title: 'Үйлчилгээ', editable: true, infoKey: 'services' },
-    { id: 'newdev', title: 'Шинэ орон сууц', editable: true, target: 'newdev' },
     { id: 'contact', title: 'Холбоо барих', editable: true, infoKey: 'contact' }
   ];
   const CMS_INFO_PAGE_IDS = { about: 'about', services: 'services', contact: 'contact' };
+  // Pages whose functional content is code-controlled but which accept editable CMS blocks
+  // rendered into a container at the top of the page (the "target" pattern newdev already used).
+  const CMS_TARGET_CONTAINERS = {
+    newdev: 'cmsNewdevBlocks', listings: 'cmsListingsBlocks', rent: 'cmsRentBlocks',
+    calc: 'cmsCalcBlocks', resources: 'cmsResourcesBlocks'
+  };
 
   // kind: 'fields' (flat) | 'repeater' (list of items). system: can't hide/remove.
   // addable: offered in the "+ Хэсэг нэмэх" picker. field: [key, label, type].
   const CMS_BLOCK_TYPES = {
+    homeHeadings: { label: 'Хэсгийн гарчгууд', kind: 'fields', system: true,
+                fields: [ ['newTitle', '"Шинээр нэмэгдсэн зарууд" гарчиг', 'text'],
+                          ['featuredTitle', '"Онцлох зарууд" гарчиг', 'text'],
+                          ['catTitle', '"Категориуд" гарчиг', 'text'] ] },
     hero:     { label: 'Гарчиг (Hero)', kind: 'fields', system: true,
                 fields: [ ['title', 'Гарчиг', 'text'], ['subtitle', 'Дэд гарчиг', 'textarea'],
                           ['buttonText', 'Товч 1 нэр', 'text'], ['buttonUrl', 'Товч 1 холбоос', 'url'],
@@ -82,7 +96,8 @@
           title: 'Зөв байр, зөв боломжийг TP Property-ээс хай',
           subtitle: 'Орон сууц, түрээс, газар, оффисын зарыг нэг дороос.' } },
       { id: 'banks', type: 'banks', order: 2, visible: true, content: { label: 'Банк дээр дарж шууд зээлийн хуудсанд нь орно уу', items: cmsDefaultBanks() } },
-      { id: 'features', type: 'features', order: 3, visible: true, content: { items: [] } }
+      { id: 'features', type: 'features', order: 3, visible: true, content: { items: [] } },
+      { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { newTitle: '', featuredTitle: '', catTitle: '' } }
     ];
   }
   function cmsDefaultAboutSections() {
@@ -126,6 +141,7 @@
     if (pageId === 'about') return cmsDefaultAboutSections();
     if (pageId === 'services') return cmsDefaultServicesSections();
     if (pageId === 'newdev') return cmsDefaultNewdevSections();
+    if (CMS_TARGET_CONTAINERS[pageId]) return [];
     if (pageId === 'contact') return cmsDefaultContactSections();
     return [];
   }
@@ -301,11 +317,24 @@
     const ok = await cmsRenderContentPage(pageId, holder);
     if (ok) { bodyEl.textContent = ''; bodyEl.appendChild(holder); }
   }
-  // Called when the newdev section is shown.
-  async function cmsApplyNewdev() {
-    const host = document.getElementById('cmsNewdevBlocks'); if (!host) return;
-    const ok = await cmsRenderContentPage('newdev', host);
+  // Called when a target page (newdev/listings/rent/calc/resources) is shown — renders its
+  // published CMS blocks into that page's container above the functional content.
+  async function cmsApplyTargetPage(pageId) {
+    const cid = CMS_TARGET_CONTAINERS[pageId]; if (!cid) return;
+    const host = document.getElementById(cid); if (!host) return;
+    const ok = await cmsRenderContentPage(pageId, host);
     host.hidden = !ok;
+  }
+  async function cmsApplyNewdev() { return cmsApplyTargetPage('newdev'); }
+  // Apply the (optional) custom home section headings — only overrides when the admin set a
+  // non-empty value, so the default styled headings stay untouched otherwise.
+  function cmsApplyHomeHeadings(block) {
+    if (!block || !block.content) return;
+    const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle', catTitle: 'homeCatTitle' };
+    Object.keys(map).forEach(k => {
+      const v = block.content[k];
+      if (typeof v === 'string' && v.trim()) { const el = document.getElementById(map[k]); if (el) el.textContent = v.trim(); }
+    });
   }
 
   async function cmsLoadPublishedPage(pageId) {
@@ -658,7 +687,7 @@
       const [sections, org, theme, nav] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
-      cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features);
+      cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
@@ -981,6 +1010,9 @@
     try { const snap = await db.collection('sitePages').doc(pageId).get(); if (snap.exists) { const dd = snap.data(); if (dd.draft && Array.isArray(dd.draft.sections)) draft = dd.draft.sections; if (dd.seo && typeof dd.seo === 'object') seo = Object.assign(seo, dd.seo); } }
     catch (e) { console.error('cmsOpenPageEditor load failed:', e.code, e.message); }
     _cmsSeoDraft = seo;
+    if (pageId === 'home' && !draft.some(b => b.type === 'homeHeadings')) {
+      draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { newTitle: '', featuredTitle: '', catTitle: '' } }]);
+    }
     _cmsDraft = draft.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     cmsRenderEditor();
     const wrap = document.getElementById('cmsEditorWrap'); if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1281,7 +1313,7 @@
   // Navigate the public site to a given CMS page and (re)render its CMS content.
   function cmsGotoPublicPage(pageId) {
     if (pageId === 'home') { showPage('home'); setTimeout(applySiteCms, 60); return; }
-    if (pageId === 'newdev') { if (typeof showPage === 'function') showPage('newdev'); setTimeout(cmsApplyNewdev, 60); return; }
+    if (CMS_TARGET_CONTAINERS[pageId]) { if (typeof showPage === 'function') showPage(pageId); setTimeout(() => cmsApplyTargetPage(pageId), 60); return; }
     if (CMS_INFO_PAGE_IDS[pageId] && typeof openInfoPage === 'function') { openInfoPage(pageId); return; }
   }
   async function cmsPublish() {
@@ -1304,7 +1336,7 @@
       logAdminAction('cms_publish', 'sitePages', pageId, '');
       showToast('Хуудас нийтлэгдлээ', 'success');
       if (pageId === 'home') setTimeout(applySiteCms, 60);
-      else if (pageId === 'newdev') setTimeout(cmsApplyNewdev, 60);
+      else if (CMS_TARGET_CONTAINERS[pageId]) setTimeout(() => cmsApplyTargetPage(pageId), 60);
       renderAdminCmsSection();
     } catch (e) { console.error('cmsPublish failed:', e.code, e.message); showToast('Нийтлэхэд алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
