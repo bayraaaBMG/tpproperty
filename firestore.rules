@@ -125,6 +125,17 @@ service cloud.firestore {
                     && resource.data.get('role', 'user') != 'owner'
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
 
+      // Agent moderation by admin/owner: flip agentActive and record verification flags on a
+      // plain 'user' row (never the owner, never another admin, never `role`). This is the
+      // one path by which an admin/owner activates/deactivates an existing user as an agent
+      // or marks their phone/listing/seller verification. `blocked` is included so the
+      // "revoke agent" action (agentActive:false + blocked:true) commits in a single write.
+      allow update: if isAdminOrOwner()
+                    && resource.data.get('role', 'user') == 'user'
+                    && request.resource.data.get('role', 'user') == 'user'
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['agentActive', 'blocked', 'verifiedPhone', 'listingVerified', 'sellerVerified', 'phoneVerified', 'updatedAt']);
+
       // No one can delete a profile doc through the client — the owner's row is immutable by
       // definition, and deleting any other user's row would silently orphan their listings/
       // favorites/chats. (Account deletion, if ever needed, is a Firebase-Console operation.)

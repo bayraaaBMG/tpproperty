@@ -17,7 +17,7 @@
     { id: 'cms', label: 'Хуудас удирдлага' },
     { id: 'listings', label: 'Зарууд' },
     { id: 'crm', label: 'Харилцагч' },
-    { id: 'users', label: 'Agent-ууд', ownerOnly: true },
+    { id: 'users', label: 'Agent-ууд' },
     { id: 'projects', label: 'Шинэ орон сууц' },
     { id: 'ads', label: 'Сурталчилгаа' },
     { id: 'settings', label: 'Тохиргоо' }
@@ -72,7 +72,7 @@
     else if (s === 'listings') await renderAdminListingsSection();
     else if (s === 'cms') await renderAdminCmsSection();
     else if (s === 'crm') await renderAdminCrmSection();
-    else if (s === 'users' && owner) await renderAdminUsersSection();
+    else if (s === 'users' && isAdminOrOwnerUser()) await renderAdminUsersSection();
     else if (s === 'projects') await renderAdminProjectsSection();
     else if (s === 'ads') await renderAdminAdsSection();
     else if (s === 'settings') await renderAdminSettingsSection();
@@ -984,6 +984,11 @@
       : '';
     let primaryBtn = '';
     const menuActions = [];
+    // Role management (Admin болгох / Admin эрх цуцлах) stays OWNER-only — an admin can never
+    // grant/revoke admin, and firestore.rules enforce the same (the role-change branch is
+    // isOwner()). Agent moderation + block are available to admin on a plain 'user' row;
+    // an 'admin' row is only actionable by the owner (admins can't moderate other admins).
+    const isOwnerActor = isOwnerUser();
     if (!isSelf && role !== 'owner') {
       // `name` is a display name the user picks on their own profile (the users/{uid}
       // self-update rule lets them write every field but `role`), so it is hostile input.
@@ -992,12 +997,18 @@
       // escape. esc() would be no fix either -- it turns `'` into `&#39;`, which the HTML
       // parser decodes back into a real quote BEFORE the JS ever runs. Passing the uid
       // alone and looking the name up at click time keeps user text out of the attribute.
-      primaryBtn = role === 'admin'
-        ? `<button class="btn btn-ghost btn-danger" onclick="confirmRevokeAdmin('${u.uid}')">Admin эрх цуцлах</button>`
-        : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}')">Admin болгох</button>`;
-      menuActions.push(u.blocked
-        ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
-        : { label: 'Блоклох', onclick: `adminBlockUser('${u.uid}')`, danger: true });
+      if (isOwnerActor) {
+        primaryBtn = role === 'admin'
+          ? `<button class="btn btn-ghost btn-danger" onclick="confirmRevokeAdmin('${u.uid}')">Admin эрх цуцлах</button>`
+          : `<button class="btn btn-blue" onclick="confirmGrantAdmin('${u.uid}')">Admin болгох</button>`;
+      }
+      // Block/unblock: on a plain 'user' row admin or owner may act; on an 'admin' row only
+      // the owner (rules: isAdmin() block branch is scoped to role=='user').
+      if (role === 'user' || isOwnerActor) {
+        menuActions.push(u.blocked
+          ? { label: 'Блок цуцлах', onclick: `adminUnblockUser('${u.uid}')` }
+          : { label: 'Блоклох', onclick: `adminBlockUser('${u.uid}')`, danger: true });
+      }
       // Agent activate/deactivate/revoke only makes sense on a plain 'user' row — admin/owner
       // already always count as an approved agent (isApprovedAgent()), no flag needed.
       if (role === 'user') {
