@@ -4629,16 +4629,25 @@
   /* ---- Full-width hero banner (site_settings/hero_banner driven) ---- */
   .hero-bg-layer { display: none; }
   .hero-has-bg { position: relative; overflow: hidden; padding-top: 56px; padding-bottom: 56px; }
-  .hero-has-bg .hero-bg-layer { display: block; position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; }
-  .hero-has-bg .hero-bg-layer::after { content: ''; position: absolute; inset: 0; background: #0A1628; opacity: var(--hero-overlay, 0.4); }
+  .hero-has-bg .hero-bg-layer { display: block; position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
+  /* Two-part scrim so white text stays legible on ANY photo:
+     ::before = admin-controlled flat darkening (site_settings overlayOpacity);
+     ::after  = an always-on gradient that deepens toward the bottom text/stats band. */
+  .hero-has-bg .hero-bg-layer::before { content: ''; position: absolute; inset: 0; background: #0A1628; opacity: var(--hero-overlay, 0.4); }
+  .hero-has-bg .hero-bg-layer::after { content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10, 22, 40, 0.10) 0%, rgba(10, 22, 40, 0) 38%, rgba(10, 22, 40, 0.28) 72%, rgba(10, 22, 40, 0.52) 100%); }
   /* suppress the light-hero decorative radial gradients when a background image is set */
   .hero-has-bg::before, .hero-has-bg::after { display: none !important; }
-  .hero-has-bg .hero-compact-title, .hero-has-bg .hero-compact-sub { color: #fff; }
+  /* lift the search card off the photo with a clearer shadow */
+  .hero-has-bg .home-search-bar { box-shadow: 0 14px 44px rgba(6, 14, 28, 0.30); }
+  .hero-has-bg .hero-compact-title, .hero-has-bg .hero-compact-sub { color: #fff; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45); }
   .hero-has-bg .hero-compact-title em { color: var(--primary-glow); }
   /* In banner mode the info strip is not a white card — let the headline sit on the overlay. */
   .hero-has-bg .home-info-strip { background: transparent; border-color: transparent; box-shadow: none; padding-left: 0; padding-right: 0; }
-  .hero-has-bg .home-info-strip, .hero-has-bg .home-info-stats-inline, .hero-has-bg .his-item { color: rgba(255, 255, 255, 0.85); }
+  .hero-has-bg .home-info-strip, .hero-has-bg .home-info-stats-inline, .hero-has-bg .his-item { color: rgba(255, 255, 255, 0.92); }
+  .hero-has-bg .home-info-stats-inline, .hero-has-bg .his-item strong { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.42); }
   .hero-has-bg .his-item strong { color: #fff; }
+  .hero-has-bg .his-item:not(:first-child)::before { color: rgba(255, 255, 255, 0.55); }
   .hero-cta-btn { margin-top: 14px; align-self: flex-start; }
   .hero-cta-btn[hidden] { display: none !important; }
   @media (max-width: 640px) { .hero-has-bg { padding-top: 36px; padding-bottom: 36px; } }
