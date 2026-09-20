@@ -1,6 +1,8 @@
 ﻿  // ===== AUTH SYSTEM =====
   let currentUser = null;
   let authCurrentEmail = '';
+  // Live listener on the signed-in user's OWN users/{uid} doc — see subscribeUserProfile().
+  let _userProfileUnsub = null;
 
   // Closed-brokerage bootstrap check: does an admin/owner already know this email is an
   // approved agent (js/admin.js submitAgentInvite())? Checked before every first-sign-in
@@ -13,6 +15,45 @@
       const doc = await db.collection('agentInvites').doc(email.toLowerCase()).get();
       return doc.exists;
     } catch(e) { return false; }
+  }
+
+  // Keep the signed-in user's OWN permission fields (role / agentActive / blocked) live for
+  // the whole session. The sign-in profile fetch below is a one-shot .get(), so without this
+  // an admin flipping agentActive:true on the user's Firestore doc never reaches the already-
+  // open browser session: currentUser.agentActive stays false (as read at sign-in), and the
+  // user keeps hitting the "Agent эрхээр батлагдаагүй" screen on the dashboard / "Зар нэмэх"
+  // even though the admin panel already shows them as an ACTIVE AGENT. onSnapshot re-syncs
+  // currentUser the instant the doc changes and re-gates the UI — no re-login needed. Reading
+  // one's own users/{uid} doc is allowed by firestore.rules, so this needs no extra rule.
+  function subscribeUserProfile(uid) {
+    if (_userProfileUnsub) { try { _userProfileUnsub(); } catch(e) {} _userProfileUnsub = null; }
+    if (!uid) return;
+    _userProfileUnsub = db.collection('users').doc(uid).onSnapshot(snap => {
+      if (!currentUser || currentUser.uid !== uid) return; // ignore late events after sign-out / account switch
+      const data = snap.data();
+      if (!data) return;
+      const wasApproved = typeof isApprovedAgent === 'function' ? isApprovedAgent(currentUser) : false;
+      // Only the rules-enforced permission fields (+ a few display bits) — never re-run the
+      // heavy sign-in bootstrap (favorites/listings/etc.) from here.
+      if (!isOwnerEmail(currentUser.email)) currentUser.role = data.role || 'user';
+      currentUser.agentActive = data.agentActive === true;
+      currentUser.blocked = data.blocked === true;
+      if (data.firstName) { currentUser.name = data.firstName; currentUser.letter = data.firstName[0] || currentUser.letter; }
+      if (data.lastName) currentUser.lastName = data.lastName;
+      if (data.photoURL) currentUser.photoURL = data.photoURL;
+
+      updateNavLoggedIn();
+      if (typeof refreshAgentUI === 'function') refreshAgentUI();
+      if (typeof refreshAdminPageIfActive === 'function') refreshAdminPageIfActive();
+      // Re-gate the dashboard live: if the user is sitting on the restricted screen when the
+      // admin approves them, it flips to the real dashboard immediately (renderDashboard()
+      // re-checks isApprovedAgent() itself).
+      const dash = document.getElementById('dashboard');
+      if (dash && dash.classList.contains('page-active') && typeof renderDashboard === 'function') renderDashboard();
+      if (isApprovedAgent(currentUser) && !wasApproved) showToast('Таны Agent эрх баталгаажлаа', 'success');
+    }, err => {
+      if (err && err.code !== 'permission-denied') console.error('subscribeUserProfile failed:', err.code, err.message);
+    });
   }
 
   // onAuthStateChanged — page load болгонд Firebase session сэргээнэ
@@ -111,6 +152,9 @@
         showToast('Профайл мэдээлэл татахад алдаа гарлаа (Firestore зөвшөөрөл шалгана уу)');
       }
 
+      // Keep role / agentActive / blocked live for this session (admin approval, etc.).
+      subscribeUserProfile(fbUser.uid);
+
       // Favorites-г Firestore-с татах
       try {
         const fsnap = await db.collection('favorites').where('userId', '==', fbUser.uid).get();
@@ -192,6 +236,7 @@
       }
     } else {
       currentUser = null;
+      if (_userProfileUnsub) { try { _userProfileUnsub(); } catch(e) {} _userProfileUnsub = null; }
       const loginBtn = document.getElementById('loginBtn');
       const userAvatarWrap = document.getElementById('userAvatarWrap');
       const userAvatar = document.getElementById('userAvatar');

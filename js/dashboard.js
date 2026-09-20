@@ -17,17 +17,54 @@
           Зар нэмэх, удирдах боломжийг ашиглахын тулд TP Property-ийн админтай холбогдож
           Agent эрх аваарай.
         </div>
-        <button class="btn btn-blue btn-lg" onclick="showPage('home')">Нүүр хуудас руу буцах</button>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-lg" onclick="recheckAgentStatus()">Дахин шалгах</button>
+          <button class="btn btn-blue btn-lg" onclick="showPage('home')">Нүүр хуудас руу буцах</button>
+        </div>
       </div>
     `;
   }
 
+  // Manual fallback for the live users/{uid} listener (subscribeUserProfile): if an admin just
+  // approved this account, re-fetch the profile on demand and re-gate the dashboard — so the
+  // user never has to sign out and back in to pick up a fresh agentActive. No security impact:
+  // the real create/edit gate is firestore.rules' isApprovedAgent(); this only re-reads state.
+  async function recheckAgentStatus() {
+    if (!currentUser) { if (typeof openAuth === 'function') openAuth(); return; }
+    try {
+      const snap = await db.collection('users').doc(currentUser.uid).get();
+      const data = snap.data() || {};
+      if (typeof isOwnerEmail !== 'function' || !isOwnerEmail(currentUser.email)) currentUser.role = data.role || currentUser.role;
+      currentUser.agentActive = data.agentActive === true;
+      currentUser.blocked = data.blocked === true;
+      if (typeof refreshAgentUI === 'function') refreshAgentUI();
+      if (typeof updateNavLoggedIn === 'function') updateNavLoggedIn();
+      if (typeof isApprovedAgent === 'function' && isApprovedAgent(currentUser)) {
+        showToast('Таны Agent эрх баталгаажлаа', 'success');
+        renderDashboard();
+      } else {
+        showToast('Таны бүртгэл хараахан Agent эрхээр баталгаажаагүй байна');
+      }
+    } catch(e) {
+      showToast('Шалгах үед алдаа гарлаа. Дараа дахин оролдоно уу.');
+    }
+  }
+
+  // Pristine dashboard markup, captured once before the restricted screen ever overwrites it,
+  // so an approval mid-session can restore the real dashboard template (the setText()/#id
+  // targets below live in it) instead of leaving the "not approved" screen stuck on screen.
+  let _dashTemplateHTML = null;
   function renderDashboard() {
     if (!currentUser) return;
+    const dashRoot = document.querySelector('#dashboard > .section-inner');
+    if (dashRoot && _dashTemplateHTML === null) _dashTemplateHTML = dashRoot.innerHTML;
     if (typeof isApprovedAgent === 'function' && !isApprovedAgent(currentUser)) {
-      const root = document.querySelector('#dashboard > .section-inner');
-      if (root) root.innerHTML = renderAgentRestrictedDashboard();
+      if (dashRoot) dashRoot.innerHTML = renderAgentRestrictedDashboard();
       return;
+    }
+    // Approved: if a restricted screen previously replaced the template, restore it first.
+    if (dashRoot && !document.getElementById('dashGreeting') && _dashTemplateHTML !== null) {
+      dashRoot.innerHTML = _dashTemplateHTML;
     }
     const myListings = listings.filter(l => l.userSubmitted && l.ownerId === currentUser.uid);
     const activeListings = myListings.filter(l => !l._inactive);
