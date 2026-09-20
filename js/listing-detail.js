@@ -931,6 +931,96 @@
   }
 
   // ===== SELLER / AGENT PROFILE =====
+  // ===== REUSABLE AGENT CARD (REMAX-style) =====
+  // Pure render — takes a normalized agent object and returns XSS-safe HTML. All text goes
+  // through esc(); social/contact links are ONLY ever built from sanitized digits/usernames
+  // or a strict https allowlist (agentSocialHref), so no user-entered string ever reaches an
+  // href or onclick unchecked. Renders only the fields that are present, so it degrades
+  // gracefully from a full "Gold Agent, office, 4 channels" card down to just a name + phone.
+  function _agentDigits(s) { return String(s || '').replace(/[^\d]/g, ''); }
+  // 8-digit local MN number -> prefix 976 for wa.me/viber international format.
+  function _agentIntl(d) { return d.length === 8 ? '976' + d : d; }
+  function agentSocialHref(kind, val) {
+    const v = String(val || '').trim();
+    if (!v) return null;
+    if (kind === 'whatsapp') { const d = _agentDigits(v); return d.length >= 6 ? 'https://wa.me/' + _agentIntl(d) : null; }
+    if (kind === 'viber')    { const d = _agentDigits(v); return d.length >= 6 ? 'viber://chat?number=%2B' + _agentIntl(d) : null; }
+    if (kind === 'telegram') {
+      if (/^https:\/\/(t\.me|telegram\.me)\/[A-Za-z0-9_]{3,}$/i.test(v)) return v;
+      if (/^[a-z][\w+.-]*:/i.test(v)) return null; // any other URI/scheme (incl. javascript:, data:, off-allowlist https) — not a plain username
+      const u = v.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '');
+      return u.length >= 3 ? 'https://t.me/' + u : null;
+    }
+    if (kind === 'messenger') {
+      if (/^https:\/\/(m\.me|www\.facebook\.com|facebook\.com|messenger\.com)\/[A-Za-z0-9._\/?=&%-]+$/i.test(v)) return v;
+      if (/^[a-z][\w+.-]*:/i.test(v)) return null;
+      const u = v.replace(/^@/, '').replace(/[^A-Za-z0-9._-]/g, '');
+      return u.length >= 2 ? 'https://m.me/' + u : null;
+    }
+    return null;
+  }
+  // Show a hidden full (callable) number in place of its masked form. No user data is passed
+  // through the handler — the number is already rendered as text/href in the DOM.
+  function agentRevealPhone(btn) {
+    const wrap = btn.closest('.agent-rc-phone'); if (!wrap) return;
+    const full = wrap.querySelector('.agent-rc-phone-full'); const mask = wrap.querySelector('.agent-rc-phone-mask');
+    if (full) full.hidden = false; if (mask) mask.hidden = true; btn.hidden = true;
+  }
+  const _AGENT_SOC_ICON = {
+    whatsapp: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.9.9-2.8-.2-.3A8 8 0 1 1 12 20Zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.5l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-1 2.3c0 1.3 1 2.6 1.1 2.8.2.2 2 3.1 4.9 4.2 1.8.7 2.5.8 3.4.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.6-.2Z"/></svg>',
+    messenger: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.3 2 2 6.2 2 11.7c0 2.9 1.2 5.4 3.1 7.1.2.1.3.4.3.6l.1 1.8c0 .6.6 1 1.1.7l2-.9c.2-.1.4-.1.5 0 .9.3 1.9.4 2.8.4 5.7 0 10-4.2 10-9.7S17.7 2 12 2Zm6 7.5-2.9 4.6c-.5.7-1.5.9-2.2.4l-2.3-1.7a.6.6 0 0 0-.7 0l-3.1 2.4c-.4.3-1-.2-.7-.6l2.9-4.6c.5-.7 1.5-.9 2.2-.4l2.3 1.7c.2.2.5.2.7 0l3.1-2.4c.4-.3 1 .2.7.6Z"/></svg>',
+    telegram: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.7 19c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2L6.6 13 1.8 11.5c-1-.3-1.1-1 .2-1.5L20.5 3c.9-.3 1.6.2 1.4 1.3Z"/></svg>',
+    viber: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7 2 3 5.6 3 10c0 2 .9 3.9 2.4 5.3v3.4l3-1.7c1.1.4 2.3.6 3.6.6 5 0 9-3.6 9-8s-4-7.6-9-7.6Zm4.9 10.5c-.2.5-1 1-1.5 1.1-.4.1-.9.1-1.4-.1-.3-.1-.8-.3-1.4-.5-2.4-1-4-3.4-4.1-3.6-.1-.2-1-1.2-1-2.3s.6-1.6.8-1.8c.2-.2.4-.3.6-.3h.4c.1 0 .3 0 .5.4l.6 1.5c.1.1.1.3 0 .4l-.3.4-.3.3c-.1.1-.2.2-.1.4.1.2.6 1 1.3 1.6.9.8 1.6 1 1.8 1.1.2.1.3.1.4-.1l.6-.7c.1-.2.3-.1.5-.1l1.4.7c.2.1.4.2.4.3.1.1.1.6-.1 1Z"/></svg>'
+  };
+  // agent: { name, letter, photoURL, verified, rank, officeName, officeAddress, typeLabel,
+  //          phone, secondaryPhone, whatsapp, messenger, telegram, viber }
+  // opts.ctaOnClick: JS string for the "Надтай холбогдоно уу" button (omitted -> no CTA).
+  function agentCardHtml(agent, opts) {
+    const a = agent || {}; opts = opts || {};
+    const name = a.name || 'Агент';
+    const letter = String(a.letter || name[0] || 'А');
+    const rank = a.rank ? String(a.rank).slice(0, 40) : '';
+    const socials = ['whatsapp', 'messenger', 'telegram', 'viber']
+      .map(k => ({ k, href: agentSocialHref(k, a[k]) })).filter(s => s.href);
+    const phoneRow = (num, label) => {
+      const raw = String(num || '').trim(); const d = _agentDigits(raw);
+      if (d.length < 6) return '';
+      const prefix = d.length === 8 ? '+976 ' : '';
+      const full = prefix + esc(raw);
+      const mask = prefix + esc(d.slice(0, 2)) + '•• ••••';
+      const tel = '+' + _agentIntl(d);
+      return `<div class="agent-rc-phone">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1A19.5 19.5 0 0 1 4.7 12 19.8 19.8 0 0 1 1.2 3.4 2 2 0 0 1 3.2 1h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.1 8.9a16 16 0 0 0 8 8l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7A2 2 0 0 1 23 18Z"/></svg>
+          <span class="agent-rc-phone-label">${esc(label)}</span>
+          <span class="agent-rc-phone-mask">${mask}</span>
+          <a class="agent-rc-phone-full" href="tel:${esc(tel)}" hidden>${full}</a>
+          <button type="button" class="agent-rc-reveal" onclick="agentRevealPhone(this)">Харуулах</button>
+        </div>`;
+    };
+    return `
+      <div class="agent-rc">
+        <div class="agent-rc-photo">
+          ${a.photoURL
+            ? `<img src="${esc(a.photoURL)}" alt="" onerror="this.remove();this.parentElement.classList.add('is-letter');this.parentElement.setAttribute('data-l','${esc(letter)}');">`
+            : `<span class="agent-rc-letter">${esc(letter)}</span>`}
+          ${rank ? `<span class="agent-rc-badge">${esc(rank)}</span>` : ''}
+        </div>
+        <div class="agent-rc-body">
+          <div class="agent-rc-name">${esc(name)}${a.verified ? ' <span class="seller-verified">✓</span>' : ''}</div>
+          ${a.typeLabel ? `<div class="agent-rc-role">${esc(a.typeLabel)}</div>` : ''}
+          ${opts.ctaOnClick ? `<button type="button" class="btn btn-blue agent-rc-cta" onclick="${opts.ctaOnClick}">Надтай холбогдоно уу</button>` : ''}
+          ${socials.length ? `<div class="agent-rc-socials">${socials.map(s =>
+            `<a class="agent-rc-soc agent-rc-soc-${s.k}" href="${esc(s.href)}" target="_blank" rel="noopener nofollow" aria-label="${s.k}" title="${s.k}">${_AGENT_SOC_ICON[s.k]}</a>`).join('')}</div>` : ''}
+          <div class="agent-rc-contacts">
+            ${phoneRow(a.phone, 'Гар утас')}
+            ${phoneRow(a.secondaryPhone, 'Суурин утас')}
+          </div>
+          ${a.officeName ? `<div class="agent-rc-office"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4"/></svg>${esc(a.officeName)}</div>` : ''}
+          ${a.officeAddress ? `<div class="agent-rc-address">${esc(a.officeAddress)}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
   // One profile per real owner: every listing that owner has posted, plus their role
   // (Эзэмшигч/Агент/Компани), verified badge, and self-reported company name. Since
   // Firestore rules only let a user read their own users/{uid} doc, all of this rides
@@ -969,33 +1059,18 @@
       </button>
       <div style="padding:32px 28px;">
         <span class="al-eyebrow">Профайл</span>
-        <div style="display:flex; align-items:center; gap:14px; margin:10px 0 4px;">
-          <div style="width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--primary-deep)); display:grid; place-items:center; color:#fff; font-weight:700; font-size:20px; flex-shrink:0;">${esc((name || 'А')[0])}</div>
-          <div>
-            <div class="al-title" style="margin-bottom:2px; font-size:22px;">${esc(name)}${isVerified ? ' <span class="seller-verified">✓ Verified</span>' : ''}</div>
-            <div style="font-size:13px; color:var(--ink-3);">
-              <span style="font-weight:600; color:var(--ink-2);">${roleLabel === 'Агент' ? 'Үл хөдлөх хөрөнгийн агент' : (roleLabel === 'Компани' ? 'Барилгын компани' : 'Хувь хүн — эзэмшигч')}</span>
-              ${sd.company ? ` · ${esc(sd.company)}` : ''}
-            </div>
-          </div>
-        </div>
-        <div style="display:flex; gap:18px; font-size:12.5px; color:var(--ink-3); margin:14px 0 22px; padding-bottom:18px; border-bottom:1px solid var(--line);">
+        ${agentCardHtml({
+          name, letter: (name || 'А')[0], photoURL: sd.photoURL, verified: isVerified,
+          rank: sd.rank, officeName: sd.company, officeAddress: sd.officeAddress,
+          typeLabel: roleLabel === 'Агент' ? 'Үл хөдлөх хөрөнгийн агент' : (roleLabel === 'Компани' ? 'Барилгын компани' : 'Хувь хүн — эзэмшигч'),
+          phone: sd.phone, secondaryPhone: sd.secondaryPhone,
+          whatsapp: sd.whatsapp, messenger: sd.messenger, telegram: sd.telegram, viber: sd.viber
+        }, { ctaOnClick: sd.phone ? `closeModal(); setTimeout(() => openListingChat(${withSellerData.id}), 250)` : '' })}
+        <div style="display:flex; gap:18px; font-size:12.5px; color:var(--ink-3); margin:18px 0 22px; padding-bottom:18px; border-bottom:1px solid var(--line);">
           <span><b style="color:var(--ink);">${activeListings.length}</b> идэвхтэй зар</span>
           <span><b style="color:var(--ink);">${allSellerListings.length}</b> нийт нийтэлсэн</span>
           ${memberSinceYear ? `<span>Гишүүн: <b style="color:var(--ink);">${memberSinceYear}</b> оноос</span>` : ''}
         </div>
-        ${sd.phone ? `
-        <div style="display:flex; gap:10px; margin-bottom:24px;">
-          <button class="btn btn-blue" style="flex:1; justify-content:center;" onclick="revealPhone(${withSellerData.id})">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.21 3.39 2 2 0 0 1 3.22 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 8 8l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 23 18l-.08-1.08z"/></svg>
-            Залгах
-          </button>
-          <button class="btn btn-ghost" style="flex:1; justify-content:center; border:1.5px solid var(--line-2);" onclick="closeModal(); setTimeout(() => openListingChat(${withSellerData.id}), 250)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-            Чат бичих
-          </button>
-        </div>
-        ` : ''}
         <div style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-3); margin-bottom:12px;">Бүх зар (${allSellerListings.length})</div>
         <div class="listings-grid" id="sellerProfileGrid"></div>
       </div>

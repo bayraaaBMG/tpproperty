@@ -297,15 +297,42 @@
 
         <div class="form-row">
           <label class="form-label">Хэрэглэгчийн төрөл <span class="hint">— зарын профайл дээр харагдана</span></label>
-          <select class="form-select" id="acctType" onchange="document.getElementById('acctCompanyRow').style.display = this.value === 'owner' ? 'none' : ''">
+          <select class="form-select" id="acctType" onchange="document.getElementById('acctAgentProfile').style.display = this.value === 'owner' ? 'none' : ''">
             <option value="owner" ${(currentUser.accountType || 'owner') === 'owner' ? 'selected' : ''}>Үл хөдлөхийн эзэн</option>
             <option value="agent" ${currentUser.accountType === 'agent' ? 'selected' : ''}>Үл хөдлөхийн агент</option>
             <option value="company" ${currentUser.accountType === 'company' ? 'selected' : ''}>Барилгын компани</option>
           </select>
         </div>
-        <div class="form-row" id="acctCompanyRow" style="display:${(currentUser.accountType === 'agent' || currentUser.accountType === 'company') ? '' : 'none'};">
-          <label class="form-label">Агентлаг/Компанийн нэр <span class="hint">— заавал биш</span></label>
-          <input class="form-input" id="acctCompanyName" placeholder="Жнь: Болор Эстэйт" value="${esc(currentUser.companyName || '')}" />
+
+        <div id="acctAgentProfile" style="display:${(currentUser.accountType === 'agent' || currentUser.accountType === 'company') ? '' : 'none'};">
+          <div class="form-row">
+            <label class="form-label">Агентлаг / Оффисын нэр <span class="hint">— зарын профайл дээр харагдана</span></label>
+            <input class="form-input" id="acctCompanyName" placeholder="Жнь: REMAX Hub, Бие даасан агент" value="${esc(currentUser.companyName || '')}" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Оффисын хаяг <span class="hint">— заавал биш</span></label>
+            <input class="form-input" id="acctOfficeAddress" placeholder="Дүүрэг, барилга, давхар" value="${esc(currentUser.officeAddress || '')}" />
+          </div>
+          <div class="form-grid-2">
+            <div>
+              <label class="form-label">Агентын зэрэг</label>
+              <select class="form-select" id="acctRank">
+                ${['', 'Gold Agent', 'Platinum Agent', 'Standard Agent', 'Top Producer', 'Executive Agent'].map(r => `<option value="${esc(r)}" ${(currentUser.agentRank || '') === r ? 'selected' : ''}>${r ? esc(r) : 'Сонгоогүй'}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Нэмэлт / суурин утас</label>
+              <div class="phone-input-group"><div class="phone-prefix">+976</div><input type="tel" class="form-input" id="acctSecondaryPhone" maxlength="8" placeholder="7011 2233" value="${esc(currentUser.secondaryPhone || '')}" /></div>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div><label class="form-label">WhatsApp</label><input class="form-input" id="acctWhatsapp" placeholder="99112233 эсвэл wa.me/..." value="${esc(currentUser.whatsapp || '')}" /></div>
+            <div><label class="form-label">Messenger</label><input class="form-input" id="acctMessenger" placeholder="m.me/... эсвэл нэр" value="${esc(currentUser.messenger || '')}" /></div>
+          </div>
+          <div class="form-grid-2">
+            <div><label class="form-label">Telegram</label><input class="form-input" id="acctTelegram" placeholder="@username" value="${esc(currentUser.telegram || '')}" /></div>
+            <div><label class="form-label">Viber</label><input class="form-input" id="acctViber" placeholder="99112233" value="${esc(currentUser.viber || '')}" /></div>
+          </div>
         </div>
 
         <button class="btn btn-blue btn-lg" style="width:100%;justify-content:center;margin-top:8px;" onclick="saveAccountSettings()">Хадгалах</button>
@@ -387,8 +414,15 @@
     if (!firstName) { showToast('Нэрээ оруулна уу'); return; }
     const accountType = document.getElementById('acctType')?.value || 'owner';
     const companyName = document.getElementById('acctCompanyName')?.value.trim() || '';
+    // REMAX-style agent profile fields (stored raw, sanitized at render by agentCardHtml).
+    const cap = (id, n) => (document.getElementById(id)?.value || '').trim().slice(0, n || 120);
+    const officeAddress = cap('acctOfficeAddress', 160);
+    const agentRank = cap('acctRank', 40);
+    const secondaryPhone = cap('acctSecondaryPhone', 20);
+    const whatsapp = cap('acctWhatsapp'); const messenger = cap('acctMessenger');
+    const telegram = cap('acctTelegram'); const viber = cap('acctViber');
     try {
-      const updateData = { firstName, lastName, accountType, companyName };
+      const updateData = { firstName, lastName, accountType, companyName, officeAddress, agentRank, secondaryPhone, whatsapp, messenger, telegram, viber };
       if (pendingProfilePhoto) updateData.photoURL = pendingProfilePhoto;
       await db.collection('users').doc(currentUser.uid).set(updateData, { merge: true });
       if (auth.currentUser) await auth.currentUser.updateProfile({ displayName: firstName + (lastName ? ' ' + lastName : '') });
@@ -397,6 +431,7 @@
       currentUser.letter = firstName[0] || 'Х';
       currentUser.accountType = accountType;
       currentUser.companyName = companyName;
+      Object.assign(currentUser, { officeAddress, agentRank, secondaryPhone, whatsapp, messenger, telegram, viber });
       if (pendingProfilePhoto) { currentUser.photoURL = pendingProfilePhoto; pendingProfilePhoto = null; }
       updateNavLoggedIn();
       showToast('Мэдээлэл шинэчлэгдлээ', 'success');

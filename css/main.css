@@ -1380,6 +1380,48 @@
   .seller-verified { font-size: 10px; background: var(--success); color: #fff; border-radius: 100px; padding: 1px 7px; font-weight: 700; }
   .seller-meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
 
+  /* ===== Reusable REMAX-style agent card (agentCardHtml) ===== */
+  .agent-rc { display: flex; gap: 16px; align-items: flex-start; }
+  .agent-rc-photo {
+    position: relative; width: 116px; height: 132px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
+    background: linear-gradient(150deg, var(--ink), var(--ink-2)); display: grid; place-items: center;
+  }
+  .agent-rc-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .agent-rc-photo.is-letter::after { content: attr(data-l); color: #fff; font-family: 'Fraunces', serif; font-size: 40px; font-weight: 700; }
+  .agent-rc-letter { color: #fff; font-family: 'Fraunces', serif; font-size: 40px; font-weight: 700; }
+  .agent-rc-badge {
+    position: absolute; left: 0; right: 0; bottom: 0; text-align: center; padding: 5px 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.72)); color: #f4d58d;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .agent-rc-body { flex: 1; min-width: 0; }
+  .agent-rc-name { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+  .agent-rc-role { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .agent-rc-cta { margin-top: 12px; }
+  .agent-rc-socials { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .agent-rc-soc { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; transition: transform .12s ease, filter .12s ease; }
+  .agent-rc-soc:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .agent-rc-soc-whatsapp { background: #25D366; }
+  .agent-rc-soc-messenger { background: #0084FF; }
+  .agent-rc-soc-telegram { background: #29A9EB; }
+  .agent-rc-soc-viber { background: #7360F2; }
+  .agent-rc-contacts { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .agent-rc-phone { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+  .agent-rc-phone > svg { color: var(--ink-3); flex-shrink: 0; }
+  .agent-rc-phone-label { color: var(--ink-3); font-size: 12px; min-width: 66px; }
+  .agent-rc-phone-mask, .agent-rc-phone-full { font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
+  .agent-rc-phone-full { color: var(--primary); text-decoration: none; }
+  .agent-rc-reveal { background: none; border: 0; color: var(--primary); font-weight: 700; font-size: 12px; cursor: pointer; padding: 0; }
+  .agent-rc-reveal:hover { text-decoration: underline; }
+  .agent-rc-office { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 14px; }
+  .agent-rc-office > svg { color: var(--ink-3); flex-shrink: 0; }
+  .agent-rc-address { font-size: 12.5px; color: var(--ink-3); margin-top: 3px; }
+  @media (max-width: 480px) {
+    .agent-rc-photo { width: 92px; height: 112px; }
+    .agent-rc-name { font-size: 17px; }
+  }
+
   /* Scam-protection status row — shown on every listing (real vs. not-yet-verified, never hidden) */
   .verify-status-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 18px; }
   .verify-pill {

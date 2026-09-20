@@ -1987,6 +1987,15 @@
         sellerCompany: currentUser.companyName || '',
         sellerEmail: currentUser.email || '',
         sellerPhotoURL: currentUser.photoURL || '',
+        // REMAX-style agent profile — snapshotted alongside the seller identity so the public
+        // agent card can render it (other users can't read the agent's users/{uid} doc).
+        sellerOfficeAddress: currentUser.officeAddress || '',
+        sellerRank: currentUser.agentRank || '',
+        sellerSecondaryPhone: currentUser.secondaryPhone || '',
+        sellerWhatsapp: currentUser.whatsapp || '',
+        sellerMessenger: currentUser.messenger || '',
+        sellerTelegram: currentUser.telegram || '',
+        sellerViber: currentUser.viber || '',
         status: 'pending', rejectionReason: '',
         badges: newListing.badges,
         boosted: false,

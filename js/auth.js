@@ -114,6 +114,15 @@
           if (data.photoURL) currentUser.photoURL = data.photoURL;
           currentUser.accountType = data.accountType || 'owner';
           currentUser.companyName = data.companyName || '';
+          // REMAX-style agent profile fields (edited in Миний тохиргоо, denormalized onto
+          // listings at publish time for the public agent card).
+          currentUser.officeAddress = data.officeAddress || '';
+          currentUser.agentRank = data.agentRank || '';
+          currentUser.secondaryPhone = data.secondaryPhone || '';
+          currentUser.whatsapp = data.whatsapp || '';
+          currentUser.messenger = data.messenger || '';
+          currentUser.telegram = data.telegram || '';
+          currentUser.viber = data.viber || '';
           // 'admin' can only ever be granted by the owner through the Users management page
           // (js/admin.js grantAdminRole()), which writes through the one privileged
           // firestore.rules path for it — never settable by the user themselves.
@@ -215,7 +224,7 @@
           };
           listings.push(entry);
           if (d.images && d.images.length > 0) listingExtras[numId] = { coords: { x: 50, y: 50 }, gallery: d.images };
-          sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '', email: d.sellerEmail || '', photoURL: d.sellerPhotoURL || '' };
+          sellerData[numId] = { phone: d.sellerPhone || '', name: d.sellerName || 'Хэрэглэгч', type: d.sellerType || 'Хувь хүн', company: d.sellerCompany || '', email: d.sellerEmail || '', photoURL: d.sellerPhotoURL || '', officeAddress: d.sellerOfficeAddress || '', rank: d.sellerRank || '', secondaryPhone: d.sellerSecondaryPhone || '', whatsapp: d.sellerWhatsapp || '', messenger: d.sellerMessenger || '', telegram: d.sellerTelegram || '', viber: d.sellerViber || '' };
         });
         renderMyListings(); renderHomeListings(); renderListings(getFilteredListings());
         if (typeof renderDashboard === 'function') renderDashboard();
