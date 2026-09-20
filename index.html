@@ -1324,6 +1324,15 @@
               Энэ хэсэгт хайх
             </button>
             <div class="map-count-badge" id="mapCountBadge" hidden></div>
+            <div class="map-toolbar" id="mapToolbar">
+              <button type="button" class="map-tool-btn" id="mapLocateBtn" onclick="mapLocateMe()" title="Миний байршил" aria-label="Миний байршил">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+              </button>
+              <button type="button" class="map-tool-btn" id="mapFullscreenBtn" onclick="mapToggleFullscreen()" title="Дэлгэц дүүрэн" aria-label="Дэлгэц дүүрэн">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+              </button>
+            </div>
+            <div class="map-stats-bar" id="mapStatsBar" hidden></div>
             <div class="map-empty-overlay" id="mapEmptyOverlay" hidden>Энэ хэсэгт одоогоор зар байхгүй байна.</div>
           </div>
         </div>

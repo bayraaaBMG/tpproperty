@@ -10,7 +10,7 @@
     const priceNum = fmtPrice(l.price).replace(' тэрбум ₮', '').replace(' сая ₮', '');
     const priceUnit = l.price >= 1000 ? 'тэрбум' : 'сая';
     return `
-      <article class="listing-card" onclick="${fullFeatures ? `openListing(${l.id})` : `showPage('listings'); setTimeout(()=>openListing(${l.id}),150)`}">
+      <article class="listing-card" data-lid="${l.id}" onclick="${fullFeatures ? `openListing(${l.id})` : `showPage('listings'); setTimeout(()=>openListing(${l.id}),150)`}">
         <div class="listing-img">
           <img src="${esc(l.img)}" alt="${esc(l.title)}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(135deg, #1B2D4F, #272B68)';"/>
           <div class="listing-badges">

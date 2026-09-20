@@ -4669,7 +4669,43 @@
 
   /* ---- Map view: search-this-area, count, empty overlay, marker preview card ---- */
   .map-view-wrap { position: relative; }
+  .map-view-wrap:fullscreen { background: var(--paper); }
+  .map-view-wrap:fullscreen .mini-map { aspect-ratio: auto !important; height: 100%; }
   /* class-level display: rules above would otherwise defeat the hidden attribute */
+  .map-search-area-btn[hidden], .map-count-badge[hidden], .map-empty-overlay[hidden], .map-stats-bar[hidden] { display: none !important; }
+  /* Browse-map price pin: navy pill with hover + selected states (list<->map sync) */
+  .map-pin-wrap { cursor: pointer; }
+  .map-pin-marker {
+    background: var(--primary); color: #fff; padding: 4px 10px; border-radius: 8px;
+    font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: var(--shadow-md);
+    font-family: 'JetBrains Mono', monospace; border: 2px solid transparent;
+    transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+  }
+  .map-pin-wrap:hover .map-pin-marker, .map-pin-marker.hover {
+    transform: scale(1.08); box-shadow: var(--shadow-lg); z-index: 3;
+  }
+  .map-pin-marker.selected {
+    background: var(--primary-deep, #0A1B3D); border-color: #fff; transform: scale(1.12);
+    box-shadow: 0 0 0 3px rgba(27,45,79,.35), var(--shadow-lg);
+  }
+  /* the pinned card, when its marker is active, gets a subtle brand outline */
+  .listing-card.map-linked { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .map-toolbar {
+    position: absolute; top: 52px; right: 12px; z-index: 500; display: flex; flex-direction: column; gap: 8px;
+  }
+  .map-tool-btn {
+    width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer;
+    background: var(--surface, #fff); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--shadow-sm); transition: background .12s ease, color .12s ease;
+  }
+  .map-tool-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .map-tool-btn.loading { opacity: .55; pointer-events: none; }
+  .map-stats-bar {
+    position: absolute; bottom: 12px; left: 12px; z-index: 500; display: flex; flex-wrap: wrap; gap: 6px 14px;
+    background: var(--surface, #fff); color: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; font-size: 12px; box-shadow: var(--shadow-sm); max-width: calc(100% - 24px);
+  }
+  .map-stats-bar .map-stat strong { color: var(--ink); font-weight: 800; }
   .map-search-area-btn[hidden], .map-count-badge[hidden], .map-empty-overlay[hidden] { display: none !important; }
   .map-search-area-btn {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 500;
