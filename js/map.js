@@ -50,6 +50,9 @@
   let _mapMoveWired = false;
   let _mapListWired = false;
   let _mapMeMarker = null;          // "my location" marker (never persisted)
+  let _mapStdLayer = null;          // OpenStreetMap standard tiles
+  let _mapSatLayer = null;          // Esri World Imagery satellite tiles
+  let _mapSatOn = false;            // is the satellite layer currently shown
 
   // Exact-location rule: a listing is placed on the map ONLY when it has a real, finite
   // saved coordinate pair. Missing / null coordinates -> no marker (never a guessed one).
@@ -152,9 +155,15 @@
 
     if (!browseMap) {
       browseMap = L.map('miniMap').setView((typeof UB_CENTER !== 'undefined' ? UB_CENTER : [47.9184, 106.9177]), 11);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      _mapStdLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-      }).addTo(browseMap);
+      });
+      // Esri World Imagery — free, keyless satellite basemap (attribution shown when active).
+      _mapSatLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community', maxZoom: 19
+      });
+      _mapStdLayer.addTo(browseMap);
+      _addMapLayerControl();
     }
     if (!_mapMoveWired) {
       browseMap.on('moveend', () => {
@@ -280,6 +289,40 @@
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
+  }
+
+  // Map-layer switcher: a Leaflet control that stacks directly below the zoom (+/-) buttons
+  // and toggles between the standard OpenStreetMap and Esri satellite basemaps.
+  function _addMapLayerControl() {
+    if (!browseMap || typeof L === 'undefined' || !L.Control) return;
+    const ICON_SAT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
+    const Ctrl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: function () {
+        const div = L.DomUtil.create('div', 'leaflet-bar map-layer-ctrl');
+        const a = L.DomUtil.create('a', '', div);
+        a.href = '#'; a.setAttribute('role', 'button');
+        a.title = 'Хиймэл дагуулын үзэмж';
+        a.setAttribute('aria-label', 'Газрын зураг / хиймэл дагуулын үзэмж');
+        a.innerHTML = ICON_SAT;
+        L.DomEvent.on(a, 'click', L.DomEvent.stop).on(a, 'click', mapToggleLayer);
+        return div;
+      }
+    });
+    browseMap.addControl(new Ctrl());
+  }
+
+  function mapToggleLayer() {
+    if (!browseMap || !_mapStdLayer || !_mapSatLayer) return;
+    _mapSatOn = !_mapSatOn;
+    if (_mapSatOn) { browseMap.removeLayer(_mapStdLayer); _mapSatLayer.addTo(browseMap); }
+    else { browseMap.removeLayer(_mapSatLayer); _mapStdLayer.addTo(browseMap); }
+    const ctrl = document.querySelector('.map-layer-ctrl');
+    if (ctrl) {
+      ctrl.classList.toggle('active', _mapSatOn);
+      const a = ctrl.querySelector('a');
+      if (a) a.title = _mapSatOn ? 'Энгийн газрын зураг' : 'Хиймэл дагуулын үзэмж';
+    }
   }
 
   // Fullscreen the map wrapper (browser Fullscreen API); Escape exits natively.
