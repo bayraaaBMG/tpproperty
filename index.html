@@ -1317,7 +1317,15 @@
         <div id="listingsAdBanner"></div>
         <!-- Map view (hidden by default) -->
         <div id="mapView" style="display:none; margin-bottom:16px;">
-          <div class="mini-map" id="miniMap" style="aspect-ratio:21/9;"></div>
+          <div class="map-view-wrap">
+            <div class="mini-map" id="miniMap" style="aspect-ratio:21/9;"></div>
+            <button type="button" class="btn btn-blue map-search-area-btn" id="mapSearchAreaBtn" hidden onclick="mapSearchThisArea()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+              Энэ хэсэгт хайх
+            </button>
+            <div class="map-count-badge" id="mapCountBadge" hidden></div>
+            <div class="map-empty-overlay" id="mapEmptyOverlay" hidden>Энэ хэсэгт одоогоор зар байхгүй байна.</div>
+          </div>
         </div>
 
         <div class="listings-results-header">
@@ -2581,7 +2589,7 @@
         <ul>
           <li><a onclick="scrollToSection('listings')">Зар үзэх</a></li>
           <li><a class="agent-cta" onclick="openInfoPage('addListing')">Зар нэмэх</a></li>
-          <li><a onclick="openInfoPage('map')">Газрын зураг</a></li>
+          <li><a onclick="openMapSearch()">Газрын зураг</a></li>
           <li><a onclick="openInfoPage('topPicks')">Шилдэг сонголт</a></li>
         </ul>
       </div>
