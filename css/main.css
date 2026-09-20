@@ -1406,6 +1406,7 @@
   .agent-rc-soc-messenger { background: #0084FF; }
   .agent-rc-soc-telegram { background: #29A9EB; }
   .agent-rc-soc-viber { background: #7360F2; }
+  .agent-card-socials { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0 2px; }
   .agent-rc-contacts { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   .agent-rc-phone { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
   .agent-rc-phone > svg { color: var(--ink-3); flex-shrink: 0; }

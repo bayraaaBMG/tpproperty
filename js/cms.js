@@ -160,6 +160,15 @@
     if (!url) return '';
     try { const u = new URL(String(url).trim()); return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : ''; } catch (e) { return ''; }
   }
+  // Like cmsSafeUrl but also accepts an inline base64 image — profile photos are stored as
+  // data:image/... URIs (see handleProfilePhotoUpload), which cmsSafeUrl rejects; using it for
+  // the featured-agent photo is why the photo silently fell back to a monogram. Safe in an
+  // <img src>: a data:image/ payload can't execute script.
+  function cmsSafeImgUrl(url) {
+    const v = String(url || '').trim();
+    if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(v)) return v;
+    return cmsSafeUrl(v);
+  }
   // Strict #RGB / #RRGGBB — blocks any CSS-injection payload (</style>, url(), expression(), etc.).
   function cmsSafeHex(v) {
     if (typeof v !== 'string') return '';
@@ -804,10 +813,29 @@
     if (typeof listings === 'undefined' || !Array.isArray(listings) || !uid) return 0;
     return listings.filter(l => l && !l._inactive && String(l.ownerId) === String(uid)).length;
   }
-  function cmsBuildAgentCard(a) {
+  // The agent's latest denormalized listing data is the PUBLIC source of truth (other users
+  // can't read users/{uid}). Overlay it on top of the admin snapshot so photo/phone/social
+  // channels reflect what the agent last published \u2014 an automatic sync that doesn't need the
+  // admin to re-save. Falls back to the snapshot when the agent has no loaded listings.
+  function cmsAgentLive(a) {
+    const out = Object.assign({}, a);
+    if (typeof listings === 'undefined' || !Array.isArray(listings) || typeof sellerData === 'undefined') return out;
+    const l = listings.find(x => x && String(x.ownerId) === String(a.uid) && sellerData[x.id]);
+    const sd = l ? sellerData[l.id] : null;
+    if (!sd) return out;
+    out.photoUrl = sd.photoURL || out.photoUrl;
+    out.phone = sd.phone || out.phone;
+    out.whatsapp = sd.whatsapp || out.whatsapp;
+    out.messenger = sd.messenger || out.messenger;
+    out.telegram = sd.telegram || out.telegram;
+    out.viber = sd.viber || out.viber;
+    return out;
+  }
+  function cmsBuildAgentCard(rawA) {
+    const a = cmsAgentLive(rawA);
     const card = document.createElement('div'); card.className = 'agent-card';
     const av = document.createElement('div'); av.className = 'agent-avatar';
-    const photo = cmsSafeUrl(a.photoUrl);
+    const photo = cmsSafeImgUrl(a.photoUrl);
     if (photo) { const img = document.createElement('img'); img.src = photo; img.alt = String(a.name || ''); img.loading = 'lazy';
       img.onerror = function () { const p = this.parentNode; if (p) { this.remove(); p.textContent = cmsAgentInitials(a.name); } }; av.appendChild(img); }
     else av.textContent = cmsAgentInitials(a.name);
@@ -818,6 +846,20 @@
     if (digits) {
       const ph = document.createElement('a'); ph.className = 'agent-phone'; ph.href = 'tel:' + digits;
       ph.textContent = (/^\+/.test(digits) ? '' : '+976 ') + String(a.phone); card.appendChild(ph);
+    }
+    // Messaging channels (WhatsApp / Messenger / Telegram / Viber) \u2014 reuse the shared, XSS-safe
+    // link builder + icons from the agent card component.
+    const socials = ['whatsapp', 'messenger', 'telegram', 'viber']
+      .map(k => ({ k, href: typeof agentSocialHref === 'function' ? agentSocialHref(k, a[k]) : null })).filter(s => s.href);
+    if (socials.length) {
+      const row = document.createElement('div'); row.className = 'agent-card-socials';
+      socials.forEach(s => {
+        const link = document.createElement('a'); link.className = 'agent-rc-soc agent-rc-soc-' + s.k;
+        link.href = s.href; link.target = '_blank'; link.rel = 'noopener nofollow'; link.title = s.k; link.setAttribute('aria-label', s.k);
+        if (typeof _AGENT_SOC_ICON !== 'undefined' && _AGENT_SOC_ICON[s.k]) link.innerHTML = _AGENT_SOC_ICON[s.k];
+        row.appendChild(link);
+      });
+      card.appendChild(row);
     }
     const badge = document.createElement('div'); badge.className = 'agent-count'; badge.textContent = cmsAgentActiveCount(a.uid) + ' \u0437\u0430\u0440\u0442\u0430\u0439'; card.appendChild(badge);
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-blue btn-sm agent-view-btn'; btn.textContent = '\u0417\u0430\u0440\u0443\u0443\u0434 \u04af\u0437\u044d\u0445';
@@ -1224,8 +1266,20 @@
       const snap = await db.collection('users').where('agentActive', '==', true).get();
       _cmsAgentPool = snap.docs.map(d => { const u = d.data() || {};
         const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.name || u.email || d.id;
-        return { uid: d.id, name: name, phone: u.verifiedPhone || u.phone || '', photoUrl: u.photoURL || '', blocked: u.blocked === true, role: u.role || 'user' };
+        return { uid: d.id, name: name, phone: u.verifiedPhone || u.secondaryPhone || u.phone || '', photoUrl: u.photoURL || '',
+          whatsapp: u.whatsapp || '', messenger: u.messenger || '', telegram: u.telegram || '', viber: u.viber || '',
+          secondaryPhone: u.secondaryPhone || '', rank: u.agentRank || '', office: u.companyName || '', officeAddress: u.officeAddress || '',
+          blocked: u.blocked === true, role: u.role || 'user' };
       }).filter(a => !a.blocked);
+      // Auto-sync: refresh already-featured agents' display fields from the freshly-loaded live
+      // profiles (keeping the admin-entered title), so opening the editor always shows current
+      // data and saving persists it — no more stale snapshot from when the agent was first added.
+      if (_cmsAgentsDraft && Array.isArray(_cmsAgentsDraft.agents)) {
+        _cmsAgentsDraft.agents.forEach(f => {
+          const src = _cmsAgentPool.find(a => String(a.uid) === String(f.uid));
+          if (src) Object.assign(f, { name: src.name, phone: src.phone, photoUrl: src.photoUrl, whatsapp: src.whatsapp, messenger: src.messenger, telegram: src.telegram, viber: src.viber, secondaryPhone: src.secondaryPhone, rank: src.rank, office: src.office, officeAddress: src.officeAddress });
+        });
+      }
     } catch (e) { console.error('cmsFetchAgentPool failed:', e.code, e.message); _cmsAgentPool = []; showToast('Агентуудыг татахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
     cmsRenderAgentsEditor();
   }
@@ -1267,7 +1321,9 @@
     if (on) {
       if (cmsAgentsFeatured(uid)) return;
       const src = (_cmsAgentPool || []).find(a => String(a.uid) === String(uid)); if (!src) return;
-      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', phone: src.phone, photoUrl: src.photoUrl });
+      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', phone: src.phone, photoUrl: src.photoUrl,
+        whatsapp: src.whatsapp, messenger: src.messenger, telegram: src.telegram, viber: src.viber,
+        secondaryPhone: src.secondaryPhone, rank: src.rank, office: src.office, officeAddress: src.officeAddress });
     } else {
       _cmsAgentsDraft.agents = _cmsAgentsDraft.agents.filter(a => String(a.uid) !== String(uid));
     }
@@ -1286,7 +1342,15 @@
         name: String(a.name || '').slice(0, 80).trim(),
         title: String(a.title || '').slice(0, 80).trim(),
         phone: String(a.phone || '').replace(/[^0-9+]/g, '').slice(0, 20),
-        photoUrl: cmsSafeUrl(a.photoUrl || '')
+        photoUrl: cmsSafeImgUrl(a.photoUrl || ''),
+        whatsapp: String(a.whatsapp || '').slice(0, 120),
+        messenger: String(a.messenger || '').slice(0, 120),
+        telegram: String(a.telegram || '').slice(0, 120),
+        viber: String(a.viber || '').slice(0, 120),
+        secondaryPhone: String(a.secondaryPhone || '').replace(/[^0-9+]/g, '').slice(0, 20),
+        rank: String(a.rank || '').slice(0, 40),
+        office: String(a.office || '').slice(0, 80),
+        officeAddress: String(a.officeAddress || '').slice(0, 160)
       })).filter(a => a.uid && a.name)
     };
     try {
