@@ -739,8 +739,14 @@
   // drives the home hero: background image + dark overlay, rich headline/subheadline,
   // search-widget visibility and a CTA button. Empty fields fall back to the existing hero. ----
   function cmsDefaultHeroBanner() {
-    return { backgroundImageUrl: '', overlayOpacity: 40, headlineHtml: '', subheadlineHtml: '', showSearchWidget: true, ctaText: '', ctaLink: '', showCta: false };
+    // positionX/Y (0–100%), backgroundSize (cover|contain), scale (100–200%), desktop/mobile
+    // height in px (0 = auto). Every default keeps the previous look, so an existing banner is
+    // unchanged until the admin adjusts these.
+    return { backgroundImageUrl: '', overlayOpacity: 40, headlineHtml: '', subheadlineHtml: '', showSearchWidget: true, ctaText: '', ctaLink: '', showCta: false,
+      positionX: 50, positionY: 50, backgroundSize: 'cover', scale: 100, desktopHeight: 0, mobileHeight: 0 };
   }
+  // Clamp a numeric banner setting; NaN -> default.
+  function cmsBannerNum(v, lo, hi, def) { const n = Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : def; }
   let _cmsHeroBannerCache = null;
   async function cmsLoadHeroBanner() {
     if (_cmsHeroBannerCache) return _cmsHeroBannerCache;
@@ -765,6 +771,15 @@
       bgLayer.style.backgroundImage = 'url("' + encodeURI(bg) + '")';
       const op = Math.max(0, Math.min(80, Number(b.overlayOpacity) || 0)) / 100;
       section.style.setProperty('--hero-overlay', String(op));
+      // Admin-driven geometry — each maps to a CSS var the hero CSS already reads.
+      const px = cmsBannerNum(b.positionX, 0, 100, 50), py = cmsBannerNum(b.positionY, 0, 100, 50);
+      const dh = cmsBannerNum(b.desktopHeight, 0, 900, 0), mh = cmsBannerNum(b.mobileHeight, 0, 900, 0);
+      section.style.setProperty('--banner-position-x', px + '%');
+      section.style.setProperty('--banner-position-y', py + '%');
+      section.style.setProperty('--banner-size', b.backgroundSize === 'contain' ? 'contain' : 'cover');
+      section.style.setProperty('--banner-scale', String(cmsBannerNum(b.scale, 100, 200, 100) / 100));
+      section.style.setProperty('--hero-desktop-h', dh + 'px');
+      section.style.setProperty('--hero-mobile-h', mh + 'px');
     } else if (bgLayer) {
       section.classList.remove('hero-has-bg');
       bgLayer.style.backgroundImage = '';
@@ -1185,6 +1200,10 @@
     hb = hb || cmsDefaultHeroBanner();
     const op = Math.max(0, Math.min(80, Number(hb.overlayOpacity) || 0));
     const bg = cmsSafeUrl(hb.backgroundImageUrl);
+    const px = cmsBannerNum(hb.positionX, 0, 100, 50), py = cmsBannerNum(hb.positionY, 0, 100, 50);
+    const sc = cmsBannerNum(hb.scale, 100, 200, 100);
+    const dh = cmsBannerNum(hb.desktopHeight, 0, 900, 0), mh = cmsBannerNum(hb.mobileHeight, 0, 900, 0);
+    const sizeC = hb.backgroundSize === 'contain' ? 'contain' : 'cover';
     return `<div class="admin-panel">
       <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <span>Гол баннер (Hero)</span>
@@ -1200,6 +1219,46 @@
           <div style="font-size:11.5px;color:var(--ink-3);margin-top:4px;">Хоосон бол одоогийн цайвар hero хэвээр үлдэнэ.</div></div>
         <div class="cms-field"><label class="cms-label">Дэвсгэрийн харанхуйжуулалт: <span id="hbOverlayVal">${op}%</span></label>
           <input type="range" min="0" max="80" step="5" value="${op}" oninput="cmsBannerOverlayInput(this.value)" style="width:100%;" aria-label="Overlay opacity" /></div>
+
+        <div class="cms-field"><label class="cms-label">Урьдчилан харах</label>
+          <div class="hb-preview-devices">
+            <button type="button" class="hb-dev-btn active" data-dev="desktop" onclick="cmsBannerPreviewDevice('desktop')">Desktop</button>
+            <button type="button" class="hb-dev-btn" data-dev="mobile" onclick="cmsBannerPreviewDevice('mobile')">Mobile</button>
+          </div>
+          <div class="hb-preview-wrap" id="hbPreviewWrap" data-device="desktop">
+            <div class="hb-preview" id="hbPreview">
+              <div class="hb-preview-img" id="hbPreviewImg"></div>
+              <div class="hb-preview-scrim" id="hbPreviewOverlay"></div>
+              <div class="hb-preview-note">Хайлт • Гарчиг • Статистик энд байрлана</div>
+            </div>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-3);margin-top:4px;">X/Y, хэмжээ, өндөр өөрчлөхөд preview шууд шинэчлэгдэнэ.</div></div>
+
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">Хэвтээ байрлал X: <span id="hbPxVal">${px}%</span></label>
+            <div class="hb-presets"><button type="button" onclick="cmsBannerPosPreset('x',0)">Зүүн</button><button type="button" onclick="cmsBannerPosPreset('x',50)">Төв</button><button type="button" onclick="cmsBannerPosPreset('x',100)">Баруун</button></div>
+            <input type="range" id="hbPosX" min="0" max="100" step="1" value="${px}" oninput="cmsBannerPosInput('x',this.value)" style="width:100%;" aria-label="X position" /></div>
+          <div class="cms-field"><label class="cms-label">Босоо байрлал Y: <span id="hbPyVal">${py}%</span></label>
+            <div class="hb-presets"><button type="button" onclick="cmsBannerPosPreset('y',0)">Дээд</button><button type="button" onclick="cmsBannerPosPreset('y',50)">Төв</button><button type="button" onclick="cmsBannerPosPreset('y',100)">Доод</button></div>
+            <input type="range" id="hbPosY" min="0" max="100" step="1" value="${py}" oninput="cmsBannerPosInput('y',this.value)" style="width:100%;" aria-label="Y position" /></div>
+        </div>
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">Зургийн хэмжээ (Size)</label>
+            <select class="form-select" id="hbSize" onchange="cmsBannerSizeInput(this.value)">
+              <option value="cover" ${sizeC === 'cover' ? 'selected' : ''}>Cover (дүүргэх)</option>
+              <option value="contain" ${sizeC === 'contain' ? 'selected' : ''}>Contain (бүтэн харуулах)</option>
+            </select></div>
+          <div class="cms-field"><label class="cms-label">Томруулах (Scale): <span id="hbScaleVal">${sc}%</span></label>
+            <input type="range" id="hbScale" min="100" max="200" step="5" value="${sc}" oninput="cmsBannerScaleInput(this.value)" style="width:100%;" aria-label="Scale" /></div>
+        </div>
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">Desktop өндөр: <span id="hbDhVal">${dh ? dh + 'px' : 'Авто'}</span></label>
+            <input type="range" id="hbDh" min="0" max="720" step="10" value="${dh}" oninput="cmsBannerHeightInput('desktop',this.value)" style="width:100%;" aria-label="Desktop height" /></div>
+          <div class="cms-field"><label class="cms-label">Mobile өндөр: <span id="hbMhVal">${mh ? mh + 'px' : 'Авто'}</span></label>
+            <input type="range" id="hbMh" min="0" max="600" step="10" value="${mh}" oninput="cmsBannerHeightInput('mobile',this.value)" style="width:100%;" aria-label="Mobile height" /></div>
+        </div>
+        <div><button type="button" class="btn btn-ghost btn-sm" onclick="cmsBannerDefaults()">Байрлал/хэмжээг өгөгдмөл болгох</button></div>
+
         <div class="cms-field"><label class="cms-label">Гарчиг (Title)</label>${cmsHeroToolbarHtml()}
           <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-banner-key="headlineHtml" oninput="cmsHeroInput(this)" aria-label="Гарчиг"></div></div>
         <div class="cms-field"><label class="cms-label">Дэд гарчиг (Subtitle)</label>${cmsHeroToolbarHtml()}
@@ -1223,7 +1282,70 @@
     const n = Math.max(0, Math.min(80, parseInt(v, 10) || 0));
     _cmsHeroBannerDraft.overlayOpacity = n;
     const lbl = document.getElementById('hbOverlayVal'); if (lbl) lbl.textContent = n + '%';
+    cmsUpdateBannerPreview(); cmsMarkDirty();
+  }
+  // ---- Banner geometry controls (position / size / scale / height) + live preview ----
+  function cmsBannerPosInput(axis, v) {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    const n = cmsBannerNum(v, 0, 100, 50);
+    if (axis === 'x') { _cmsHeroBannerDraft.positionX = n; const l = document.getElementById('hbPxVal'); if (l) l.textContent = n + '%'; }
+    else { _cmsHeroBannerDraft.positionY = n; const l = document.getElementById('hbPyVal'); if (l) l.textContent = n + '%'; }
+    cmsUpdateBannerPreview(); cmsMarkDirty();
+  }
+  function cmsBannerPosPreset(axis, n) {
+    const sl = document.getElementById(axis === 'x' ? 'hbPosX' : 'hbPosY'); if (sl) sl.value = n;
+    cmsBannerPosInput(axis, n);
+  }
+  function cmsBannerSizeInput(v) {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    _cmsHeroBannerDraft.backgroundSize = v === 'contain' ? 'contain' : 'cover';
+    cmsUpdateBannerPreview(); cmsMarkDirty();
+  }
+  function cmsBannerScaleInput(v) {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    const n = cmsBannerNum(v, 100, 200, 100);
+    _cmsHeroBannerDraft.scale = n;
+    const l = document.getElementById('hbScaleVal'); if (l) l.textContent = n + '%';
+    cmsUpdateBannerPreview(); cmsMarkDirty();
+  }
+  function cmsBannerHeightInput(which, v) {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    const n = cmsBannerNum(v, 0, 900, 0);
+    if (which === 'mobile') { _cmsHeroBannerDraft.mobileHeight = n; const l = document.getElementById('hbMhVal'); if (l) l.textContent = n ? n + 'px' : 'Авто'; }
+    else { _cmsHeroBannerDraft.desktopHeight = n; const l = document.getElementById('hbDhVal'); if (l) l.textContent = n ? n + 'px' : 'Авто'; }
+    cmsUpdateBannerPreview(); cmsMarkDirty();
+  }
+  function cmsBannerPreviewDevice(dev) {
+    dev = dev === 'mobile' ? 'mobile' : 'desktop';
+    const wrap = document.getElementById('hbPreviewWrap'); if (wrap) wrap.dataset.device = dev;
+    document.querySelectorAll('.hb-dev-btn').forEach(b => b.classList.toggle('active', b.dataset.dev === dev));
+    cmsUpdateBannerPreview();
+  }
+  function cmsBannerDefaults() {
+    _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    Object.assign(_cmsHeroBannerDraft, { positionX: 50, positionY: 50, backgroundSize: 'cover', scale: 100, desktopHeight: 0, mobileHeight: 0 });
+    const ed = document.getElementById('cmsHeroBannerEditor'); if (ed) { ed.innerHTML = cmsHeroBannerEditorHtml(_cmsHeroBannerDraft); cmsInitHeroEditors(); }
     cmsMarkDirty();
+  }
+  function cmsUpdateBannerPreview() {
+    const d = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
+    const img = document.getElementById('hbPreviewImg'), ov = document.getElementById('hbPreviewOverlay'),
+      prev = document.getElementById('hbPreview'), wrap = document.getElementById('hbPreviewWrap');
+    if (!img || !prev) return;
+    const bg = cmsSafeUrl(d.backgroundImageUrl);
+    img.style.backgroundImage = bg ? 'url("' + encodeURI(bg) + '")' : '';
+    const px = cmsBannerNum(d.positionX, 0, 100, 50), py = cmsBannerNum(d.positionY, 0, 100, 50);
+    img.style.backgroundSize = d.backgroundSize === 'contain' ? 'contain' : 'cover';
+    img.style.backgroundRepeat = 'no-repeat';
+    img.style.backgroundPosition = px + '% ' + py + '%';
+    const sc = cmsBannerNum(d.scale, 100, 200, 100) / 100;
+    img.style.transform = 'scale(' + sc + ')';
+    img.style.transformOrigin = px + '% ' + py + '%';
+    if (ov) ov.style.opacity = String(Math.max(0, Math.min(80, cmsBannerNum(d.overlayOpacity, 0, 80, 40))) / 100);
+    const dev = wrap ? wrap.dataset.device : 'desktop';
+    const h = dev === 'mobile' ? cmsBannerNum(d.mobileHeight, 0, 900, 0) : cmsBannerNum(d.desktopHeight, 0, 900, 0);
+    prev.style.height = (h > 0 ? Math.min(h, 460) : 300) + 'px';
+    if (wrap) wrap.style.maxWidth = dev === 'mobile' ? '380px' : '';
   }
   async function cmsHandleBannerBgUpload(ev) {
     const file = ev.target && ev.target.files && ev.target.files[0]; if (!file) return;
@@ -1246,7 +1368,13 @@
       showSearchWidget: d.showSearchWidget !== false,
       ctaText: String(d.ctaText || '').slice(0, 120).trim(),
       ctaLink: cmsSafeCtaLink(d.ctaLink || ''),
-      showCta: d.showCta === true
+      showCta: d.showCta === true,
+      positionX: cmsBannerNum(d.positionX, 0, 100, 50),
+      positionY: cmsBannerNum(d.positionY, 0, 100, 50),
+      backgroundSize: d.backgroundSize === 'contain' ? 'contain' : 'cover',
+      scale: cmsBannerNum(d.scale, 100, 200, 100),
+      desktopHeight: cmsBannerNum(d.desktopHeight, 0, 900, 0),
+      mobileHeight: cmsBannerNum(d.mobileHeight, 0, 900, 0)
     };
     try {
       await db.collection('site_settings').doc('hero_banner').set(Object.assign({}, clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
@@ -1655,6 +1783,7 @@
       if (cmsHeroHasContent(html)) area.appendChild(cmsHeroRichFragment(html));      // safe DOM nodes
       else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); }
     });
+    if (typeof cmsUpdateBannerPreview === 'function') cmsUpdateBannerPreview();
   }
   function cmsInitRichEditors() {
     document.querySelectorAll('.cms-rt-area:not(.cms-hero-area)').forEach(area => {
