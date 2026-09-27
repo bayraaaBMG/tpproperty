@@ -455,6 +455,9 @@
     // restores the normal site nav/footer immediately, not just on the next admin check.
     if (target !== 'admin') document.body.classList.remove('admin-mode');
     if (typeof cmsApplyTargetPage === 'function' && ['newdev', 'listings', 'rent', 'calc', 'resources'].includes(target)) cmsApplyTargetPage(target);
+    // Re-render the rent marketplace from the CURRENT listings every time it opens — its one-off
+    // init render ran before the real listings finished loading, which is why it showed 0.
+    if (target === 'rent' && typeof renderRentListings === 'function') renderRentListings();
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
     if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()
