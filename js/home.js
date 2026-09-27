@@ -81,7 +81,24 @@
     }
     renderFeaturedListings();
     renderHomeCategoryCounts();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncHomeCarouselArrows);
   }
+
+  // Step a home listing carousel ~one visible width left/right.
+  function scrollHomeRow(btn, dir) {
+    const car = btn.closest('.home-carousel'); const track = car && car.querySelector('.home-listings-grid');
+    if (!track) return;
+    track.scrollBy({ left: dir * Math.max(240, track.clientWidth * 0.85), behavior: 'smooth' });
+  }
+  // Hide the arrows on a carousel whose cards already fit (or that only shows an empty state).
+  function syncHomeCarouselArrows() {
+    document.querySelectorAll('.home-carousel').forEach(car => {
+      const t = car.querySelector('.home-listings-grid');
+      const overflow = !!t && !!t.querySelector('.listing-card') && t.scrollWidth > t.clientWidth + 4;
+      car.querySelectorAll('.home-listings-arrow').forEach(a => { a.style.display = overflow ? '' : 'none'; });
+    });
+  }
+  window.addEventListener('resize', () => { if (typeof syncHomeCarouselArrows === 'function') syncHomeCarouselArrows(); });
 
   // "Онцлох зарууд" — ranked by propertyScore() (utils.js), the same real, documented,
   // rule-based composite (price fairness vs. real comparables + verification + feature/

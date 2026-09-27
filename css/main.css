@@ -519,7 +519,26 @@
   /* auto-fit/minmax at every tier (not a fixed column count) — 5-6/row on desktop,
      2-4/row adaptive on tablet, 2/row on mobile with 1/row as an automatic fallback
      if a viewport is ever too narrow for two cards, never a hardcoded per-device rule. */
-  .home-listings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  /* Single-row horizontal carousel (was a wrapping grid that dropped cards onto extra rows and
+     squeezed them too narrow). Cards keep a comfortable fixed width and scroll sideways;
+     overflow is reachable by touch/drag or the ‹ › arrows. */
+  .home-carousel { position: relative; }
+  .home-listings-grid {
+    display: flex; flex-wrap: nowrap; gap: 14px; overflow-x: auto; scroll-behavior: smooth;
+    scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+  }
+  .home-listings-grid::-webkit-scrollbar { display: none; }
+  .home-listings-grid > .listing-card { flex: 0 0 auto; width: 240px; scroll-snap-align: start; }
+  .home-listings-grid > :not(.listing-card) { flex: 1 1 100%; }   /* empty state spans full width */
+  .home-listings-arrow {
+    position: absolute; top: 42%; transform: translateY(-50%); z-index: 5;
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--surface, #fff); color: var(--ink); cursor: pointer; display: grid; place-items: center;
+    box-shadow: var(--shadow-md); font-size: 22px; line-height: 1; padding: 0;
+  }
+  .home-listings-arrow:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .home-listings-arrow.prev { left: -6px; }
+  .home-listings-arrow.next { right: -6px; }
   .home-listings-grid .listing-img { aspect-ratio: 4/3; }
   .home-listings-grid .listing-body { padding: 12px; }
   .home-listings-grid .listing-price { font-size: 16px; }
@@ -536,8 +555,12 @@
   /* :hover already gives desktop cards elevation (shared .listing-card rule above);
      this adds the touch-equivalent press feedback :hover doesn't reliably give on mobile. */
   .home-listings-grid .listing-card:active { transform: scale(0.98); box-shadow: var(--shadow-sm); }
-  @media (max-width: 1024px) { .home-listings-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
-  @media (max-width: 640px) { .home-listings-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; } }
+  @media (max-width: 1024px) { .home-listings-grid > .listing-card { width: 210px; } }
+  @media (max-width: 640px) {
+    .home-listings-grid { gap: 10px; }
+    .home-listings-grid > .listing-card { width: 160px; }
+    .home-listings-arrow { display: none !important; }   /* touch-scroll only on phones */
+  }
 
   /* ============ SECTION ============ */
   section { padding: 100px var(--page-pad); display: none; }

@@ -286,7 +286,11 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
     </div>
-    <div id="homeListingsGrid" class="home-listings-grid"></div>
+    <div class="home-carousel">
+      <button type="button" class="home-listings-arrow prev" aria-label="Өмнөх" onclick="scrollHomeRow(this,-1)">‹</button>
+      <div id="homeListingsGrid" class="home-listings-grid"></div>
+      <button type="button" class="home-listings-arrow next" aria-label="Дараах" onclick="scrollHomeRow(this,1)">›</button>
+    </div>
 
     <div class="portal-section-head portal-section-head-spaced">
       <div>
@@ -297,7 +301,11 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
     </div>
-    <div id="homeFeaturedGrid" class="home-listings-grid"></div>
+    <div class="home-carousel">
+      <button type="button" class="home-listings-arrow prev" aria-label="Өмнөх" onclick="scrollHomeRow(this,-1)">‹</button>
+      <div id="homeFeaturedGrid" class="home-listings-grid"></div>
+      <button type="button" class="home-listings-arrow next" aria-label="Дараах" onclick="scrollHomeRow(this,1)">›</button>
+    </div>
 
     <!-- Онцлох агентууд (Featured Agents) — replaces the old Категориуд block. Rendered from
          site_settings/home_agents (admin-curated public fields only). Hidden until the admin
