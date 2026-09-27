@@ -185,12 +185,29 @@
       return true;
     });
   }
+  // Starter, editable content for the functional "target" pages (Зар хайх / Түрээс / Шинэ орон
+  // сууц / Тооцоолуур / Зөвлөгөө) so their editor opens with real blocks to edit — rather than
+  // an empty box — and publishing renders them into that page's CMS container above the
+  // code-driven content. Zөвлөгөө gets an intro + a sample article to manage a blog from.
+  function cmsDefaultTargetSections(pageId) {
+    const defs = {
+      listings: [ ['Зар хайх', '<p>Улаанбаатар хотын бүх дүүргийн орон сууц, түрээс, газар, оффисын зарыг нэг дороос хайж, шүүж олоорой.</p>'] ],
+      rent: [ ['Түрээсийн зар', '<p>Баталгаажсан эзэнтэй, стандарт гэрээтэй түрээсийн байрыг эндээс хайна уу.</p>'] ],
+      newdev: [ ['Шинэ орон сууцны төслүүд', '<p>Барилгын компаниудын шинэ хотхон, төслүүдийн мэдээллийг нэг дороос үзээрэй.</p>'] ],
+      calc: [ ['Санхүүгийн тооцоолуур', '<p>Зээлийн сарын төлбөр, худалдан авах чадвар, ирээдүйн өгөөжөө эндээс тооцоолоорой.</p>'] ],
+      resources: [
+        ['Мэдлэгийн сан', '<p>Байр худалдан авах, түрээслэх, хөрөнгө оруулахад хэрэгтэй зөвлөгөө, нийтлэлүүд.</p>'],
+        ['Жишээ нийтлэл — гарчгаа энд бичнэ үү', '<p>Энд блог нийтлэлийнхээ агуулгыг бичнэ. Хүснэгт, зураг, YouTube/Facebook холбоос оруулж болно. Дээрх «+ Хэсэг нэмэх» товчоор шинэ нийтлэл нэмээрэй.</p>']
+      ]
+    };
+    return (defs[pageId] || []).map(([title, bodyHtml], i) => ({ id: 'text-' + (i + 1), type: 'text', order: i + 1, visible: true, content: { title, bodyHtml, align: 'left' } }));
+  }
   function cmsDefaultSectionsFor(pageId) {
     if (pageId === 'home') return cmsDefaultHomeSections();
     if (pageId === 'about') return cmsDefaultAboutSections();
     if (pageId === 'services') return cmsDefaultServicesSections();
     if (pageId === 'newdev') return cmsDefaultNewdevSections();
-    if (CMS_TARGET_CONTAINERS[pageId]) return [];
+    if (CMS_TARGET_CONTAINERS[pageId]) return cmsDefaultTargetSections(pageId);
     if (pageId === 'contact') return cmsDefaultContactSections();
     return [];
   }
