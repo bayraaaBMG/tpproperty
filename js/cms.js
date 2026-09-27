@@ -977,8 +977,58 @@
   function cmsApplyOrganization(org) {
     if (!org) return;
     const desc = document.querySelector('.footer-desc'); if (desc && org.description) desc.textContent = org.description;
-    const fb = document.querySelector('.footer a[aria-label="Facebook"]'); if (fb) { const u = cmsSafeUrl(org.facebook); if (u) fb.setAttribute('href', u); }
+    const fb = document.querySelector('.footer a[aria-label="Facebook"]');
+    if (fb) { const u = cmsSafeUrl(org.facebook); if (u) { fb.setAttribute('href', u); fb.hidden = false; } else fb.hidden = true; }
+    const ig = document.querySelector('.footer a[aria-label="Instagram"]');
+    if (ig) { const u = cmsSafeUrl(org.instagram); if (u) { ig.setAttribute('href', u); ig.hidden = false; } else ig.hidden = true; }
     cmsApplyLogo(org);
+  }
+  // ---- Footer columns + links (siteSettings/footer) — public read, admin write ----
+  function cmsDefaultFooter() {
+    return { columns: [
+      { title: 'Платформ', links: [ { label: 'Зар үзэх', url: 'listings' }, { label: 'Зар нэмэх', url: 'addListing' }, { label: 'Газрын зураг', url: 'map' }, { label: 'Шилдэг сонголт', url: 'topPicks' } ] },
+      { title: 'Тооцоолол', links: [ { label: 'Зээл тооцоолуур', url: 'calc' }, { label: 'Чадварын үнэлгээ', url: 'afford' }, { label: 'Хөрөнгө оруулалт', url: 'forecast' }, { label: 'Банкны харьцуулалт', url: 'calc' } ] },
+      { title: 'Компани', links: [ { label: 'Бидний тухай', url: 'about' }, { label: 'Үйлчилгээ', url: 'services' }, { label: 'Карьер', url: 'career' }, { label: 'Хэвлэл', url: 'press' }, { label: 'Холбоо барих', url: 'contact' } ] },
+      { title: 'Хууль', links: [ { label: 'Үйлчилгээний нөхцөл', url: 'terms' }, { label: 'Нууцлал', url: 'privacy' }, { label: 'Аюулгүй байдал', url: 'security' } ] }
+    ] };
+  }
+  let _cmsFooterCache = null;
+  async function cmsLoadFooter() {
+    if (_cmsFooterCache) return _cmsFooterCache;
+    let f = cmsDefaultFooter();
+    try { const snap = await db.collection('siteSettings').doc('footer').get(); if (snap.exists && snap.data() && Array.isArray(snap.data().columns)) f = snap.data(); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadFooter failed:', e.code, e.message); }
+    _cmsFooterCache = f; return f;
+  }
+  // A footer link is EITHER an external http/https URL, or a short internal token (about,
+  // listings, calc, map…) mapped to the app's own navigation — never inline onclick from data.
+  const FOOTER_SCROLL_IDS = ['listings', 'calc', 'afford', 'forecast', 'features', 'resources'];
+  function footerToken(url) { const t = String(url || '').trim().replace(/^#/, ''); return /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(t) ? t : ''; }
+  function footerGo(t) {
+    if (t === 'map') { if (typeof openMapSearch === 'function') openMapSearch(); return; }
+    if (FOOTER_SCROLL_IDS.includes(t)) { if (typeof scrollToSection === 'function') scrollToSection(t); return; }
+    if (typeof openInfoPage === 'function') openInfoPage(t);
+  }
+  function cmsApplyFooter(cfg) {
+    const grid = document.querySelector('.footer .footer-grid'); if (!grid) return;
+    const columns = cfg && Array.isArray(cfg.columns) && cfg.columns.length ? cfg.columns : null;
+    if (!columns) return;                                  // keep the built-in default columns
+    grid.querySelectorAll('.footer-col').forEach(c => c.remove());
+    columns.forEach(col => {
+      if (!col) return;
+      const div = document.createElement('div'); div.className = 'footer-col';
+      const h = document.createElement('h5'); h.textContent = String(col.title || ''); div.appendChild(h);
+      const ul = document.createElement('ul');
+      (Array.isArray(col.links) ? col.links : []).forEach(l => {
+        if (!l || !l.label) return;
+        const li = document.createElement('li'); const a = document.createElement('a'); a.textContent = String(l.label);
+        const ext = cmsSafeUrl(l.url);
+        if (ext) { a.href = ext; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+        else { const tok = footerToken(l.url); if (tok) { a.style.cursor = 'pointer'; a.addEventListener('click', () => footerGo(tok)); } }
+        li.appendChild(a); ul.appendChild(li);
+      });
+      div.appendChild(ul); grid.appendChild(div);
+    });
   }
   function cmsApplySectionOrder(sections) {
     const togglable = (sections || []).filter(s => ['banks', 'features'].includes(s.type)).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -989,12 +1039,12 @@
   }
   async function applySiteCms() {
     try {
-      const [sections, org, theme, nav, banner] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner()]);
+      const [sections, org, theme, nav, banner, footer] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner(), cmsLoadFooter()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
-      cmsApplyHeroBanner(banner);
+      cmsApplyHeroBanner(banner); cmsApplyFooter(footer);
       applyHomeAgents();
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
@@ -1053,7 +1103,7 @@
   // ===================================================================================
   //  ADMIN SIDE
   // ===================================================================================
-  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null;
+  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null, _cmsFooterDraft = null;
   let _cmsAgentsDraft = null, _cmsAgentPool = null;
   let _cmsExpanded = {}, _cmsDirty = false;
 
@@ -1085,11 +1135,13 @@
     _cmsHomeAgentsCache = null;
     _cmsAgentsDraft = await cmsLoadHomeAgents().then(c => Object.assign(cmsDefaultHomeAgents(), c, { agents: (c.agents || []).slice() })).catch(() => cmsDefaultHomeAgents());
     _cmsAgentPool = null;
+    _cmsFooterDraft = await cmsLoadFooter().then(f => ({ columns: (f.columns || cmsDefaultFooter().columns).map(c => ({ title: c.title || '', links: (c.links || []).map(l => ({ label: l.label || '', url: l.url || '' })) })) })).catch(() => cmsDefaultFooter());
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
           <button class="mytab active" onclick="cmsSwitchTab(this,'pages')">Хуудсууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'footer')">Хөл хэсэг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Гол баннер</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'agents')">Онцлох агентууд</button>
@@ -1109,6 +1161,7 @@
           <div class="admin-panel"><div class="admin-panel-head">Байгууллагын мэдээлэл</div>
             <div id="cmsOrgEditor">${cmsOrgEditorHtml(_cmsOrgDraft)}</div></div>
         </div>
+        <div id="cmsTab-footer" hidden><div id="cmsFooterEditor">${cmsFooterEditorHtml(_cmsFooterDraft)}</div></div>
         <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
         <div id="cmsTab-herobanner" hidden><div id="cmsHeroBannerEditor">${cmsHeroBannerEditorHtml(_cmsHeroBannerDraft)}</div></div>
         <div id="cmsTab-agents" hidden><div id="cmsAgentsEditor"></div></div>
@@ -1121,7 +1174,7 @@
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'org', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'org', 'footer', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
     if (tab === 'agents' && !_cmsAgentPool) cmsFetchAgentPool();
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
@@ -1181,6 +1234,67 @@
       logAdminAction('cms_org_edit', 'siteSettings', 'organization', '');
       showToast('Байгууллагын мэдээлэл хадгалагдлаа', 'success');
     } catch (e) { console.error('cmsSaveOrganization failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+  // ---- Footer editor (siteSettings/footer) ----
+  function cmsFooterEditorHtml(f) {
+    f = f || cmsDefaultFooter();
+    const cols = (f.columns || []).map((col, ci) => `
+      <div class="cms-item">
+        <div class="cms-item-head">
+          <span>Багана ${ci + 1}</span>
+          <div class="cms-block-controls">
+            <button class="cms-ctrl" title="Дээш" onclick="cmsFooterMoveCol(${ci},-1)" ${ci === 0 ? 'disabled' : ''}>↑</button>
+            <button class="cms-ctrl" title="Доош" onclick="cmsFooterMoveCol(${ci},1)" ${ci === f.columns.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="cms-ctrl cms-ctrl-danger" title="Устгах" onclick="cmsFooterDelCol(${ci})">🗑</button>
+          </div>
+        </div>
+        <div class="cms-item-body">
+          <div class="cms-field"><label class="cms-label">Баганы гарчиг</label>
+            <input class="form-input" type="text" value="${esc(col.title || '')}" oninput="cmsFooterColTitle(${ci}, this.value)" /></div>
+          <div class="cms-label" style="margin-top:6px;">Холбоосууд</div>
+          ${(col.links || []).map((l, li) => `
+            <div class="cms-footer-link">
+              <input class="form-input" type="text" placeholder="Нэр" value="${esc(l.label || '')}" oninput="cmsFooterLinkField(${ci},${li},'label',this.value)" />
+              <input class="form-input" type="text" placeholder="https://… эсвэл about, listings…" value="${esc(l.url || '')}" oninput="cmsFooterLinkField(${ci},${li},'url',this.value)" />
+              <button class="cms-ctrl cms-ctrl-danger" title="Устгах" onclick="cmsFooterDelLink(${ci},${li})">🗑</button>
+            </div>`).join('')}
+          <button class="btn btn-ghost btn-sm" onclick="cmsFooterAddLink(${ci})">+ Холбоос нэмэх</button>
+        </div>
+      </div>`).join('');
+    return `<div class="admin-panel">
+      <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>Хөл хэсэг (Footer)</span>
+        <button class="btn btn-blue btn-sm" onclick="cmsSaveFooter()">Хадгалах</button>
+      </div>
+      <div style="padding:14px 16px;">
+        <div style="font-size:12px;color:var(--ink-3);margin-bottom:10px;">Тайлбар текст болон сошиал холбоосыг «Байгууллага» хэсгээс засна. Энд баганы гарчиг, доторх холбоосыг удирдана. Холбоос: гадаад бол <b>https://…</b>, дотоод хуудас бол <b>about, listings, calc, map, contact</b> гэх мэт.</div>
+        <div class="cms-items">${cols || '<div style="font-size:12px;color:var(--ink-3);">Багана алга.</div>'}</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="cmsFooterAddCol()">+ Багана нэмэх</button>
+      </div></div>`;
+  }
+  function cmsFooterRerender() { const e = document.getElementById('cmsFooterEditor'); if (e) e.innerHTML = cmsFooterEditorHtml(_cmsFooterDraft); }
+  function cmsFooterEnsure() { _cmsFooterDraft = _cmsFooterDraft || cmsDefaultFooter(); _cmsFooterDraft.columns = _cmsFooterDraft.columns || []; }
+  function cmsFooterColTitle(ci, v) { cmsFooterEnsure(); if (_cmsFooterDraft.columns[ci]) { _cmsFooterDraft.columns[ci].title = v; cmsMarkDirty(); } }
+  function cmsFooterLinkField(ci, li, key, v) { cmsFooterEnsure(); const c = _cmsFooterDraft.columns[ci]; if (c && c.links && c.links[li]) { c.links[li][key] = v; cmsMarkDirty(); } }
+  function cmsFooterAddLink(ci) { cmsFooterEnsure(); const c = _cmsFooterDraft.columns[ci]; if (c) { c.links = c.links || []; c.links.push({ label: '', url: '' }); cmsMarkDirty(); cmsFooterRerender(); } }
+  function cmsFooterDelLink(ci, li) { cmsFooterEnsure(); const c = _cmsFooterDraft.columns[ci]; if (c && c.links) { c.links.splice(li, 1); cmsMarkDirty(); cmsFooterRerender(); } }
+  function cmsFooterAddCol() { cmsFooterEnsure(); _cmsFooterDraft.columns.push({ title: 'Шинэ багана', links: [] }); cmsMarkDirty(); cmsFooterRerender(); }
+  function cmsFooterDelCol(ci) { cmsFooterEnsure(); _cmsFooterDraft.columns.splice(ci, 1); cmsMarkDirty(); cmsFooterRerender(); }
+  function cmsFooterMoveCol(ci, dir) { cmsFooterEnsure(); const a = _cmsFooterDraft.columns; const j = ci + dir; if (j < 0 || j >= a.length) return; const t = a[ci]; a[ci] = a[j]; a[j] = t; cmsMarkDirty(); cmsFooterRerender(); }
+  async function cmsSaveFooter() {
+    if (!cmsRequireEditor()) return;
+    cmsFooterEnsure();
+    const clean = { columns: _cmsFooterDraft.columns.slice(0, 8).map(col => ({
+      title: String(col.title || '').slice(0, 40).trim(),
+      links: (col.links || []).slice(0, 12).map(l => ({ label: String(l.label || '').slice(0, 60).trim(), url: String(l.url || '').slice(0, 300).trim() })).filter(l => l.label)
+    })).filter(col => col.title || col.links.length) };
+    try {
+      await db.collection('siteSettings').doc('footer').set(Object.assign(clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
+      _cmsFooterDraft = clean; _cmsFooterCache = null;
+      logAdminAction('cms_footer_edit', 'siteSettings', 'footer', '');
+      showToast('Хөл хэсэг хадгалагдлаа', 'success');
+      cmsFooterRerender();
+    } catch (e) { console.error('cmsSaveFooter failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
   async function cmsHandleOrgLogoUpload(ev) {
     const file = ev.target && ev.target.files && ev.target.files[0]; if (!file) return;

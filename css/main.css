@@ -4682,6 +4682,9 @@
   .cms-rt-area.cms-hero-area:focus { outline-color: var(--primary-glow); }
   .cms-rt-area.cms-hero-area a { color: #9db8ff; }
   .cms-drag-handle { cursor: grab; color: var(--ink-3); font-size: 14px; user-select: none; padding: 0 2px; }
+  .cms-footer-link { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .cms-footer-link input:first-child { flex: 0 0 38%; }
+  .cms-footer-link input:nth-child(2) { flex: 1; min-width: 0; }
   .cms-icon-field { display: flex; align-items: center; gap: 10px; }
   .cms-icon-field select { flex: 1; }
   .cms-icon-preview { flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); border: 1px solid var(--line); }
