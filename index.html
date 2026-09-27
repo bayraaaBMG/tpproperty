@@ -197,17 +197,9 @@
         <div class="hs-primary-row">
           <div class="hs-select-wrap hs-cat-select">
             <svg class="hs-select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <!-- Ангилалуудыг доорх icon-той shortcut-ууд харуулдаг тул dropdown дотор давхардуулахгүй — зөвхөн "Ангилал" placeholder үлдэнэ. -->
             <select id="hSearchType" aria-label="Ангилал" onchange="onHomeCategoryChange()">
               <option value="all">Ангилал</option>
-              <option value="apartment">Орон сууц</option>
-              <option value="rent">Түрээс</option>
-              <option value="new-apartment">Шинэ орон сууц</option>
-              <option value="office">Оффис</option>
-              <option value="house">Хашаа байшин</option>
-              <option value="land">Газар</option>
-              <option value="cottage">Зуслан</option>
-              <option value="garage">Гараж</option>
-              <option value="commercial">Худалдаа үйлчилгээ</option>
             </select>
             <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </div>
@@ -220,29 +212,8 @@
             <span>Хайх</span>
           </button>
         </div>
-        <div class="hs-secondary-row">
-          <div class="hs-select-wrap hs-location-select">
-            <svg class="hs-select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <select id="hSearchDistrict" aria-label="Байршил">
-              <option value="all">Бүх байршил</option>
-              <option value="khan-uul">Хан-Уул</option>
-              <option value="sukhbaatar">Сүхбаатар</option>
-              <option value="chingeltei">Чингэлтэй</option>
-              <option value="bayanzurkh">Баянзүрх</option>
-              <option value="bayangol">Баянгол</option>
-              <option value="songinokhairkhan">Сонгинохайрхан</option>
-              <option value="nalaikh">Налайх</option>
-              <option value="bagakhangai">Багахангай</option>
-              <option value="baganuur">Багануур</option>
-            </select>
-            <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <button type="button" class="hs-adv-toggle" id="homeAdvToggleBtn" onclick="toggleHomeAdvancedFilters()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            <span>Шүүлтүүр</span>
-            <svg id="homeAdvChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s;"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-        </div>
+        <!-- "Бүх байршил" болон "Шүүлтүүр"-ийг нүүр хуудаснаас хассан. Байршил/шүүлтүүр нь
+             Зарууд хуудсанд бүрэн ажилладаг хэвээр. -->
       </div>
 
       <div class="hs-cat-shortcuts" id="homeCatShortcuts">
@@ -284,67 +255,6 @@
         </button>
       </div>
 
-      <div class="hs-adv-panel" id="homeAdvPanel" style="display:none;">
-        <div class="hs-adv-grid">
-          <div class="hs-field">
-            <label>Үнэ (сая ₮)</label>
-            <div class="hs-range">
-              <input type="number" id="hSearchPriceMin" aria-label="Үнэ, доод" placeholder="Мин үнэ" />
-              <input type="number" id="hSearchPriceMax" aria-label="Үнэ, дээд" placeholder="Макс үнэ" />
-            </div>
-          </div>
-          <div class="hs-field">
-            <label>Талбай (м²)</label>
-            <div class="hs-range">
-              <input type="number" id="hSearchAreaMin" aria-label="Талбай, доод" placeholder="Мин" />
-              <input type="number" id="hSearchAreaMax" aria-label="Талбай, дээд" placeholder="Макс" />
-            </div>
-          </div>
-          <div class="hs-field">
-            <label for="hSearchRooms">Өрөө</label>
-            <select id="hSearchRooms">
-              <option value="all">Бүгд</option>
-              <option value="1">1 өрөө</option>
-              <option value="2">2 өрөө</option>
-              <option value="3">3 өрөө</option>
-              <option value="4">4+ өрөө</option>
-            </select>
-          </div>
-          <div class="hs-field">
-            <label>Давхар</label>
-            <div class="hs-range">
-              <input type="number" id="hSearchFloorMin" aria-label="Давхар, доод" placeholder="Мин" min="1" />
-              <input type="number" id="hSearchFloorMax" aria-label="Давхар, дээд" placeholder="Макс" min="1" />
-            </div>
-          </div>
-          <div class="hs-field">
-            <label for="hSearchBuildingType">Барилгын төрөл</label>
-            <select id="hSearchBuildingType">
-              <option value="">Бүгд</option>
-              <option value="reinforced-concrete">Цутгамал төмөр бетон</option>
-              <option value="brick">Хийц өрлөгийн (керамзитбетон)</option>
-              <option value="panel">Угсармал панель</option>
-              <option value="frame">Каркасан хийц</option>
-              <option value="wooden">Модон</option>
-            </select>
-          </div>
-          <div class="hs-field">
-            <label>Ашиглалтад орсон он</label>
-            <div class="hs-range">
-              <input type="number" id="hSearchYearMin" aria-label="Барилгын он, доод" placeholder="2000" min="1950" max="2030" />
-              <input type="number" id="hSearchYearMax" aria-label="Барилгын он, дээд" placeholder="2025" min="1950" max="2030" />
-            </div>
-          </div>
-        </div>
-        <div class="quick-filters home-chip-row hs-adv-toggles">
-          <span class="chip" data-filter="new">Шинэ барилга</span>
-          <span class="chip" data-filter="renovated">Засвар хийсэн</span>
-          <span class="chip" data-filter="furnished">Тавилгатай</span>
-          <span class="chip" data-filter="barter">Бартер сонсоно</span>
-          <span class="chip" data-filter="loan">Зээлд хамрагдана</span>
-          <span class="chip" data-filter="below">Үнэ буурсан</span>
-        </div>
-      </div>
     </div>
 
     <div class="home-info-strip">
