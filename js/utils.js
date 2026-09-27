@@ -458,6 +458,12 @@
     // Re-render the rent marketplace from the CURRENT listings every time it opens — its one-off
     // init render ran before the real listings finished loading, which is why it showed 0.
     if (target === 'rent' && typeof renderRentListings === 'function') renderRentListings();
+    // Same for New Developments (projects) — (re)load on first open, otherwise re-render from the
+    // already-fetched projects so the grid is never left empty.
+    if (target === 'newdev') {
+      if (typeof _projectsLoaded !== 'undefined' && !_projectsLoaded && typeof loadProjects === 'function') loadProjects();
+      else if (typeof renderProjectsGrid === 'function') renderProjectsGrid();
+    }
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
     if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()

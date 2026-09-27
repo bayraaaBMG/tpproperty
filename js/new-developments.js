@@ -4,6 +4,7 @@
   // Firestore collection: projects/{id} — see firestore.rules for the owner-scoped rules.
   let projects = [];
   let editingProjectId = null;
+  let _projectsLoaded = false;   // true once loadProjects() has resolved at least once
 
   const NEWDEV_DISTRICT_LABELS = {
     'khan-uul': 'Хан-Уул', 'sukhbaatar': 'Сүхбаатар', 'chingeltei': 'Чингэлтэй',
@@ -40,6 +41,7 @@
     } catch(e) {
       projects = [];
     }
+    _projectsLoaded = true;
     // Render either way — a failed fetch (e.g. rules not yet published for this
     // collection) should still show the empty state instead of leaving the grid
     // as the raw "Rendered by JS" placeholder comment forever.
