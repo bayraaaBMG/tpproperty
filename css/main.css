@@ -4674,6 +4674,13 @@
   .cms-rt-area h1, .cms-rt-area h2, .cms-rt-area h3 { margin: 6px 0; line-height: 1.25; }
   .cms-rt-area ul, .cms-rt-area ol { padding-left: 22px; margin: 6px 0; }
   .cms-rt-area blockquote { border-left: 3px solid var(--primary-glow); margin: 6px 0; padding-left: 12px; color: var(--ink-2); }
+  /* Hero title/subtitle editors preview text on a dark background like the home hero — its
+     text is white on the background image, and admins pick white/light colours here, which
+     were invisible on the default white editor. The home page is unaffected (it renders into
+     .hero-compact-title/.hero-compact-sub, not these editors). */
+  .cms-rt-area.cms-hero-area { background: #16233f; color: #fff; caret-color: #fff; border-color: #2b3c5e; }
+  .cms-rt-area.cms-hero-area:focus { outline-color: var(--primary-glow); }
+  .cms-rt-area.cms-hero-area a { color: #9db8ff; }
   .cms-drag-handle { cursor: grab; color: var(--ink-3); font-size: 14px; user-select: none; padding: 0 2px; }
   .cms-drag-handle:active { cursor: grabbing; }
   .cms-block.cms-dragging, .cms-item.cms-dragging { opacity: 0.5; outline: 2px dashed var(--primary-glow); }
