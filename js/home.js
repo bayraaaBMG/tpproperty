@@ -84,18 +84,20 @@
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncHomeCarouselArrows);
   }
 
-  // Step a home carousel (listings OR featured agents) ~one visible width left/right.
+  // Step a home carousel (listings, featured agents, OR the category shortcuts) ~one visible
+  // width left/right.
   function scrollHomeRow(btn, dir) {
-    const car = btn.closest('.home-carousel'); const track = car && car.querySelector('.home-listings-grid, .home-agents-grid');
+    const car = btn.closest('.home-carousel, .hs-cat-carousel');
+    const track = car && car.querySelector('.home-listings-grid, .home-agents-grid, .hs-cat-shortcuts');
     if (!track) return;
-    track.scrollBy({ left: dir * Math.max(240, track.clientWidth * 0.85), behavior: 'smooth' });
+    track.scrollBy({ left: dir * Math.max(200, track.clientWidth * 0.8), behavior: 'smooth' });
   }
-  // Hide the arrows on a carousel whose cards already fit (or that has no cards / is hidden).
+  // Hide the arrows on a carousel whose items already fit (or that has no items / is hidden).
   function syncHomeCarouselArrows() {
-    document.querySelectorAll('.home-carousel').forEach(car => {
-      const t = car.querySelector('.home-listings-grid, .home-agents-grid');
-      const overflow = !!t && !!t.querySelector('.listing-card, .agent-card') && t.scrollWidth > t.clientWidth + 4;
-      car.querySelectorAll('.home-listings-arrow').forEach(a => { a.style.display = overflow ? '' : 'none'; });
+    document.querySelectorAll('.home-carousel, .hs-cat-carousel').forEach(car => {
+      const t = car.querySelector('.home-listings-grid, .home-agents-grid, .hs-cat-shortcuts');
+      const overflow = !!t && !!t.querySelector('.listing-card, .agent-card, .hs-cat-shortcut') && t.scrollWidth > t.clientWidth + 4;
+      car.querySelectorAll('.home-listings-arrow, .hs-cat-arrow').forEach(a => { a.style.display = overflow ? '' : 'none'; });
     });
   }
   window.addEventListener('resize', () => { if (typeof syncHomeCarouselArrows === 'function') syncHomeCarouselArrows(); });
