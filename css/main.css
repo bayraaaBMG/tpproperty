@@ -391,6 +391,8 @@
   .home-search-bar {
     background: var(--surface); border-radius: var(--radius-lg); padding: 16px 20px;
     box-shadow: var(--shadow-sm); border: 1px solid var(--line); text-align: left;
+    /* Compact, centred card so the hero background shows around it (не bleeds full-width). */
+    max-width: 680px; margin-left: auto; margin-right: auto;
   }
 
   /* Top row: [Ангилал][keyword][Хайх] as one group, [Байршил][Шүүлтүүр] as another —
@@ -442,12 +444,11 @@
   }
   .hs-adv-toggle:hover, .hs-adv-toggle.open { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
 
-  /* Category shortcuts: unegui.mn-style icon+label row, same horizontal-scroll
-     technique as the old tab row so it works identically at every width — compact
-     (small icon, tight padding) with no card shadow, one always-scrollable row. */
+  /* Category shortcuts: unegui.mn-style icon+label tiles. Inside the now-compact card they
+     WRAP onto 2–3 centred rows instead of scrolling, so the card stays narrow and tidy. */
   .hs-cat-shortcuts {
-    display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
-    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 4px;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
   }
   .hs-cat-shortcuts::-webkit-scrollbar { display: none; }
   .hs-cat-shortcut {
@@ -491,7 +492,7 @@
   @media (max-width: 640px) {
     .hero-compact { padding: 12px 18px 16px; }
     .home-search-bar { padding: 14px 16px; border-radius: var(--radius-lg); }
-    .hs-cat-shortcuts { margin: 12px -16px 0; padding: 12px 16px 0; }
+    .hs-cat-shortcuts { margin-top: 12px; padding-top: 12px; }
     .home-info-strip { padding: 14px 16px; gap: 12px; margin-top: 10px; }
   }
 
