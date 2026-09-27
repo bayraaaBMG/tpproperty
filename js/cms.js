@@ -23,12 +23,13 @@
     { id: 'rent', title: 'Түрээс', editable: true, target: 'rent' },
     { id: 'newdev', title: 'Шинэ орон сууц', editable: true, target: 'newdev' },
     { id: 'calc', title: 'Тооцоолуур', editable: true, target: 'calc' },
-    { id: 'resources', title: 'Зөвлөгөө', editable: true, target: 'resources' },
-    { id: 'about', title: 'Бидний тухай', editable: true, infoKey: 'about' },
-    { id: 'services', title: 'Үйлчилгээ', editable: true, infoKey: 'services' },
-    { id: 'contact', title: 'Холбоо барих', editable: true, infoKey: 'contact' }
+    { id: 'resources', title: 'Зөвлөгөө', editable: true, target: 'resources' }
+    // about / services / contact moved out of the block editor — they are now edited as rich
+    // text alongside terms/privacy/security in Хөл хэсэг → "Хуудасны бичвэр".
   ];
-  const CMS_INFO_PAGE_IDS = { about: 'about', services: 'services', contact: 'contact' };
+  // No page is block-based-info any more; every footer info modal renders from the shared
+  // rich-text store (siteSettings/infoContent). Kept as an (empty) object so existing checks work.
+  const CMS_INFO_PAGE_IDS = {};
   // Pages whose functional content is code-controlled but which accept editable CMS blocks
   // rendered into a container at the top of the page (the "target" pattern newdev already used).
   const CMS_TARGET_CONTAINERS = {
@@ -492,16 +493,10 @@
   // Called by openInfoPage for CMS-managed info pages (about/services/contact).
   async function cmsRenderInfoPageBody(pageId, bodyEl) {
     if (!bodyEl) return;
-    // about/services/contact are full block-based CMS pages.
-    if (CMS_INFO_PAGE_IDS[pageId]) {
-      const holder = document.createElement('div'); holder.className = 'cms-content-page';
-      const ok = await cmsRenderContentPage(pageId, holder);
-      if (ok) { bodyEl.textContent = ''; bodyEl.appendChild(holder); }
-      return;
-    }
-    // terms/privacy/security/career/press/topPicks — a single admin-managed rich-text body
-    // (tables + images) that overlays the hardcoded fallback when the admin has set one.
-    if (!CMS_INFO_CONTENT_KEYS.some(k => k.key === pageId)) return;
+    // Every footer info modal (Хууль ба бусад, incl. about/services/contact) is a single
+    // admin-managed rich-text body (tables + images + embeds) that overlays the hardcoded
+    // fallback when the admin has set one.
+    if (!cmsIsInfoContentKey(pageId)) return;
     const store = await cmsLoadInfoContent();
     const entry = store && store[pageId];
     if (entry && entry.bodyHtml && !cmsRichIsEmpty(entry.bodyHtml)) {
@@ -1107,11 +1102,32 @@
   // ---- Footer info-page bodies (siteSettings/infoContent) — the rich text shown in the modal
   // a footer link opens (Хууль: Үйлчилгээний нөхцөл / Нууцлал / Аюулгүй байдал, + Карьер / Хэвлэл
   // / Шилдэг сонголт). Rich text with tables + images; empty -> the hardcoded fallback stays. ----
-  const CMS_INFO_CONTENT_KEYS = [
-    { key: 'terms', label: 'Үйлчилгээний нөхцөл' }, { key: 'privacy', label: 'Нууцлалын бодлого' },
-    { key: 'security', label: 'Аюулгүй байдал' }, { key: 'career', label: 'Карьер' },
-    { key: 'press', label: 'Хэвлэл' }, { key: 'topPicks', label: 'Шилдэг сонголт' }
-  ];
+  // A page is an editable info-content page if it opens a real content modal (exists in
+  // js/info-pages.js) and isn't a functional route (listings/calc/map/…). Everything the
+  // footer can link to for "content" — about, services, contact, terms, privacy, security,
+  // career, press, topPicks — matches; functional links don't.
+  const CMS_INFO_FUNCTIONAL = { listings:1, calc:1, afford:1, forecast:1, map:1, addListing:1, features:1, resources:1, rent:1, newdev:1, home:1 };
+  function cmsIsInfoContentKey(key) {
+    return !!key && !CMS_INFO_FUNCTIONAL[key] && typeof infoPages !== 'undefined' && !!infoPages[key];
+  }
+  // The "Хуудас сонгох" list, built DYNAMICALLY from the admin's footer links (their internal
+  // tokens) so any footer link — now or added later — shows up here automatically. The three
+  // legal pages are always available as a base even if not currently linked in the footer.
+  function cmsInfoEditableKeys() {
+    const seen = {}; const out = [];
+    const push = (key, label) => {
+      if (!cmsIsInfoContentKey(key) || seen[key]) return;
+      seen[key] = true; out.push({ key, label: (label && String(label).trim()) || (infoPages[key] && infoPages[key].title) || key });
+    };
+    const cols = (_cmsFooterDraft && Array.isArray(_cmsFooterDraft.columns) && _cmsFooterDraft.columns.length)
+      ? _cmsFooterDraft.columns : cmsDefaultFooter().columns;
+    cols.forEach(col => (col && Array.isArray(col.links) ? col.links : []).forEach(l => {
+      const tok = (typeof footerToken === 'function') ? footerToken(l && l.url) : '';
+      if (tok) push(tok, l.label);
+    }));
+    ['terms', 'privacy', 'security'].forEach(k => push(k));   // legal base, always editable
+    return out.length ? out : [{ key: 'terms', label: 'Үйлчилгээний нөхцөл' }];
+  }
   let _cmsInfoContentCache = null;
   async function cmsLoadInfoContent() {
     if (_cmsInfoContentCache) return _cmsInfoContentCache;
@@ -1121,8 +1137,8 @@
     _cmsInfoContentCache = data; return data;
   }
   function cmsInfoEditorHtml() {
-    const keys = CMS_INFO_CONTENT_KEYS;
-    const cur = _cmsInfoEditKey || keys[0].key;
+    const keys = cmsInfoEditableKeys();
+    const cur = (keys.some(k => k.key === _cmsInfoEditKey) ? _cmsInfoEditKey : null) || keys[0].key;
     _cmsInfoDraft = _cmsInfoDraft || {};
     const entry = _cmsInfoDraft[cur] || {};
     const curLabel = (keys.find(k => k.key === cur) || keys[0]).label;
@@ -1146,7 +1162,7 @@
   function cmsInfoRerender() { const e = document.getElementById('cmsInfoEditor'); if (e) { e.innerHTML = cmsInfoEditorHtml(); cmsInitRichEditors(); } }
   function cmsInfoSelectKey(k) { _cmsInfoEditKey = k; cmsInfoRerender(); }
   function cmsInfoTitleInput(v) {
-    const cur = _cmsInfoEditKey || CMS_INFO_CONTENT_KEYS[0].key;
+    const cur = _cmsInfoEditKey || cmsInfoEditableKeys()[0].key;
     _cmsInfoDraft = _cmsInfoDraft || {};
     _cmsInfoDraft[cur] = Object.assign({}, _cmsInfoDraft[cur], { title: v });
     cmsMarkDirty();
@@ -1154,10 +1170,14 @@
   async function cmsSaveInfoContent() {
     if (!cmsRequireEditor()) return;
     _cmsInfoDraft = _cmsInfoDraft || {};
+    // Persist every key the admin has content for, plus every key currently in the dropdown.
+    const keys = {};
+    Object.keys(_cmsInfoDraft).forEach(k => { if (cmsIsInfoContentKey(k)) keys[k] = 1; });
+    cmsInfoEditableKeys().forEach(k => { keys[k.key] = 1; });
     const clean = {};
-    CMS_INFO_CONTENT_KEYS.forEach(k => {
-      const e = _cmsInfoDraft[k.key] || {};
-      clean[k.key] = { title: String(e.title || '').slice(0, 120).trim(), bodyHtml: cmsSanitizeRichHtml(e.bodyHtml || '') };
+    Object.keys(keys).forEach(key => {
+      const e = _cmsInfoDraft[key] || {};
+      clean[key] = { title: String(e.title || '').slice(0, 120).trim(), bodyHtml: cmsSanitizeRichHtml(e.bodyHtml || '') };
     });
     try {
       await db.collection('siteSettings').doc('infoContent').set(Object.assign(clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
@@ -1272,8 +1292,13 @@
     _cmsAgentsDraft = await cmsLoadHomeAgents().then(c => Object.assign(cmsDefaultHomeAgents(), c, { agents: (c.agents || []).slice() })).catch(() => cmsDefaultHomeAgents());
     _cmsAgentPool = null;
     _cmsFooterDraft = await cmsLoadFooter().then(f => ({ columns: (f.columns || cmsDefaultFooter().columns).map(c => ({ title: c.title || '', links: (c.links || []).map(l => ({ label: l.label || '', url: l.url || '' })) })) })).catch(() => cmsDefaultFooter());
-    _cmsInfoDraft = await cmsLoadInfoContent().then(d => { const o = {}; CMS_INFO_CONTENT_KEYS.forEach(k => { const e = d[k.key] || {}; o[k.key] = { title: e.title || '', bodyHtml: e.bodyHtml || '' }; }); return o; }).catch(() => ({}));
-    _cmsInfoEditKey = CMS_INFO_CONTENT_KEYS[0].key;
+    _cmsInfoDraft = await cmsLoadInfoContent().then(d => {
+      const o = {};
+      Object.keys(d || {}).forEach(k => { if (cmsIsInfoContentKey(k)) o[k] = { title: (d[k] && d[k].title) || '', bodyHtml: (d[k] && d[k].bodyHtml) || '' }; });
+      cmsInfoEditableKeys().forEach(k => { if (!o[k.key]) o[k.key] = { title: '', bodyHtml: '' }; });
+      return o;
+    }).catch(() => ({}));
+    _cmsInfoEditKey = cmsInfoEditableKeys()[0].key;
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
