@@ -251,7 +251,7 @@
   // Parses admin-entered HTML in an INERT document (DOMParser never runs scripts or fetches
   // resources) and REBUILDS a fresh tree from an allowlist — the output contains only nodes
   // we created, so no event handler, script, style, iframe or javascript: URL can survive.
-  const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, ul:1, ol:1, li:1, blockquote:1, a:1,
+  const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, h4:1, h5:1, h6:1, ul:1, ol:1, li:1, blockquote:1, a:1,
     img:1, figure:1, figcaption:1, table:1, thead:1, tbody:1, tfoot:1, tr:1, th:1, td:1, caption:1 };
   const CMS_RT_ALIAS = { b: 'strong', i: 'em', strike: 'em', div: 'p' };            // normalise execCommand output
   const CMS_RT_DROP = { script:1, style:1, iframe:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1 };
@@ -1080,6 +1080,7 @@
     _cmsInfoDraft = _cmsInfoDraft || {};
     const entry = _cmsInfoDraft[cur] || {};
     const curLabel = (keys.find(k => k.key === cur) || keys[0]).label;
+    const fallbackTitle = (typeof infoPages !== 'undefined' && infoPages[cur] && infoPages[cur].title) || curLabel;
     return `<div class="admin-panel" style="margin-top:16px;">
       <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <span>Хуудасны бичвэр (Хууль ба бусад)</span>
@@ -1090,7 +1091,7 @@
         <div class="cms-field"><label class="cms-label">Хуудас сонгох</label>
           <select class="form-select" onchange="cmsInfoSelectKey(this.value)">${keys.map(k => `<option value="${k.key}" ${cur === k.key ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select></div>
         <div class="cms-field"><label class="cms-label">Гарчиг (сонголтоор)</label>
-          <input class="form-input" type="text" value="${esc(entry.title || '')}" oninput="cmsInfoTitleInput(this.value)" placeholder="${esc(curLabel)}" /></div>
+          <input class="form-input" type="text" value="${esc(entry.title || fallbackTitle)}" oninput="cmsInfoTitleInput(this.value)" placeholder="${esc(curLabel)}" /></div>
         <div class="cms-field"><label class="cms-label">Бичвэр</label>
           ${cmsRichToolbarHtml()}
           <div class="cms-rt-area form-input" contenteditable="true" data-info-key="${esc(cur)}" oninput="cmsRichInput(this)" aria-label="Бичвэр" style="min-height:220px;"></div></div>
@@ -2123,7 +2124,11 @@
     document.querySelectorAll('.cms-rt-area:not(.cms-hero-area)').forEach(area => {
       let html = '';
       if (area.dataset.infoKey) {
-        html = (_cmsInfoDraft && _cmsInfoDraft[area.dataset.infoKey] && _cmsInfoDraft[area.dataset.infoKey].bodyHtml) || '';
+        const ik = area.dataset.infoKey;
+        html = (_cmsInfoDraft && _cmsInfoDraft[ik] && _cmsInfoDraft[ik].bodyHtml) || '';
+        // Pre-fill from the hardcoded fallback (js/info-pages.js) when nothing is saved yet, so
+        // the admin edits the existing text instead of an empty box.
+        if (!html && typeof infoPages !== 'undefined' && infoPages[ik] && infoPages[ik].body) html = infoPages[ik].body;
       } else {
         const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
         html = b && b.content ? b.content[area.dataset.key] : '';
