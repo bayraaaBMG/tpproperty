@@ -247,14 +247,51 @@
     } catch (e) { return null; }
   }
 
+  // ---- Auto-embed helpers (footer info-page editor: paste a link -> media/embed) ----
+  // A safe iframe src for a pasted link: YouTube / Vimeo (via cmsVideoEmbed) or Facebook
+  // video/post/page plugins. Anything else -> '' (no iframe).
+  function cmsEmbedIframeSrc(url) {
+    const v = cmsVideoEmbed(url);
+    if (v && v.kind === 'iframe') return v.src;
+    const safe = cmsSafeUrl(url); if (!safe) return '';
+    try {
+      const host = new URL(safe).hostname.replace(/^www\./, '').toLowerCase();
+      if (host === 'facebook.com' || host === 'm.facebook.com' || host === 'fb.watch' || host === 'fb.me') {
+        const isVideo = host === 'fb.watch' || /\/(videos?|watch|reel)\b/i.test(new URL(safe).pathname) || /watch/i.test(new URL(safe).search);
+        return 'https://www.facebook.com/plugins/' + (isVideo ? 'video' : 'post') + '.php?href=' + encodeURIComponent(safe) + '&show_text=true&width=500';
+      }
+    } catch (e) {}
+    return '';
+  }
+  // Re-validate an iframe src against a strict embed allowlist (the sanitizer's gate — nothing
+  // but these exact embed URLs is ever kept, so a pasted <iframe> to any other host is dropped).
+  function cmsSafeEmbedSrc(src) {
+    const safe = cmsSafeUrl(src); if (!safe) return '';
+    if (/^https:\/\/(www\.)?youtube(-nocookie)?\.com\/embed\/[A-Za-z0-9_-]{6,}/.test(safe)) return safe;
+    if (/^https:\/\/player\.vimeo\.com\/video\/\d{5,}/.test(safe)) return safe;
+    if (/^https:\/\/(www\.)?facebook\.com\/plugins\/(video|post|page)\.php\?/.test(safe)) return safe;
+    return '';
+  }
+  // HTML to insert for a pasted/typed link: image -> <img>, video/social -> <iframe>, else <a>.
+  function cmsEmbedHtmlFor(url) {
+    const u = String(url || '').trim();
+    if (!/^https?:\/\//i.test(u)) return '';
+    const img = cmsSafeImgUrl(u);
+    if (img && /\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(u)) return '<img src="' + esc(img) + '" alt="">';
+    const embed = cmsEmbedIframeSrc(u);
+    if (embed) return '<iframe src="' + esc(embed) + '" allowfullscreen loading="lazy"></iframe>';
+    const link = cmsSafeUrl(u);
+    return link ? '<a href="' + esc(link) + '">' + esc(link) + '</a>' : '';
+  }
+
   // ---- Rich text: strict allowlist sanitizer ----
   // Parses admin-entered HTML in an INERT document (DOMParser never runs scripts or fetches
   // resources) and REBUILDS a fresh tree from an allowlist — the output contains only nodes
   // we created, so no event handler, script, style, iframe or javascript: URL can survive.
   const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, h4:1, h5:1, h6:1, ul:1, ol:1, li:1, blockquote:1, a:1,
-    img:1, figure:1, figcaption:1, table:1, thead:1, tbody:1, tfoot:1, tr:1, th:1, td:1, caption:1 };
+    img:1, figure:1, figcaption:1, table:1, thead:1, tbody:1, tfoot:1, tr:1, th:1, td:1, caption:1, iframe:1 };
   const CMS_RT_ALIAS = { b: 'strong', i: 'em', strike: 'em', div: 'p' };            // normalise execCommand output
-  const CMS_RT_DROP = { script:1, style:1, iframe:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1 };
+  const CMS_RT_DROP = { script:1, style:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1 };
   function cmsRtLinkHref(raw) {
     const v = String(raw || '').trim();
     if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(v)) return v;
@@ -286,6 +323,15 @@
           el.setAttribute('src', src); el.setAttribute('loading', 'lazy');
           const alt = node.getAttribute('alt'); if (alt) el.setAttribute('alt', String(alt).slice(0, 200));
           destParent.appendChild(el); return;
+        }
+        if (tag === 'iframe') {                                                      // only strict allowlisted embed hosts
+          const src = cmsSafeEmbedSrc(node.getAttribute('src'));
+          if (!src) return;                                                          // drop any non-embed iframe
+          el.setAttribute('src', src); el.setAttribute('loading', 'lazy'); el.setAttribute('allowfullscreen', '');
+          el.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+          el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-presentation allow-forms');
+          el.setAttribute('allow', 'encrypted-media; picture-in-picture; fullscreen');
+          destParent.appendChild(el); return;                                        // no children
         }
         walk(node, el);
         destParent.appendChild(el);
@@ -1093,7 +1139,7 @@
         <div class="cms-field"><label class="cms-label">Гарчиг (сонголтоор)</label>
           <input class="form-input" type="text" value="${esc(entry.title || fallbackTitle)}" oninput="cmsInfoTitleInput(this.value)" placeholder="${esc(curLabel)}" /></div>
         <div class="cms-field"><label class="cms-label">Бичвэр</label>
-          ${cmsRichToolbarHtml()}
+          ${cmsRichToolbarHtml({ embed: true })}
           <div class="cms-rt-area form-input" contenteditable="true" data-info-key="${esc(cur)}" oninput="cmsRichInput(this)" aria-label="Бичвэр" style="min-height:220px;"></div></div>
       </div></div>`;
   }
@@ -1990,17 +2036,50 @@
   // ---- Rich text editor (contenteditable + execCommand; every value re-sanitized on the way out) ----
   // Shared toolbar — used by CMS text blocks AND the footer info-page editor. Includes image
   // upload and table insert (both survive cmsSanitizeRichHtml now that img/table are allowed).
-  function cmsRichToolbarHtml() {
+  function cmsRichToolbarHtml(opts) {
     const B = (cmd, arg, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsRichCmd(this,'${cmd}'${arg ? ",'" + arg + "'" : ''})">${txt}</button>`;
+    // The embed button (media/social auto-embed) is offered ONLY where opts.embed is set — the
+    // footer info-page editor — so page text blocks stay to the plain formatting set.
+    const embedBtn = (opts && opts.embed)
+      ? `<button type="button" class="cms-rt-btn" title="Медиа холбоос оруулах (зураг / YouTube / Facebook / вэб)" onmousedown="event.preventDefault()" onclick="cmsRichInsertEmbed(this)">&#127916;</button>` : '';
     return `<div class="cms-rt-toolbar">
         ${B('bold','','<b>B</b>','Тод')}${B('italic','','<i>I</i>','Налуу')}${B('underline','','<u>U</u>','Доогуур зураас')}
         ${B('formatBlock','<h1>','H1','Гарчиг 1')}${B('formatBlock','<h2>','H2','Гарчиг 2')}${B('formatBlock','<h3>','H3','Гарчиг 3')}${B('formatBlock','<p>','¶','Догол мөр')}
         ${B('insertUnorderedList','','&bull;','Цэгт жагсаалт')}${B('insertOrderedList','','1.','Дугаартай жагсаалт')}${B('formatBlock','<blockquote>','&ldquo;&rdquo;','Иш татах')}
         <button type="button" class="cms-rt-btn" title="Хүснэгт оруулах" onmousedown="event.preventDefault()" onclick="cmsRichInsertTable(this)">&#9638;</button>
         <label class="cms-rt-btn" title="Зураг оруулах" onmousedown="event.preventDefault()" style="cursor:pointer;">&#128247;<input type="file" accept="image/*" hidden onchange="cmsRichInsertImage(this)"></label>
+        ${embedBtn}
         <button type="button" class="cms-rt-btn" title="Холбоос" onmousedown="event.preventDefault()" onclick="cmsRichLink(this)">&#128279;</button>
         <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsRichClear(this)">✕</button>
       </div>`;
+  }
+  // Prompt for a media link and insert the right thing: image -> <img>, YouTube/Vimeo/Facebook
+  // -> <iframe> embed, other -> a link. (Footer info-page editor only.)
+  function cmsRichInsertEmbed(btn) {
+    const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
+    if (!area) return;
+    const raw = prompt('Медиа холбоос (зураг / YouTube / Vimeo / Facebook / вэб хаяг):', 'https://');
+    if (raw == null) return;
+    const html = cmsEmbedHtmlFor(raw.trim());
+    if (!html) { showToast('Холбоос танигдсангүй (https://...)'); return; }
+    area.focus();
+    try { document.execCommand('insertHTML', false, html + '<p><br></p>'); } catch (e) {}
+    cmsRichInput(area);
+  }
+  // Auto-embed on paste (info-page areas only): pasting a bare URL inserts the media/embed
+  // instead of the raw blue link. Wired once per area.
+  function cmsWireEmbedPaste(area) {
+    if (!area || area._embedPasteWired) return; area._embedPasteWired = true;
+    area.addEventListener('paste', function (e) {
+      const cd = e.clipboardData || window.clipboardData; if (!cd) return;
+      const text = (cd.getData('text/plain') || '').trim();
+      if (!/^https?:\/\/\S+$/i.test(text) || /\s/.test(text)) return;   // only a single bare URL
+      const html = cmsEmbedHtmlFor(text);
+      if (!html) return;
+      e.preventDefault();
+      try { document.execCommand('insertHTML', false, html + '<p><br></p>'); } catch (err) {}
+      cmsRichInput(area);
+    });
   }
   // Insert a base 2×2 table (a header row + one body row) at the caret; the admin edits the
   // cells inline afterwards. Structure survives sanitisation; cells are contenteditable.
@@ -2129,6 +2208,7 @@
         // Pre-fill from the hardcoded fallback (js/info-pages.js) when nothing is saved yet, so
         // the admin edits the existing text instead of an empty box.
         if (!html && typeof infoPages !== 'undefined' && infoPages[ik] && infoPages[ik].body) html = infoPages[ik].body;
+        cmsWireEmbedPaste(area);   // paste a link -> auto embed (info pages only)
       } else {
         const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
         html = b && b.content ? b.content[area.dataset.key] : '';
