@@ -191,22 +191,50 @@
     paintSiteAdSlots();
   }
 
+  // One sponsored-ad card. targetUrl is validated to http/https (cmsSafeUrl) — an ad with no
+  // safe URL renders as a non-clickable card rather than a dead javascript: link.
+  function siteAdCardHtml(ad) {
+    const safe = (typeof cmsSafeUrl === 'function') ? cmsSafeUrl(ad.targetUrl || '') : '';
+    const inner = `
+        ${ad.image ? `<img src="${esc(ad.image)}" alt="${esc(ad.title || '')}" loading="lazy" />` : ''}
+        <div class="site-ad-body">
+          <span class="site-ad-label">Ивээн тэтгэсэн</span>
+          <div class="site-ad-title">${esc(ad.title || '')}</div>
+          <div class="site-ad-sponsor">${esc(ad.sponsorName || '')}</div>
+        </div>`;
+    return safe
+      ? `<a class="site-ad-banner" href="${esc(safe)}" target="_blank" rel="noopener sponsored">${inner}</a>`
+      : `<div class="site-ad-banner" role="group">${inner}</div>`;
+  }
+  // Scroll a carousel one "page" (~80% of the visible width) left/right.
+  function scrollSiteAds(btn, dir) {
+    const track = btn.parentElement && btn.parentElement.querySelector('.site-ad-track');
+    if (!track) return;
+    track.scrollBy({ left: dir * Math.max(240, track.clientWidth * 0.8), behavior: 'smooth' });
+  }
   function paintSiteAdSlots() {
     if (!_siteAdsCache) return;
     Object.keys(AD_PLACEMENT_SLOTS).forEach(placement => {
       const el = document.getElementById(AD_PLACEMENT_SLOTS[placement]);
       if (!el) return;
-      const ad = _siteAdsCache.find(a => a.placement === placement && (typeof isAdCurrentlyActive !== 'function' || isAdCurrentlyActive(a)));
-      if (!ad) { el.innerHTML = ''; return; }
-      el.innerHTML = `
-        <a class="site-ad-banner" href="${ad.targetUrl ? esc(ad.targetUrl) : 'javascript:void(0)'}" target="${ad.targetUrl ? '_blank' : '_self'}" rel="noopener sponsored">
-          ${ad.image ? `<img src="${esc(ad.image)}" alt="${esc(ad.title || '')}" />` : ''}
-          <div class="site-ad-body">
-            <span class="site-ad-label">Ивээн тэтгэсэн</span>
-            <div class="site-ad-title">${esc(ad.title || '')}</div>
-            <div class="site-ad-sponsor">${esc(ad.sponsorName || '')}</div>
-          </div>
-        </a>
-      `;
+      // ALL currently-active ads for this placement (was .find() — only ever showed the first).
+      const ads = _siteAdsCache.filter(a => a.placement === placement && (typeof isAdCurrentlyActive !== 'function' || isAdCurrentlyActive(a)));
+      if (!ads.length) { el.innerHTML = ''; return; }
+      const cards = ads.map(siteAdCardHtml).join('');
+      el.innerHTML = ads.length === 1
+        ? `<div class="site-ad-carousel"><div class="site-ad-track single">${cards}</div></div>`
+        : `<div class="site-ad-carousel">
+            <button type="button" class="site-ad-nav prev" aria-label="Өмнөх" onclick="scrollSiteAds(this,-1)">‹</button>
+            <div class="site-ad-track">${cards}</div>
+            <button type="button" class="site-ad-nav next" aria-label="Дараах" onclick="scrollSiteAds(this,1)">›</button>
+          </div>`;
+    });
+    // Hide the arrows on any carousel whose cards already fit (no horizontal overflow).
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.site-ad-carousel').forEach(c => {
+        const t = c.querySelector('.site-ad-track');
+        const overflow = !!t && t.scrollWidth > t.clientWidth + 2;
+        c.querySelectorAll('.site-ad-nav').forEach(n => { n.style.display = overflow ? '' : 'none'; });
+      });
     });
   }

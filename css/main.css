@@ -1815,6 +1815,29 @@
     text-decoration: none; color: inherit; transition: border-color 0.15s;
   }
   .site-ad-banner:hover { border-color: var(--primary); }
+  /* Sponsored-ads carousel: multiple active ads sit in one horizontal, swipeable row and
+     scroll (touch/drag) or step with the ‹ › arrows; a single ad spans full width as before. */
+  .site-ad-carousel { position: relative; margin-bottom: 20px; }
+  .site-ad-track {
+    display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .site-ad-track::-webkit-scrollbar { display: none; }
+  .site-ad-track .site-ad-banner { margin-bottom: 0; flex: 0 0 auto; width: min(100%, 460px); scroll-snap-align: start; }
+  .site-ad-track.single .site-ad-banner { width: 100%; }
+  .site-ad-nav {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--surface, #fff); color: var(--ink); cursor: pointer; display: grid; place-items: center;
+    box-shadow: var(--shadow-sm); font-size: 22px; line-height: 1; padding: 0;
+  }
+  .site-ad-nav:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .site-ad-nav.prev { left: 6px; }
+  .site-ad-nav.next { right: 6px; }
+  @media (max-width: 640px) {
+    .site-ad-nav { display: none !important; }
+    .site-ad-track .site-ad-banner { width: min(88%, 320px); }
+  }
   .site-ad-banner img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
   .site-ad-body { min-width: 0; }
   .site-ad-label {
