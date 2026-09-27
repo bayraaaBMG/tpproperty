@@ -63,7 +63,8 @@
   // addable: offered in the "+ Хэсэг нэмэх" picker. field: [key, label, type].
   const CMS_BLOCK_TYPES = {
     homeHeadings: { label: 'Хэсгийн гарчгууд', kind: 'fields', system: true,
-                fields: [ ['newTitle', '"Шинээр нэмэгдсэн зарууд" гарчиг', 'text'],
+                fields: [ ['heroTagline', 'Hero-ийн том бичвэр (хайлтын дээр)', 'text'],
+                          ['newTitle', '"Шинээр нэмэгдсэн зарууд" гарчиг', 'text'],
                           ['featuredTitle', '"Онцлох зарууд" гарчиг', 'text'] ] },
     hero:     { label: 'Гарчиг (Hero)', kind: 'fields', system: true,
                 fields: [ ['titleHtml', 'Гарчиг', 'herorich'], ['subtitleHtml', 'Дэд гарчиг', 'herorich'],
@@ -132,7 +133,7 @@
       { id: 'banks', type: 'banks', order: 2, visible: true, content: { label: 'Банк дээр дарж шууд зээлийн хуудсанд нь орно уу', items: cmsDefaultBanks() } },
       { id: 'features', type: 'features', order: 3, visible: true, content: {
           eyebrow: 'Бүх боломжууд', title: 'Үл хөдлөхийн бүх асуудал нэг л дор', items: cmsDefaultFeatures() } },
-      { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { newTitle: '', featuredTitle: '' } }
+      { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { heroTagline: '', newTitle: '', featuredTitle: '' } }
     ];
   }
   function cmsDefaultAboutSections() {
@@ -540,7 +541,7 @@
   // non-empty value, so the default styled headings stay untouched otherwise.
   function cmsApplyHomeHeadings(block) {
     if (!block || !block.content) return;
-    const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
+    const map = { heroTagline: 'heroTagline', newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
     Object.keys(map).forEach(k => {
       const v = block.content[k];
       if (typeof v === 'string' && v.trim()) { const el = document.getElementById(map[k]); if (el) el.textContent = v.trim(); }
@@ -1923,7 +1924,7 @@
     // system blocks, so the editor list only ever shows real, named sections.
     draft = cmsSanitizeSections(draft);
     if (pageId === 'home' && !draft.some(b => b.type === 'homeHeadings')) {
-      draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { newTitle: '', featuredTitle: '' } }]);
+      draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { heroTagline: '', newTitle: '', featuredTitle: '' } }]);
     }
     // Backfill the "Бүх боломжууд" feature cards so the admin always has the real 6 cards to
     // edit (older saved drafts had this block empty, or lacked it entirely).
