@@ -4704,6 +4704,14 @@
   .cms-pub-rich li { margin: 3px 0; }
   .cms-pub-rich a { color: var(--primary); text-decoration: underline; }
   .cms-pub-rich blockquote { border-left: 3px solid var(--primary-glow); margin: 10px 0; padding: 4px 0 4px 14px; color: var(--ink-2); font-style: italic; }
+  /* Rich-text tables + images (footer info pages, CMS text blocks) — in both the editor and public */
+  .cms-pub-rich img, .cms-rt-area img, .info-page-body img { max-width: 100%; height: auto; border-radius: 10px; margin: 10px 0; display: block; }
+  .cms-pub-rich table, .cms-rt-area table, .info-page-body table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  .cms-pub-rich th, .cms-pub-rich td, .cms-rt-area th, .cms-rt-area td, .info-page-body th, .info-page-body td {
+    border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top;
+  }
+  .cms-pub-rich th, .cms-rt-area th, .info-page-body th { background: var(--paper-2); font-weight: 700; color: var(--ink); }
+  .cms-pub-rich caption, .cms-rt-area caption, .info-page-body caption { caption-side: top; font-size: 12.5px; color: var(--ink-3); margin-bottom: 6px; }
 
   /* ---- CMS gallery button + hero video ---- */
   .cms-pub-gal-btn { padding: 0; border: 0; background: none; cursor: zoom-in; display: block; width: 100%; border-radius: var(--radius-md); overflow: hidden; }

@@ -251,9 +251,10 @@
   // Parses admin-entered HTML in an INERT document (DOMParser never runs scripts or fetches
   // resources) and REBUILDS a fresh tree from an allowlist — the output contains only nodes
   // we created, so no event handler, script, style, iframe or javascript: URL can survive.
-  const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, ul:1, ol:1, li:1, blockquote:1, a:1 };
+  const CMS_RT_TAGS = { p:1, br:1, strong:1, em:1, u:1, h1:1, h2:1, h3:1, ul:1, ol:1, li:1, blockquote:1, a:1,
+    img:1, figure:1, figcaption:1, table:1, thead:1, tbody:1, tfoot:1, tr:1, th:1, td:1, caption:1 };
   const CMS_RT_ALIAS = { b: 'strong', i: 'em', strike: 'em', div: 'p' };            // normalise execCommand output
-  const CMS_RT_DROP = { script:1, style:1, iframe:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1, img:1 };
+  const CMS_RT_DROP = { script:1, style:1, iframe:1, object:1, embed:1, form:1, svg:1, math:1, link:1, meta:1, noscript:1, template:1, base:1 };
   function cmsRtLinkHref(raw) {
     const v = String(raw || '').trim();
     if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(v)) return v;
@@ -278,6 +279,13 @@
           const href = cmsRtLinkHref(node.getAttribute('href'));
           if (!href) { walk(node, destParent); return; }                            // bad link: unwrap to text
           el.setAttribute('href', href); el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer nofollow');
+        }
+        if (tag === 'img') {                                                         // void: safe src only, no children
+          const src = cmsSafeImgUrl(node.getAttribute('src'));
+          if (!src) return;                                                          // drop image with no safe src
+          el.setAttribute('src', src); el.setAttribute('loading', 'lazy');
+          const alt = node.getAttribute('alt'); if (alt) el.setAttribute('alt', String(alt).slice(0, 200));
+          destParent.appendChild(el); return;
         }
         walk(node, el);
         destParent.appendChild(el);
@@ -437,10 +445,29 @@
   }
   // Called by openInfoPage for CMS-managed info pages (about/services/contact).
   async function cmsRenderInfoPageBody(pageId, bodyEl) {
-    if (!bodyEl || !CMS_INFO_PAGE_IDS[pageId]) return;
-    const holder = document.createElement('div'); holder.className = 'cms-content-page';
-    const ok = await cmsRenderContentPage(pageId, holder);
-    if (ok) { bodyEl.textContent = ''; bodyEl.appendChild(holder); }
+    if (!bodyEl) return;
+    // about/services/contact are full block-based CMS pages.
+    if (CMS_INFO_PAGE_IDS[pageId]) {
+      const holder = document.createElement('div'); holder.className = 'cms-content-page';
+      const ok = await cmsRenderContentPage(pageId, holder);
+      if (ok) { bodyEl.textContent = ''; bodyEl.appendChild(holder); }
+      return;
+    }
+    // terms/privacy/security/career/press/topPicks — a single admin-managed rich-text body
+    // (tables + images) that overlays the hardcoded fallback when the admin has set one.
+    if (!CMS_INFO_CONTENT_KEYS.some(k => k.key === pageId)) return;
+    const store = await cmsLoadInfoContent();
+    const entry = store && store[pageId];
+    if (entry && entry.bodyHtml && !cmsRichIsEmpty(entry.bodyHtml)) {
+      bodyEl.textContent = '';
+      const rich = document.createElement('div'); rich.className = 'cms-pub-rich';
+      rich.appendChild(cmsRichFragment(entry.bodyHtml));   // re-sanitized DOM nodes only
+      bodyEl.appendChild(rich);
+      if (entry.title && entry.title.trim()) {
+        const titleEl = document.querySelector('#modalContent .info-page-title');
+        if (titleEl) titleEl.textContent = entry.title.trim();
+      }
+    }
   }
   // Called when a target page (newdev/listings/rent/calc/resources) is shown — renders its
   // published CMS blocks into that page's container above the functional content.
@@ -1030,6 +1057,68 @@
       div.appendChild(ul); grid.appendChild(div);
     });
   }
+
+  // ---- Footer info-page bodies (siteSettings/infoContent) — the rich text shown in the modal
+  // a footer link opens (Хууль: Үйлчилгээний нөхцөл / Нууцлал / Аюулгүй байдал, + Карьер / Хэвлэл
+  // / Шилдэг сонголт). Rich text with tables + images; empty -> the hardcoded fallback stays. ----
+  const CMS_INFO_CONTENT_KEYS = [
+    { key: 'terms', label: 'Үйлчилгээний нөхцөл' }, { key: 'privacy', label: 'Нууцлалын бодлого' },
+    { key: 'security', label: 'Аюулгүй байдал' }, { key: 'career', label: 'Карьер' },
+    { key: 'press', label: 'Хэвлэл' }, { key: 'topPicks', label: 'Шилдэг сонголт' }
+  ];
+  let _cmsInfoContentCache = null;
+  async function cmsLoadInfoContent() {
+    if (_cmsInfoContentCache) return _cmsInfoContentCache;
+    let data = {};
+    try { const snap = await db.collection('siteSettings').doc('infoContent').get(); if (snap.exists && snap.data()) data = snap.data(); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadInfoContent failed:', e.code, e.message); }
+    _cmsInfoContentCache = data; return data;
+  }
+  function cmsInfoEditorHtml() {
+    const keys = CMS_INFO_CONTENT_KEYS;
+    const cur = _cmsInfoEditKey || keys[0].key;
+    _cmsInfoDraft = _cmsInfoDraft || {};
+    const entry = _cmsInfoDraft[cur] || {};
+    const curLabel = (keys.find(k => k.key === cur) || keys[0]).label;
+    return `<div class="admin-panel" style="margin-top:16px;">
+      <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>Хуудасны бичвэр (Хууль ба бусад)</span>
+        <button class="btn btn-blue btn-sm" onclick="cmsSaveInfoContent()">Хадгалах</button>
+      </div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:12px;color:var(--ink-3);">Хөл хэсгийн холбоос дээр дарахад нээгдэх бичвэрийг энд засна (Rich text — хүснэгт, зураг оруулж болно). Хоосон бол одоогийн суурь бичвэр хэвээр үлдэнэ.</div>
+        <div class="cms-field"><label class="cms-label">Хуудас сонгох</label>
+          <select class="form-select" onchange="cmsInfoSelectKey(this.value)">${keys.map(k => `<option value="${k.key}" ${cur === k.key ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select></div>
+        <div class="cms-field"><label class="cms-label">Гарчиг (сонголтоор)</label>
+          <input class="form-input" type="text" value="${esc(entry.title || '')}" oninput="cmsInfoTitleInput(this.value)" placeholder="${esc(curLabel)}" /></div>
+        <div class="cms-field"><label class="cms-label">Бичвэр</label>
+          ${cmsRichToolbarHtml()}
+          <div class="cms-rt-area form-input" contenteditable="true" data-info-key="${esc(cur)}" oninput="cmsRichInput(this)" aria-label="Бичвэр" style="min-height:220px;"></div></div>
+      </div></div>`;
+  }
+  function cmsInfoRerender() { const e = document.getElementById('cmsInfoEditor'); if (e) { e.innerHTML = cmsInfoEditorHtml(); cmsInitRichEditors(); } }
+  function cmsInfoSelectKey(k) { _cmsInfoEditKey = k; cmsInfoRerender(); }
+  function cmsInfoTitleInput(v) {
+    const cur = _cmsInfoEditKey || CMS_INFO_CONTENT_KEYS[0].key;
+    _cmsInfoDraft = _cmsInfoDraft || {};
+    _cmsInfoDraft[cur] = Object.assign({}, _cmsInfoDraft[cur], { title: v });
+    cmsMarkDirty();
+  }
+  async function cmsSaveInfoContent() {
+    if (!cmsRequireEditor()) return;
+    _cmsInfoDraft = _cmsInfoDraft || {};
+    const clean = {};
+    CMS_INFO_CONTENT_KEYS.forEach(k => {
+      const e = _cmsInfoDraft[k.key] || {};
+      clean[k.key] = { title: String(e.title || '').slice(0, 120).trim(), bodyHtml: cmsSanitizeRichHtml(e.bodyHtml || '') };
+    });
+    try {
+      await db.collection('siteSettings').doc('infoContent').set(Object.assign(clean, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }), { merge: true });
+      _cmsInfoDraft = clean; _cmsInfoContentCache = null;
+      logAdminAction('cms_info_content', 'siteSettings', 'infoContent', '');
+      showToast('Хуудасны бичвэр хадгалагдлаа', 'success');
+    } catch (e) { console.error('cmsSaveInfoContent failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
   function cmsApplySectionOrder(sections) {
     const togglable = (sections || []).filter(s => ['banks', 'features'].includes(s.type)).sort((a, b) => (a.order || 0) - (b.order || 0));
     const nodes = togglable.map(s => document.getElementById(s.id)).filter(Boolean);
@@ -1103,7 +1192,7 @@
   // ===================================================================================
   //  ADMIN SIDE
   // ===================================================================================
-  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null, _cmsFooterDraft = null;
+  let _cmsAdminPage = null, _cmsDraft = null, _cmsOrgDraft = null, _cmsThemeDraft = null, _cmsSeoDraft = null, _cmsHeroBannerDraft = null, _cmsFooterDraft = null, _cmsInfoDraft = null, _cmsInfoEditKey = null;
   let _cmsAgentsDraft = null, _cmsAgentPool = null;
   let _cmsExpanded = {}, _cmsDirty = false;
 
@@ -1136,6 +1225,8 @@
     _cmsAgentsDraft = await cmsLoadHomeAgents().then(c => Object.assign(cmsDefaultHomeAgents(), c, { agents: (c.agents || []).slice() })).catch(() => cmsDefaultHomeAgents());
     _cmsAgentPool = null;
     _cmsFooterDraft = await cmsLoadFooter().then(f => ({ columns: (f.columns || cmsDefaultFooter().columns).map(c => ({ title: c.title || '', links: (c.links || []).map(l => ({ label: l.label || '', url: l.url || '' })) })) })).catch(() => cmsDefaultFooter());
+    _cmsInfoDraft = await cmsLoadInfoContent().then(d => { const o = {}; CMS_INFO_CONTENT_KEYS.forEach(k => { const e = d[k.key] || {}; o[k.key] = { title: e.title || '', bodyHtml: e.bodyHtml || '' }; }); return o; }).catch(() => ({}));
+    _cmsInfoEditKey = CMS_INFO_CONTENT_KEYS[0].key;
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
@@ -1161,7 +1252,7 @@
           <div class="admin-panel"><div class="admin-panel-head">Байгууллагын мэдээлэл</div>
             <div id="cmsOrgEditor">${cmsOrgEditorHtml(_cmsOrgDraft)}</div></div>
         </div>
-        <div id="cmsTab-footer" hidden><div id="cmsFooterEditor">${cmsFooterEditorHtml(_cmsFooterDraft)}</div></div>
+        <div id="cmsTab-footer" hidden><div id="cmsFooterEditor">${cmsFooterEditorHtml(_cmsFooterDraft)}</div><div id="cmsInfoEditor">${cmsInfoEditorHtml()}</div></div>
         <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
         <div id="cmsTab-herobanner" hidden><div id="cmsHeroBannerEditor">${cmsHeroBannerEditorHtml(_cmsHeroBannerDraft)}</div></div>
         <div id="cmsTab-agents" hidden><div id="cmsAgentsEditor"></div></div>
@@ -1170,6 +1261,7 @@
     cmsRenderNavEditor();
     cmsInitHeroEditors();
     cmsRenderAgentsEditor();
+    cmsInitRichEditors();   // seed the footer info-page rich editor
   }
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
@@ -1873,15 +1965,8 @@
       </div>`;
     }
     if (type === 'richtext') {
-      const B = (cmd, arg, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsRichCmd(this,'${cmd}'${arg ? ",'" + arg + "'" : ''})">${txt}</button>`;
       return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
-        <div class="cms-rt-toolbar">
-          ${B('bold','','<b>B</b>','Тод')}${B('italic','','<i>I</i>','Налуу')}${B('underline','','<u>U</u>','Доогуур зураас')}
-          ${B('formatBlock','<h1>','H1','Гарчиг 1')}${B('formatBlock','<h2>','H2','Гарчиг 2')}${B('formatBlock','<h3>','H3','Гарчиг 3')}${B('formatBlock','<p>','¶','Догол мөр')}
-          ${B('insertUnorderedList','','&bull;','Цэгт жагсаалт')}${B('insertOrderedList','','1.','Дугаартай жагсаалт')}${B('formatBlock','<blockquote>','&ldquo;&rdquo;','Иш татах')}
-          <button type="button" class="cms-rt-btn" title="Холбоос" onmousedown="event.preventDefault()" onclick="cmsRichLink(this)">&#128279;</button>
-          <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsRichClear(this)">✕</button>
-        </div>
+        ${cmsRichToolbarHtml()}
         <div class="cms-rt-area form-input" contenteditable="true" data-block-id="${block.id}" data-key="${key}" oninput="cmsRichInput(this)" aria-label="${esc(label)}"></div>
       </div>`;
     }
@@ -1902,6 +1987,48 @@
     if (prev) prev.innerHTML = cmsFeatureIconSvg(sel.value);
   }
   // ---- Rich text editor (contenteditable + execCommand; every value re-sanitized on the way out) ----
+  // Shared toolbar — used by CMS text blocks AND the footer info-page editor. Includes image
+  // upload and table insert (both survive cmsSanitizeRichHtml now that img/table are allowed).
+  function cmsRichToolbarHtml() {
+    const B = (cmd, arg, txt, ttl) => `<button type="button" class="cms-rt-btn" title="${esc(ttl)}" onmousedown="event.preventDefault()" onclick="cmsRichCmd(this,'${cmd}'${arg ? ",'" + arg + "'" : ''})">${txt}</button>`;
+    return `<div class="cms-rt-toolbar">
+        ${B('bold','','<b>B</b>','Тод')}${B('italic','','<i>I</i>','Налуу')}${B('underline','','<u>U</u>','Доогуур зураас')}
+        ${B('formatBlock','<h1>','H1','Гарчиг 1')}${B('formatBlock','<h2>','H2','Гарчиг 2')}${B('formatBlock','<h3>','H3','Гарчиг 3')}${B('formatBlock','<p>','¶','Догол мөр')}
+        ${B('insertUnorderedList','','&bull;','Цэгт жагсаалт')}${B('insertOrderedList','','1.','Дугаартай жагсаалт')}${B('formatBlock','<blockquote>','&ldquo;&rdquo;','Иш татах')}
+        <button type="button" class="cms-rt-btn" title="Хүснэгт оруулах" onmousedown="event.preventDefault()" onclick="cmsRichInsertTable(this)">&#9638;</button>
+        <label class="cms-rt-btn" title="Зураг оруулах" onmousedown="event.preventDefault()" style="cursor:pointer;">&#128247;<input type="file" accept="image/*" hidden onchange="cmsRichInsertImage(this)"></label>
+        <button type="button" class="cms-rt-btn" title="Холбоос" onmousedown="event.preventDefault()" onclick="cmsRichLink(this)">&#128279;</button>
+        <button type="button" class="cms-rt-btn" title="Формат арилгах" onmousedown="event.preventDefault()" onclick="cmsRichClear(this)">✕</button>
+      </div>`;
+  }
+  // Insert a base 2×2 table (a header row + one body row) at the caret; the admin edits the
+  // cells inline afterwards. Structure survives sanitisation; cells are contenteditable.
+  function cmsRichInsertTable(btn) {
+    const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
+    if (!area) return;
+    let cols = parseInt(prompt('Хэдэн багана? (1–8)', '2'), 10); if (!isFinite(cols)) return; cols = Math.max(1, Math.min(8, cols));
+    let rows = parseInt(prompt('Хэдэн мөр? (1–20)', '2'), 10); if (!isFinite(rows)) return; rows = Math.max(1, Math.min(20, rows));
+    const head = '<tr>' + Array.from({ length: cols }, (_, i) => '<th>Гарчиг ' + (i + 1) + '</th>').join('') + '</tr>';
+    const body = Array.from({ length: rows }, () => '<tr>' + Array.from({ length: cols }, () => '<td>&nbsp;</td>').join('') + '</tr>').join('');
+    area.focus();
+    try { document.execCommand('insertHTML', false, '<table><thead>' + head + '</thead><tbody>' + body + '</tbody></table><p><br></p>'); } catch (e) {}
+    cmsRichInput(area);
+  }
+  // Upload an image and insert it at the caret (base64/data-URL preview replaced by the hosted
+  // URL when Storage is configured; cmsSafeImgUrl accepts both http(s) and data:image).
+  async function cmsRichInsertImage(input) {
+    const file = input.files && input.files[0]; if (!file) return;
+    const field = input.closest('.cms-field'); const area = field && field.querySelector('.cms-rt-area');
+    input.value = '';
+    if (!area) return;
+    showToast('Зураг оруулж байна…');
+    const url = (typeof cmsUploadImage === 'function') ? await cmsUploadImage(file) : '';
+    const safe = cmsSafeImgUrl(url); if (!safe) { showToast('Зураг оруулж чадсангүй'); return; }
+    area.focus();
+    try { document.execCommand('insertHTML', false, '<img src="' + safe.replace(/"/g, '&quot;') + '" alt=""><p><br></p>'); } catch (e) {}
+    cmsRichInput(area);
+    showToast('Зураг орлоо', 'success');
+  }
   function cmsRichCmd(btn, cmd, arg) {
     const area = btn.closest('.cms-field') && btn.closest('.cms-field').querySelector('.cms-rt-area');
     if (!area) return;
@@ -1928,10 +2055,16 @@
     cmsRichInput(area);
   }
   function cmsRichInput(area) {
+    const html = cmsSanitizeRichHtml(area.innerHTML);   // store sanitized only
+    if (area.dataset.infoKey) {                          // footer info-page editor (not a page block)
+      _cmsInfoDraft = _cmsInfoDraft || {};
+      _cmsInfoDraft[area.dataset.infoKey] = Object.assign({}, _cmsInfoDraft[area.dataset.infoKey], { bodyHtml: html });
+      cmsMarkDirty(); return;
+    }
     const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
     if (!b) return;
     b.content = b.content || {};
-    b.content[area.dataset.key] = cmsSanitizeRichHtml(area.innerHTML);   // store sanitized only
+    b.content[area.dataset.key] = html;
     cmsMarkDirty();
   }
   // ---- Hero rich text editor (Bold / Italic / colour / size); every value re-sanitized out ----
@@ -1988,8 +2121,13 @@
   }
   function cmsInitRichEditors() {
     document.querySelectorAll('.cms-rt-area:not(.cms-hero-area)').forEach(area => {
-      const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
-      const html = b && b.content ? b.content[area.dataset.key] : '';
+      let html = '';
+      if (area.dataset.infoKey) {
+        html = (_cmsInfoDraft && _cmsInfoDraft[area.dataset.infoKey] && _cmsInfoDraft[area.dataset.infoKey].bodyHtml) || '';
+      } else {
+        const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
+        html = b && b.content ? b.content[area.dataset.key] : '';
+      }
       area.textContent = '';
       area.appendChild(cmsRichFragment(html || ''));   // safe DOM nodes only
     });
