@@ -4682,6 +4682,10 @@
   .cms-rt-area.cms-hero-area:focus { outline-color: var(--primary-glow); }
   .cms-rt-area.cms-hero-area a { color: #9db8ff; }
   .cms-drag-handle { cursor: grab; color: var(--ink-3); font-size: 14px; user-select: none; padding: 0 2px; }
+  .cms-icon-field { display: flex; align-items: center; gap: 10px; }
+  .cms-icon-field select { flex: 1; }
+  .cms-icon-preview { flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); border: 1px solid var(--line); }
+  .cms-icon-preview svg { width: 22px; height: 22px; }
   .cms-drag-handle:active { cursor: grabbing; }
   .cms-block.cms-dragging, .cms-item.cms-dragging { opacity: 0.5; outline: 2px dashed var(--primary-glow); }
   .cms-item-hidden { opacity: 0.6; }

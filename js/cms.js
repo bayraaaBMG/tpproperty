@@ -36,6 +36,28 @@
     calc: 'cmsCalcBlocks', resources: 'cmsResourcesBlocks'
   };
 
+  // Icon set for the "Онцлох давуу тал / Бүх боломжууд" feature cards. The admin picks a KEY
+  // (never raw markup), so rendering the matching static SVG via innerHTML stays XSS-safe.
+  const CMS_FEATURE_ICONS = [
+    { key: 'clock', label: 'Цаг', svg: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>' },
+    { key: 'shield-check', label: 'Баталгаа', svg: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>' },
+    { key: 'chart', label: 'График', svg: '<path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/>' },
+    { key: 'skill', label: 'Ур чадвар', svg: '<path d="M12 2a4 4 0 0 0-4 4v14"/><path d="M16 8a4 4 0 0 1 0 8"/>' },
+    { key: 'gear', label: 'Тохиргоо', svg: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>' },
+    { key: 'compare', label: 'Харьцуулах', svg: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>' },
+    { key: 'home', label: 'Байшин', svg: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { key: 'key', label: 'Түлхүүр', svg: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>' },
+    { key: 'doc', label: 'Баримт', svg: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>' },
+    { key: 'coins', label: 'Мөнгө', svg: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/>' },
+    { key: 'shield', label: 'Хамгаалалт', svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+    { key: 'map', label: 'Газрын зураг', svg: '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>' },
+    { key: 'star', label: 'Од', svg: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' }
+  ];
+  function cmsFeatureIconSvg(key) {
+    const found = CMS_FEATURE_ICONS.find(i => i.key === key) || CMS_FEATURE_ICONS[0];
+    return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + found.svg + '</svg>';
+  }
+
   // kind: 'fields' (flat) | 'repeater' (list of items). system: can't hide/remove.
   // addable: offered in the "+ Хэсэг нэмэх" picker. field: [key, label, type].
   const CMS_BLOCK_TYPES = {
@@ -53,7 +75,7 @@
                 itemFields: [ ['name', 'Нэр', 'text'], ['short', 'Товч (лого дээрх)', 'text'],
                               ['color', 'Лого өнгө', 'color'], ['url', 'Холбоос', 'url'] ] },
     features: { label: 'Онцлох давуу тал', kind: 'repeater', togglable: true,
-                itemFields: [ ['title', 'Гарчиг', 'text'], ['description', 'Тайлбар', 'textarea'] ] },
+                itemFields: [ ['icon', 'Айкон', 'featureicon'], ['title', 'Гарчиг', 'text'], ['description', 'Тайлбар', 'textarea'] ] },
     text:     { label: 'Текст', kind: 'fields', togglable: true, addable: true,
                 fields: [ ['title', 'Гарчиг', 'text'], ['bodyHtml', 'Текст', 'richtext'], ['align', 'Байрлал', 'align'] ] },
     cta:      { label: 'Уриалга (CTA)', kind: 'fields', togglable: true, addable: true,
@@ -89,13 +111,26 @@
       { name: 'Богд Банк', short: 'ББ', color: '#0A1628', url: 'https://www.bogdbank.com/product/53' }
     ];
   }
+  // The 6 home "Бүх боломжууд" cards — the previously hardcoded content, now the CMS default
+  // so the admin edits these instead of starting from an empty list.
+  function cmsDefaultFeatures() {
+    return [
+      { icon: 'clock', title: 'Банкны нөхцөл харьцуулалт', description: '8 банкны зээлийн нөхцөлийг нэг дороос үзэж, банкны албан ёсны сайтаас шалгасан эсэхийг нь тэмдгээр харна.' },
+      { icon: 'shield-check', title: 'Зар бүрт утас баталгаажина', description: 'Зар нэмэх хүн бүр утасны дугаараа SMS кодоор баталгаажуулсны дараа л зар нийтэлнэ.' },
+      { icon: 'chart', title: 'Ирээдүйн өгөөжийн анализ', description: '20 жилийн дараа байрны үнэ хэр өсөх, хөрөнгийн ашиг хэд гарахыг тооцоолон харуулна.' },
+      { icon: 'skill', title: 'Чадварын үнэлгээ', description: 'Орлого, зээлийн түүхээс хамаарч ямар үнэтэй байр авах боломжтойг хормын дотор хэлнэ.' },
+      { icon: 'gear', title: '5 төрлийн зээл', description: 'Хөнгөлөлттэй 6%, барилгын зээл, энгийн ипотек, арилжааны, бэлэн мөнгө — бүх хувилбарыг харьцуулна.' },
+      { icon: 'compare', title: 'Зэрэгцүүлэн харьцуулах', description: 'Хамгийн ихдээ 4 зарыг зэрэг сонгож, үнэ, ₮/м², үнийн дүн шинжилгээ, Property Score зэргийг нь нэг дороос харьцуулж үзнэ.' }
+    ];
+  }
   function cmsDefaultHomeSections() {
     return [
       { id: 'hero', type: 'hero', order: 1, visible: true, content: {
           title: 'Зөв байр, зөв боломжийг TP Property-ээс хай',
           subtitle: 'Орон сууц, түрээс, газар, оффисын зарыг нэг дороос.' } },
       { id: 'banks', type: 'banks', order: 2, visible: true, content: { label: 'Банк дээр дарж шууд зээлийн хуудсанд нь орно уу', items: cmsDefaultBanks() } },
-      { id: 'features', type: 'features', order: 3, visible: true, content: { items: [] } },
+      { id: 'features', type: 'features', order: 3, visible: true, content: {
+          eyebrow: 'Бүх боломжууд', title: 'Үл хөдлөхийн бүх асуудал нэг л дор', items: cmsDefaultFeatures() } },
       { id: 'headings', type: 'homeHeadings', order: 4, visible: true, content: { newTitle: '', featuredTitle: '' } }
     ];
   }
@@ -134,6 +169,20 @@
       { id: 'contact-main', type: 'contact', order: 2, visible: true, content: {
           title: 'Холбоо барих мэдээлэл', note: 'Доорх мэдээллээр бидэнтэй холбогдоно уу.' } }
     ];
+  }
+  // Keep only blocks whose type is a real, known CMS block, and collapse duplicate system
+  // blocks (one hero / one homeHeadings). This is what clears the "homeeadings" garbage blocks
+  // from a page's saved draft — they have a type that no longer maps to anything.
+  function cmsSanitizeSections(sections) {
+    if (!Array.isArray(sections)) return [];
+    const seenSystem = {};
+    return sections.filter(b => {
+      if (!b || typeof b !== 'object') return false;
+      const meta = CMS_BLOCK_TYPES[b.type];
+      if (!meta) return false;
+      if (meta.system) { if (seenSystem[b.type]) return false; seenSystem[b.type] = true; }
+      return true;
+    });
   }
   function cmsDefaultSectionsFor(pageId) {
     if (pageId === 'home') return cmsDefaultHomeSections();
@@ -495,13 +544,18 @@
   function cmsApplyFeatures(block) {
     const section = document.getElementById('features'); if (!section) return;
     if (block) section.hidden = block.visible === false;
+    const c = (block && block.content) || {};
+    // Editable section eyebrow + title (empty -> keep the built-in heading).
+    if (c.eyebrow) { const ey = section.querySelector('.section-eyebrow'); if (ey) ey.textContent = String(c.eyebrow); }
+    if (c.title) { const tt = section.querySelector('.section-title'); if (tt) tt.textContent = String(c.title); }
     const grid = section.querySelector('.features-grid');
-    const items = block && block.content && Array.isArray(block.content.items) ? block.content.items : null;
+    const items = Array.isArray(c.items) ? c.items.filter(it => it && it.visible !== false) : null;
     if (!grid || !items || !items.length) return;
     grid.textContent = '';
     items.forEach(it => {
       const card = document.createElement('div'); card.className = 'feature-card';
-      const icon = document.createElement('div'); icon.className = 'feature-icon'; icon.textContent = '★';
+      const icon = document.createElement('div'); icon.className = 'feature-icon';
+      icon.innerHTML = cmsFeatureIconSvg(it.icon);   // static, key-selected SVG — safe
       const h = document.createElement('h4'); h.textContent = String(it.title || '');
       const pgh = document.createElement('p'); pgh.textContent = String(it.description || '');
       card.appendChild(icon); card.appendChild(h); card.appendChild(pgh); grid.appendChild(card);
@@ -599,7 +653,7 @@
       const grid = document.createElement('div'); grid.className = 'cms-pub-features';
       items.forEach(it => {
         const card = document.createElement('div'); card.className = 'cms-pub-feature';
-        const ic = document.createElement('div'); ic.className = 'cms-pub-feature-icon'; ic.textContent = '\u2605'; card.appendChild(ic);
+        const ic = document.createElement('div'); ic.className = 'cms-pub-feature-icon'; ic.innerHTML = cmsFeatureIconSvg(it.icon); card.appendChild(ic);
         if (it.title) { const h = document.createElement('h4'); h.textContent = String(it.title); card.appendChild(h); }
         if (it.description) { const pp = document.createElement('p'); pp.textContent = String(it.description); card.appendChild(pp); }
         grid.appendChild(card);
@@ -1570,8 +1624,25 @@
     try { const snap = await db.collection('sitePages').doc(pageId).get(); if (snap.exists) { const dd = snap.data(); if (dd.draft && Array.isArray(dd.draft.sections)) draft = dd.draft.sections; if (dd.seo && typeof dd.seo === 'object') seo = Object.assign(seo, dd.seo); } }
     catch (e) { console.error('cmsOpenPageEditor load failed:', e.code, e.message); }
     _cmsSeoDraft = seo;
+    // Drop unknown/garbage block types (e.g. the "homeeadings" blocks) and collapse duplicate
+    // system blocks, so the editor list only ever shows real, named sections.
+    draft = cmsSanitizeSections(draft);
     if (pageId === 'home' && !draft.some(b => b.type === 'homeHeadings')) {
       draft = draft.concat([{ id: 'headings', type: 'homeHeadings', order: draft.length + 1, visible: true, content: { newTitle: '', featuredTitle: '' } }]);
+    }
+    // Backfill the "Бүх боломжууд" feature cards so the admin always has the real 6 cards to
+    // edit (older saved drafts had this block empty, or lacked it entirely).
+    if (pageId === 'home') {
+      let feat = draft.find(b => b.type === 'features');
+      if (!feat) {
+        draft = draft.concat([{ id: 'features', type: 'features', order: draft.length + 1, visible: true,
+          content: { eyebrow: 'Бүх боломжууд', title: 'Үл хөдлөхийн бүх асуудал нэг л дор', items: cmsDefaultFeatures() } }]);
+      } else {
+        feat.content = feat.content || {};
+        if (!Array.isArray(feat.content.items) || !feat.content.items.length) feat.content.items = cmsDefaultFeatures();
+        if (!feat.content.eyebrow) feat.content.eyebrow = 'Бүх боломжууд';
+        if (!feat.content.title) feat.content.title = 'Үл хөдлөхийн бүх асуудал нэг л дор';
+      }
     }
     _cmsDraft = draft.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     cmsRenderEditor();
@@ -1700,7 +1771,21 @@
         <div class="cms-rt-area form-input" contenteditable="true" data-block-id="${block.id}" data-key="${key}" oninput="cmsRichInput(this)" aria-label="${esc(label)}"></div>
       </div>`;
     }
+    if (type === 'featureicon') {
+      const cur = val || CMS_FEATURE_ICONS[0].key;
+      const onch = itemIdx == null ? `cmsUpdateField('${block.id}','${key}', this.value)` : `cmsUpdateItemField('${block.id}', ${itemIdx}, '${key}', this.value)`;
+      return `<div class="cms-field"><label class="cms-label">${esc(label)}</label>
+        <div class="cms-icon-field">
+          <span class="cms-icon-preview">${cmsFeatureIconSvg(cur)}</span>
+          <select class="form-input" onchange="${onch}; cmsSyncIconPreview(this)">${CMS_FEATURE_ICONS.map(ic => `<option value="${ic.key}" ${cur === ic.key ? 'selected' : ''}>${esc(ic.label)}</option>`).join('')}</select>
+        </div></div>`;
+    }
     return `<div class="cms-field"><label class="cms-label">${esc(label)}</label><input class="form-input" type="text" value="${esc(val)}" oninput="${onin}" /></div>`;
+  }
+  // Live-update the little icon preview next to a feature-icon <select>.
+  function cmsSyncIconPreview(sel) {
+    const wrap = sel.closest('.cms-icon-field'); const prev = wrap && wrap.querySelector('.cms-icon-preview');
+    if (prev) prev.innerHTML = cmsFeatureIconSvg(sel.value);
   }
   // ---- Rich text editor (contenteditable + execCommand; every value re-sanitized on the way out) ----
   function cmsRichCmd(btn, cmd, arg) {
@@ -1797,7 +1882,11 @@
   }
   function cmsRepeaterEditorHtml(block, meta) {
     block.content = block.content || {}; block.content.items = Array.isArray(block.content.items) ? block.content.items : [];
-    const labelField = block.type === 'banks' ? `<div class="cms-field"><label class="cms-label">Тайлбар мөр</label><input class="form-input" type="text" value="${esc(block.content.label || '')}" oninput="cmsUpdateField('${block.id}','label', this.value)" /></div>` : '';
+    let labelField = block.type === 'banks' ? `<div class="cms-field"><label class="cms-label">Тайлбар мөр</label><input class="form-input" type="text" value="${esc(block.content.label || '')}" oninput="cmsUpdateField('${block.id}','label', this.value)" /></div>` : '';
+    if (block.type === 'features') {
+      labelField = `<div class="cms-field"><label class="cms-label">Хэсгийн жижиг гарчиг (eyebrow)</label><input class="form-input" type="text" value="${esc(block.content.eyebrow || '')}" placeholder="Бүх боломжууд" oninput="cmsUpdateField('${block.id}','eyebrow', this.value)" /></div>
+        <div class="cms-field"><label class="cms-label">Хэсгийн гарчиг</label><input class="form-input" type="text" value="${esc(block.content.title || '')}" placeholder="Үл хөдлөхийн бүх асуудал нэг л дор" oninput="cmsUpdateField('${block.id}','title', this.value)" /></div>`;
+    }
     const items = block.content.items.map((it, idx) => `
       <div class="cms-item ${it.visible === false ? 'cms-item-hidden' : ''}"><div class="cms-item-head"><span><span class="cms-drag-handle" title="Чирж эрэмбэлэх" aria-hidden="true">&#10303;</span> ${esc((it.name || it.title || it.question || it.caption || ('Мөр ' + (idx + 1))))}${it.visible === false ? ' <span style="font-size:10px;color:var(--ink-3);">(нуусан)</span>' : ''}</span>
         <div class="cms-block-controls">
