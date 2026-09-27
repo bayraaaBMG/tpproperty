@@ -887,13 +887,15 @@
     if (!grid || !head) return;
     const agents = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
     const show = !!(cfg && cfg.show === true && agents.length);
-    if (!show) { grid.hidden = true; head.hidden = true; grid.textContent = ''; return; }
+    const syncArrows = () => { if (typeof syncHomeCarouselArrows === 'function') requestAnimationFrame(syncHomeCarouselArrows); };
+    if (!show) { grid.hidden = true; head.hidden = true; grid.textContent = ''; syncArrows(); return; }
     head.hidden = false; grid.hidden = false;
     const titleEl = document.getElementById('homeAgentsTitle'); if (titleEl && cfg.title) titleEl.textContent = String(cfg.title);
     const subEl = document.getElementById('homeAgentsSub');
     if (subEl) { if (cfg.subtitle) { subEl.textContent = String(cfg.subtitle); subEl.hidden = false; } else { subEl.hidden = true; subEl.textContent = ''; } }
     grid.textContent = '';
     agents.slice(0, 8).forEach(a => grid.appendChild(cmsBuildAgentCard(a)));
+    syncArrows();
   }
   async function applyHomeAgents() { const cfg = await cmsLoadHomeAgents(); cmsRenderHomeAgents(cfg); }
   // Re-render (counts) once listings are loaded, without another Firestore read.
