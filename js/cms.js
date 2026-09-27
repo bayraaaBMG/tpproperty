@@ -541,9 +541,21 @@
   // non-empty value, so the default styled headings stay untouched otherwise.
   function cmsApplyHomeHeadings(block) {
     if (!block || !block.content) return;
-    const map = { heroTagline: 'heroTagline', newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
+    const c = block.content;
+    // Hero tagline: text (empty keeps the built-in default), + admin size / colour / visibility
+    // applied as live inline style overrides on #heroTagline.
+    const tag = document.getElementById('heroTagline');
+    if (tag) {
+      if (typeof c.heroTagline === 'string' && c.heroTagline.trim()) tag.textContent = c.heroTagline.trim();
+      const size = parseInt(c.heroTaglineSize, 10);
+      tag.style.fontSize = (isFinite(size) && size >= 10 && size <= 120) ? size + 'px' : '';
+      const col = cmsSafeHex(c.heroTaglineColor);
+      tag.style.color = col || '';
+      tag.style.display = (c.heroTaglineVisible === false) ? 'none' : '';
+    }
+    const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
     Object.keys(map).forEach(k => {
-      const v = block.content[k];
+      const v = c[k];
       if (typeof v === 'string' && v.trim()) { const el = document.getElementById(map[k]); if (el) el.textContent = v.trim(); }
     });
   }
@@ -2018,9 +2030,41 @@
         ${expanded ? `<div class="cms-block-body">${cmsBlockEditorHtml(block)}</div>` : ''}
       </div>`;
   }
+  const CMS_HERO_TAGLINE_DEFAULT = 'Та мөрөөдлийн үл хөдлөх хөрөнгөө TP Property-гоос олоорой';
+  // Custom editor for the home headings block: the hero tagline gets its base text pre-filled
+  // + a show/hide toggle, a font-size (px) control and a colour picker; empty leaves the
+  // built-in default / CSS. (The rest are the two section headings.)
+  function cmsHomeHeadingsEditorHtml(block) {
+    const c = block.content || {};
+    const bid = block.id;
+    const visible = c.heroTaglineVisible !== false;
+    const size = (c.heroTaglineSize == null ? '' : String(c.heroTaglineSize));
+    const color = cmsSafeHex(c.heroTaglineColor) || '';
+    return `
+      <div class="cms-field"><label class="cms-label">Hero-ийн том бичвэр (хайлтын дээр)</label>
+        <input class="form-input" type="text" value="${esc(c.heroTagline || CMS_HERO_TAGLINE_DEFAULT)}" oninput="cmsUpdateField('${bid}','heroTagline', this.value)" /></div>
+      <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" ${visible ? 'checked' : ''} onchange="cmsUpdateFieldBool('${bid}','heroTaglineVisible', this.checked); cmsSaveHint()" />
+        <span class="cms-label" style="margin:0;">Нүүр хуудас дээр харуулах</span></label>
+      <div class="cms-grid">
+        <div class="cms-field"><label class="cms-label">Бичвэрийн хэмжээ (px)</label>
+          <input class="form-input" type="number" min="14" max="80" value="${esc(size)}" placeholder="Авто (жишээ: 42)" oninput="cmsUpdateField('${bid}','heroTaglineSize', this.value)" /></div>
+        <div class="cms-field"><label class="cms-label">Бичвэрийн өнгө</label>
+          <div class="cms-theme-inputs">
+            <input type="color" value="${color || '#ffffff'}" oninput="cmsUpdateField('${bid}','heroTaglineColor', this.value)" />
+            <input type="text" class="form-input" value="${esc(color)}" maxlength="7" placeholder="Авто" oninput="cmsUpdateField('${bid}','heroTaglineColor', this.value)" />
+          </div></div>
+      </div>
+      <div class="cms-field"><label class="cms-label">"Шинээр нэмэгдсэн зарууд" гарчиг</label>
+        <input class="form-input" type="text" value="${esc(c.newTitle || '')}" oninput="cmsUpdateField('${bid}','newTitle', this.value)" /></div>
+      <div class="cms-field"><label class="cms-label">"Онцлох зарууд" гарчиг</label>
+        <input class="form-input" type="text" value="${esc(c.featuredTitle || '')}" oninput="cmsUpdateField('${bid}','featuredTitle', this.value)" /></div>`;
+  }
+  function cmsSaveHint() {}   // no-op hook (checkbox change already marks dirty)
   function cmsBlockEditorHtml(block) {
     const meta = CMS_BLOCK_TYPES[block.type] || {};
     if (meta.kind === 'repeater') return cmsRepeaterEditorHtml(block, meta);
+    if (block.type === 'homeHeadings') return cmsHomeHeadingsEditorHtml(block);
     if (meta.kind === 'fields') {
       if (!meta.fields || !meta.fields.length) return `<span style="font-size:12px;color:var(--ink-3);">Энэ хэсэг зөвхөн харагдац/эрэмбээр удирдагдана.</span>`;
       return meta.fields.map(f => cmsFieldHtml(block, f)).join('');
@@ -2282,6 +2326,7 @@
 
   function cmsToggleExpand(id) { _cmsExpanded[id] = !_cmsExpanded[id]; cmsRenderEditor(); }
   function cmsUpdateField(blockId, field, value) { const b = _cmsDraft.find(x => x.id === blockId); if (!b) return; b.content = b.content || {}; b.content[field] = value; cmsMarkDirty(); }
+  function cmsUpdateFieldBool(blockId, field, checked) { const b = _cmsDraft.find(x => x.id === blockId); if (!b) return; b.content = b.content || {}; b.content[field] = !!checked; cmsMarkDirty(); }
   function cmsUpdateItemField(blockId, idx, field, value) { const b = _cmsDraft.find(x => x.id === blockId); if (!b || !b.content || !b.content.items[idx]) return; b.content.items[idx][field] = value; cmsMarkDirty(); }
   function cmsMoveBlock(i, dir) { const j = i + dir; if (j < 0 || j >= _cmsDraft.length) return; const t = _cmsDraft[i]; _cmsDraft[i] = _cmsDraft[j]; _cmsDraft[j] = t; _cmsDraft.forEach((b, k) => b.order = k + 1); cmsMarkDirty(); cmsRenderEditor(); }
   function cmsToggleBlock(i) { const b = _cmsDraft[i]; const meta = CMS_BLOCK_TYPES[b.type] || {}; if (meta.system) return; b.visible = b.visible === false; cmsMarkDirty(); cmsRenderEditor(); }
