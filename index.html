@@ -13,6 +13,12 @@
       if (t === 'dark') document.documentElement.classList.add('dark');
     } catch (e) {}
   })();
+  // Hide the hero tagline until the CMS has settled, so a refresh doesn't flash the big
+  // default text at the wrong size/font and then jump when the saved value applies (FOUT).
+  // applySiteCms() clears this once it runs; the timeout is a safety net so the tagline
+  // always appears even if the CMS never loads (offline / blocked).
+  document.documentElement.classList.add('hero-pending');
+  setTimeout(function () { document.documentElement.classList.remove('hero-pending'); }, 2500);
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TP Property — Үл Хөдлөх Хөрөнгө Зуучлал</title>

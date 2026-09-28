@@ -571,6 +571,7 @@
       const v = c[k];
       if (typeof v === 'string' && v.trim()) { const el = document.getElementById(map[k]); if (el) el.textContent = v.trim(); }
     });
+    if (typeof cmsRevealHero === 'function') cmsRevealHero();   // tagline is finalised — safe to show
   }
 
   async function cmsLoadPublishedPage(pageId) {
@@ -1247,7 +1248,10 @@
       applyHomeAgents();
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
+    finally { cmsRevealHero(); }   // reveal the tagline once CMS has settled (or failed) — no FOUT
   }
+  // Reveal the hero tagline (fades it in via CSS). Safe to call repeatedly.
+  function cmsRevealHero() { try { document.documentElement.classList.remove('hero-pending'); } catch (e) {} }
 
   // ---- Gallery lightbox (safe DOM only; keyboard + prev/next/close, mobile friendly) ----
   let _cmsLb = { shots: [], idx: 0, el: null, onKey: null };
