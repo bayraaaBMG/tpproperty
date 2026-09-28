@@ -168,13 +168,45 @@
     });
   }
   // Same, for the sponsored-ad carousels (separate markup/classes).
+  // ---- Sponsored ("Ивээн тэтгэсэн") carousel: 5-up row + auto YOYO (ping-pong) scroll. ----
+  // One shared timer ticks every overflowing ad track one card in its current direction and
+  // flips at each end (1->5, then 5->1, forever). Pauses on hover/touch; the ‹ › arrows step one
+  // card manually and also flip at the ends so they never dead-end. No clones (unlike the other
+  // home carousels) — a yoyo bounces at the real ends rather than wrapping.
+  function siteAdCardStep(track) {
+    const card = track.querySelector('.site-ad-banner');
+    const cs = getComputedStyle(track); const gap = parseFloat(cs.columnGap || cs.gap || '0') || 0;
+    return card ? card.getBoundingClientRect().width + gap : Math.max(180, track.clientWidth / 5);
+  }
+  function siteAdYoyoTick(track) {
+    const max = track.scrollWidth - track.clientWidth;
+    if (max <= 1) return;                       // everything fits -> nothing to move
+    let dir = track._yoyoDir || 1;
+    if (dir > 0 && track.scrollLeft >= max - 1) dir = -1;   // reached the end -> reverse
+    else if (dir < 0 && track.scrollLeft <= 1) dir = 1;     // back at the start -> forward
+    track._yoyoDir = dir;
+    track.scrollBy({ left: dir * siteAdCardStep(track), behavior: 'smooth' });
+  }
+  let _siteAdYoyoTimer = null;
+  function siteAdYoyoEnsureTimer() {
+    if (_siteAdYoyoTimer) return;
+    _siteAdYoyoTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;   // don't advance a hidden tab
+      document.querySelectorAll('.site-ad-carousel .site-ad-track:not(.single)').forEach(t => { if (!t._yoyoPaused) siteAdYoyoTick(t); });
+    }, 2800);
+  }
   function syncSiteAdArrows() {
     document.querySelectorAll('.site-ad-carousel').forEach(c => {
       const t = c.querySelector('.site-ad-track'); if (!t) return;
-      homeSetupLoop(t);
-      const overflow = !!t.querySelector('[data-loop-clone]') || t.scrollWidth > t.clientWidth + 2;
+      const overflow = t.scrollWidth > t.clientWidth + 2;
       c.querySelectorAll('.site-ad-nav').forEach(n => { n.style.display = overflow ? '' : 'none'; });
+      if (!t._yoyoWired) {
+        t._yoyoWired = true;
+        ['pointerenter', 'touchstart'].forEach(ev => t.addEventListener(ev, () => { t._yoyoPaused = true; }, { passive: true }));
+        ['pointerleave', 'touchend', 'touchcancel'].forEach(ev => t.addEventListener(ev, () => { t._yoyoPaused = false; }, { passive: true }));
+      }
     });
+    siteAdYoyoEnsureTimer();
   }
   window.addEventListener('resize', () => { if (typeof syncHomeCarouselArrows === 'function') syncHomeCarouselArrows(); if (typeof syncSiteAdArrows === 'function') syncSiteAdArrows(); });
 
@@ -302,10 +334,16 @@
       ? `<a class="site-ad-banner" href="${esc(safe)}" target="_blank" rel="noopener sponsored">${inner}</a>`
       : `<div class="site-ad-banner" role="group">${inner}</div>`;
   }
-  // Step the sponsored-ad carousel one card left/right with the same seamless infinite loop.
+  // Manual step one card; flips the yoyo direction at each end so the arrows never dead-end.
   function scrollSiteAds(btn, dir) {
     const track = btn.parentElement && btn.parentElement.querySelector('.site-ad-track');
-    homeLoopStep(track, dir);
+    if (!track) return;
+    const max = track.scrollWidth - track.clientWidth;
+    let d = dir;
+    if (d > 0 && track.scrollLeft >= max - 1) d = -1;
+    else if (d < 0 && track.scrollLeft <= 1) d = 1;
+    track._yoyoDir = d;
+    track.scrollBy({ left: d * siteAdCardStep(track), behavior: 'smooth' });
   }
   function paintSiteAdSlots() {
     if (!_siteAdsCache) return;
