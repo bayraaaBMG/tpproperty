@@ -1113,15 +1113,16 @@
     catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadSystemPages failed:', e.code, e.message); }
     _cmsSysPagesCache = d; return d;
   }
-  // Apply the admin's static-text overrides onto the code-driven pages. textContent only (no
-  // HTML); an empty/absent value leaves the built-in default text untouched.
+  // Apply the admin's rich-text overrides onto the code-driven pages. The stored value is
+  // sanitized hero HTML (Bold / Italic / colour / size); it is rendered via cmsHeroRichFragment
+  // (safe DOM nodes only). An empty/absent value leaves the built-in default text untouched.
   function cmsApplySystemPages(cfg) {
     if (!cfg) return;
     CMS_SYSTEM_PAGES.forEach(pg => {
       const data = cfg[pg.id] || {};
       pg.fields.forEach(f => {
         const v = data[f.key];
-        if (typeof v === 'string' && v.trim()) { const el = document.getElementById(f.el); if (el) el.textContent = v.trim(); }
+        if (typeof v === 'string' && cmsHeroHasContent(v)) { const el = document.getElementById(f.el); if (el) { el.textContent = ''; el.appendChild(cmsHeroRichFragment(v)); } }
       });
     });
   }
@@ -1637,16 +1638,12 @@
     const card = pg => {
       const data = d[pg.id] || {};
       const fields = pg.fields.map(f => {
-        // Pre-fill with the real text so the admin edits in place: a saved override wins,
-        // otherwise the text currently rendered on the page (read live from its element),
-        // otherwise the static fallback. Empty later => that field falls back to the default.
-        const saved = data[f.key];
-        let val;
-        if (typeof saved === 'string' && saved.trim()) val = saved;
-        else { const el = document.getElementById(f.el); val = (el && el.textContent.trim()) || f.ph || ''; }
-        const onin = `cmsUpdateSysField('${pg.id}','${f.key}', this.value)`;
-        if (f.type === 'textarea') return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><textarea class="form-input" rows="3" placeholder="${esc(f.ph || '')}" oninput="${onin}">${esc(val)}</textarea></div>`;
-        return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><input class="form-input" type="text" placeholder="${esc(f.ph || '')}" value="${esc(val)}" oninput="${onin}" /></div>`;
+        // Rich-text editor per field (Bold / Italic / colour / size). It is SEEDED by
+        // cmsInitHeroEditors from a saved override, else the text currently on the page (kept
+        // with its formatting), else the static fallback — so the admin edits in place.
+        return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label>
+          ${cmsHeroToolbarHtml()}
+          <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-sys-page="${pg.id}" data-sys-key="${f.key}" data-sys-el="${f.el}" data-default="${esc(f.ph || '')}" oninput="cmsHeroInput(this)" aria-label="${esc(f.label)}"></div></div>`;
       }).join('');
       return `<div class="admin-panel" style="margin-bottom:14px;"><div class="admin-panel-head">${esc(pg.title)}</div>${fields}</div>`;
     };
@@ -1657,16 +1654,11 @@
       <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 14px;">Толгой цэснээс хассан <strong>Зар хайх / Түрээс / Шинэ орон сууц</strong> хуудсуудын дээд гарчиг, баннерын бичвэрийг эндээс засна. Хоосон талбар нь өгөгдмөл бичвэрийг хэвээр үлдээнэ.</p>
       ${CMS_SYSTEM_PAGES.map(card).join('')}`;
   }
-  function cmsUpdateSysField(pageId, key, val) {
-    _cmsSysPagesDraft = _cmsSysPagesDraft || cmsDefaultSystemPages();
-    _cmsSysPagesDraft[pageId] = _cmsSysPagesDraft[pageId] || {};
-    _cmsSysPagesDraft[pageId][key] = val;
-  }
   function cmsCleanSystemPages(draft) {
     const out = {};
     CMS_SYSTEM_PAGES.forEach(pg => {
       const data = (draft && draft[pg.id]) || {}; const o = {};
-      pg.fields.forEach(f => { const v = data[f.key]; if (typeof v === 'string' && v.trim()) o[f.key] = v.trim().slice(0, 2000); });
+      pg.fields.forEach(f => { const v = data[f.key]; if (typeof v === 'string') { const clean = cmsSanitizeHeroHtml(v); if (cmsHeroHasContent(clean)) o[f.key] = clean; } });
       out[pg.id] = o;
     });
     return out;
@@ -2405,6 +2397,12 @@
   function cmsHeroInput(area) {
     const sanitized = cmsSanitizeHeroHtml(area.innerHTML);   // store sanitized only
     if (area.dataset.bannerKey) { _cmsHeroBannerDraft = _cmsHeroBannerDraft || cmsDefaultHeroBanner(); _cmsHeroBannerDraft[area.dataset.bannerKey] = sanitized; cmsMarkDirty(); return; }
+    if (area.dataset.sysPage) {
+      _cmsSysPagesDraft = _cmsSysPagesDraft || cmsDefaultSystemPages();
+      _cmsSysPagesDraft[area.dataset.sysPage] = _cmsSysPagesDraft[area.dataset.sysPage] || {};
+      _cmsSysPagesDraft[area.dataset.sysPage][area.dataset.sysKey] = sanitized;
+      return;
+    }
     const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId); if (!b) return;
     b.content = b.content || {}; b.content[area.dataset.key] = sanitized; cmsMarkDirty();
   }
@@ -2414,6 +2412,16 @@
       if (area.dataset.bannerKey) {
         const hb = _cmsHeroBannerDraft || cmsDefaultHeroBanner();
         if (cmsHeroHasContent(hb[area.dataset.bannerKey])) area.appendChild(cmsHeroRichFragment(hb[area.dataset.bannerKey]));
+        return;
+      }
+      if (area.dataset.sysPage) {
+        const page = _cmsSysPagesDraft && _cmsSysPagesDraft[area.dataset.sysPage];
+        const saved = page && page[area.dataset.sysKey];
+        if (cmsHeroHasContent(saved)) { area.appendChild(cmsHeroRichFragment(saved)); return; }
+        // No saved override -> seed from the live page element (keeps its <em> accent etc.)
+        const el = area.dataset.sysEl ? document.getElementById(area.dataset.sysEl) : null;
+        if (el && cmsHeroHasContent(el.innerHTML)) { area.appendChild(cmsHeroRichFragment(el.innerHTML)); return; }
+        if (area.dataset.default) area.appendChild(document.createTextNode(area.dataset.default));
         return;
       }
       const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
