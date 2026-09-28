@@ -4269,7 +4269,7 @@
        major sections" — nothing else about the sections changes. */
     section { padding-top: 40px; padding-bottom: 40px; }
     .section-head { margin-bottom: 24px; gap: 14px; }
-    .hero-compact { padding: 32px var(--page-pad) 14px; }
+    .hero-compact { padding: 44px var(--page-pad) 14px; }
     .home-search-bar { padding: 12px 12px; }
     .home-info-strip { padding: 14px 14px; margin-top: 10px; gap: 12px; }
 
@@ -4776,7 +4776,7 @@
   .hero-bg-layer { display: none; }
   /* Banner geometry is admin-driven (Хуудас удирдлага → Гол баннер). Every var falls back to
      the previous fixed value, so an unconfigured banner looks exactly as before. */
-  .hero-has-bg { position: relative; overflow: hidden; padding-top: 84px; padding-bottom: 56px; min-height: var(--hero-desktop-h, 0px); }
+  .hero-has-bg { position: relative; overflow: hidden; padding-top: 116px; padding-bottom: 56px; min-height: var(--hero-desktop-h, 0px); }
   .hero-has-bg .hero-bg-layer { display: block; position: absolute; inset: 0; z-index: 0; background-repeat: no-repeat;
     background-size: var(--banner-size, cover);
     background-position: var(--banner-position-x, 50%) var(--banner-position-y, 50%);
@@ -4814,7 +4814,7 @@
   .hb-presets { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
   .hb-presets button { font-size: 11.5px; padding: 4px 10px; border: 1px solid var(--line); background: var(--surface, #fff); border-radius: 6px; cursor: pointer; color: var(--ink-2); }
   .hb-presets button:hover { border-color: var(--primary); color: var(--primary); }
-  @media (max-width: 640px) { .hero-has-bg { padding-top: 56px; padding-bottom: 36px; min-height: var(--hero-mobile-h, 0px); } }
+  @media (max-width: 640px) { .hero-has-bg { padding-top: 72px; padding-bottom: 36px; min-height: var(--hero-mobile-h, 0px); } }
 
   /* ---- Featured agents (Онцлох агентууд) — replaces the old Категориуд grid ---- */
   .portal-section-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
