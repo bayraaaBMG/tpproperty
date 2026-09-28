@@ -19,13 +19,12 @@
 
   const CMS_PAGES = [
     { id: 'home', title: 'Нүүр хуудас', editable: true },
-    { id: 'listings', title: 'Зар хайх', editable: true, target: 'listings' },
-    { id: 'rent', title: 'Түрээс', editable: true, target: 'rent' },
-    { id: 'newdev', title: 'Шинэ орон сууц', editable: true, target: 'newdev' },
     { id: 'calc', title: 'Тооцоолуур', editable: true, target: 'calc' },
     { id: 'resources', title: 'Зөвлөгөө', editable: true, target: 'resources' }
-    // about / services / contact moved out of the block editor — they are now edited as rich
-    // text alongside terms/privacy/security in Хөл хэсэг → "Хуудасны бичвэр".
+    // Зар хайх / Түрээс / Шинэ орон сууц removed from the block-editor list — the home page
+    // already carries the listing categories, so these functional pages are code-driven only.
+    // about / career / news (+ services / contact / terms / privacy / security) are edited as
+    // rich text in Хөл хэсэг → "Хуудасны бичвэр".
   ];
   // No page is block-based-info any more; every footer info modal renders from the shared
   // rich-text store (siteSettings/infoContent). Kept as an (empty) object so existing checks work.
@@ -884,9 +883,9 @@
   // matched by their fixed data-nav-key. No new route or URL is ever created from CMS data.
   function cmsDefaultNav() {
     return { items: [
-      { key: 'listings', label: 'Зар хайх', visible: true },
-      { key: 'rent', label: 'Түрээс', visible: true },
-      { key: 'newdev', label: 'Шинэ орон сууц', visible: true },
+      { key: 'about', label: 'Бидний тухай', visible: true },
+      { key: 'career', label: 'Карьер', visible: true },
+      { key: 'news', label: 'Мэдээ', visible: true },
       { key: 'calc', label: 'Тооцоолуур', visible: true },
       { key: 'resources', label: 'Зөвлөгөө', visible: true },
       { key: 'dashboard', label: 'Миний самбар', visible: true }
@@ -1169,7 +1168,8 @@
       const tok = (typeof footerToken === 'function') ? footerToken(l && l.url) : '';
       if (tok) push(tok, l.label);
     }));
-    ['terms', 'privacy', 'security'].forEach(k => push(k));   // legal base, always editable
+    // Header content pages + legal base — always editable even if not linked in the footer.
+    ['about', 'career', 'news', 'terms', 'privacy', 'security'].forEach(k => push(k));
     return out.length ? out : [{ key: 'terms', label: 'Үйлчилгээний нөхцөл' }];
   }
   let _cmsInfoContentCache = null;
