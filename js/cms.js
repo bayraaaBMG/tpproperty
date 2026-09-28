@@ -1637,7 +1637,13 @@
     const card = pg => {
       const data = d[pg.id] || {};
       const fields = pg.fields.map(f => {
-        const val = data[f.key] || '';
+        // Pre-fill with the real text so the admin edits in place: a saved override wins,
+        // otherwise the text currently rendered on the page (read live from its element),
+        // otherwise the static fallback. Empty later => that field falls back to the default.
+        const saved = data[f.key];
+        let val;
+        if (typeof saved === 'string' && saved.trim()) val = saved;
+        else { const el = document.getElementById(f.el); val = (el && el.textContent.trim()) || f.ph || ''; }
         const onin = `cmsUpdateSysField('${pg.id}','${f.key}', this.value)`;
         if (f.type === 'textarea') return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><textarea class="form-input" rows="3" placeholder="${esc(f.ph || '')}" oninput="${onin}">${esc(val)}</textarea></div>`;
         return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><input class="form-input" type="text" placeholder="${esc(f.ph || '')}" value="${esc(val)}" oninput="${onin}" /></div>`;
