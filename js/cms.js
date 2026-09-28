@@ -689,7 +689,13 @@
     const c = (block && block.content) || {};
     // Editable section eyebrow + title (empty -> keep the built-in heading).
     if (c.eyebrow) { const ey = section.querySelector('.section-eyebrow'); if (ey) ey.textContent = String(c.eyebrow); }
-    if (c.title) { const tt = section.querySelector('.section-title'); if (tt) tt.textContent = String(c.title); }
+    const tt = section.querySelector('.section-title');
+    if (tt) {
+      if (c.title) tt.textContent = String(c.title);
+      // Admin title-size: shrink the heading so a long title fits one line. Empty/large -> CSS default.
+      const SIZES = { small: 'clamp(20px, 2.6vw, 30px)', medium: 'clamp(26px, 3.6vw, 40px)' };
+      tt.style.fontSize = SIZES[c.titleSize] || '';
+    }
     const grid = section.querySelector('.features-grid');
     const items = Array.isArray(c.items) ? c.items.filter(it => it && it.visible !== false) : null;
     if (!grid || !items || !items.length) return;
@@ -2483,8 +2489,13 @@
     block.content = block.content || {}; block.content.items = Array.isArray(block.content.items) ? block.content.items : [];
     let labelField = block.type === 'banks' ? `<div class="cms-field"><label class="cms-label">Тайлбар мөр</label><input class="form-input" type="text" value="${esc(block.content.label || '')}" oninput="cmsUpdateField('${block.id}','label', this.value)" /></div>` : '';
     if (block.type === 'features') {
+      const curSize = ['small', 'medium', 'large'].indexOf(block.content.titleSize) >= 0 ? block.content.titleSize : 'large';
+      const sizeOpt = (v, t) => `<option value="${v}" ${curSize === v ? 'selected' : ''}>${t}</option>`;
       labelField = `<div class="cms-field"><label class="cms-label">Хэсгийн жижиг гарчиг (eyebrow)</label><input class="form-input" type="text" value="${esc(block.content.eyebrow || '')}" placeholder="Бүх боломжууд" oninput="cmsUpdateField('${block.id}','eyebrow', this.value)" /></div>
-        <div class="cms-field"><label class="cms-label">Хэсгийн гарчиг</label><input class="form-input" type="text" value="${esc(block.content.title || '')}" placeholder="Үл хөдлөхийн бүх асуудал нэг л дор" oninput="cmsUpdateField('${block.id}','title', this.value)" /></div>`;
+        <div class="cms-field"><label class="cms-label">Хэсгийн гарчиг</label><input class="form-input" type="text" value="${esc(block.content.title || '')}" placeholder="Үл хөдлөхийн бүх асуудал нэг л дор" oninput="cmsUpdateField('${block.id}','title', this.value)" /></div>
+        <div class="cms-field"><label class="cms-label">Гарчгийн хэмжээ</label>
+          <select class="form-input" onchange="cmsUpdateField('${block.id}','titleSize', this.value)">${sizeOpt('small', 'Бага (Small)')}${sizeOpt('medium', 'Дунд (Medium)')}${sizeOpt('large', 'Том (Large)')}</select>
+          <div style="font-size:11.5px;color:var(--ink-3);margin-top:5px;">Гарчиг хоёр мөр болж байвал "Бага" эсвэл "Дунд"-ыг сонгож нэг мөрөнд багтаана.</div></div>`;
     }
     const items = block.content.items.map((it, idx) => `
       <div class="cms-item ${it.visible === false ? 'cms-item-hidden' : ''}"><div class="cms-item-head"><span><span class="cms-drag-handle" title="Чирж эрэмбэлэх" aria-hidden="true">&#10303;</span> ${esc((it.name || it.title || it.question || it.caption || ('Мөр ' + (idx + 1))))}${it.visible === false ? ' <span style="font-size:10px;color:var(--ink-3);">(нуусан)</span>' : ''}</span>
