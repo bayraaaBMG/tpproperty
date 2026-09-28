@@ -801,7 +801,7 @@
     <!-- 1. Breadcrumb / page title -->
     <div class="listings-page-head">
       <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Зар хайх</span></div>
-      <h1 class="listings-page-title display">Идэвхтэй <em>зарууд</em></h1>
+      <h1 class="listings-page-title display" id="listingsPageTitle">Идэвхтэй <em>зарууд</em></h1>
     </div>
 
     <div class="cms-content-page" id="cmsListingsBlocks" hidden></div>
@@ -1316,15 +1316,15 @@
   <div class="section-inner">
     <div class="listings-page-head">
       <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Түрээс</span></div>
-      <h1 class="listings-page-title display">Түрээслүүлэх <em>зарууд</em></h1>
+      <h1 class="listings-page-title display" id="rentPageTitle">Түрээслүүлэх <em>зарууд</em></h1>
     </div>
 
     <div class="cms-content-page" id="cmsRentBlocks" hidden></div>
 
     <div class="rent-cta">
       <div class="rent-cta-content">
-        <h4>Түрээслэгчийн эрхийг хамгаалахад туслах хэрэгслүүд</h4>
-        <p>TP Property дээр түрээслэхдээ баталгаажсан эзэнтэй (✓) зар хайж, стандарт гэрээний загвараар үндсэн заалтуудтай танилцаж, сэжигтэй зүйл харвал "Зарыг мэдээлэх" товчоор шууд мэдээлээрэй.</p>
+        <h4 id="rentCtaTitle">Түрээслэгчийн эрхийг хамгаалахад туслах хэрэгслүүд</h4>
+        <p id="rentCtaText">TP Property дээр түрээслэхдээ баталгаажсан эзэнтэй (✓) зар хайж, стандарт гэрээний загвараар үндсэн заалтуудтай танилцаж, сэжигтэй зүйл харвал "Зарыг мэдээлэх" товчоор шууд мэдээлээрэй.</p>
       </div>
       <a class="btn btn-blue btn-lg" onclick="openContractTemplate()">
         Гэрээ загвар үзэх
@@ -1561,15 +1561,15 @@
 
     <div class="listings-page-head">
       <div class="listings-breadcrumb"><a onclick="showPage('home')">Нүүр</a><span>/</span><span>Шинэ орон сууц</span></div>
-      <h1 class="listings-page-title display">Шинээр <em>баригдаж</em> буй төслүүд</h1>
+      <h1 class="listings-page-title display" id="newdevPageTitle">Шинээр <em>баригдаж</em> буй төслүүд</h1>
     </div>
 
     <div class="cms-content-page" id="cmsNewdevBlocks" hidden></div>
 
     <div class="newdev-cta">
       <div class="newdev-cta-content">
-        <h4>Та барилгын компани мөн үү?</h4>
-        <p>Төслөө TP Property дээр нийтэлж, худалдан авагчидтай шууд холбогдоорой — компани, байршил, 1м² үнэ, давхарын төлөвлөгөө, floor plan, 3D/360° танилцуулга, төлбөрийн нөхцөл, ипотекийн мэдээллээ оруулна уу.</p>
+        <h4 id="newdevCtaTitle">Та барилгын компани мөн үү?</h4>
+        <p id="newdevCtaText">Төслөө TP Property дээр нийтэлж, худалдан авагчидтай шууд холбогдоорой — компани, байршил, 1м² үнэ, давхарын төлөвлөгөө, floor plan, 3D/360° танилцуулга, төлбөрийн нөхцөл, ипотекийн мэдээллээ оруулна уу.</p>
       </div>
       <a class="btn btn-blue btn-lg" onclick="openAddProject()">
         Төсөл нэмэх

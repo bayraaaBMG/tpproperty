@@ -35,6 +35,26 @@
     newdev: 'cmsNewdevBlocks', listings: 'cmsListingsBlocks', rent: 'cmsRentBlocks',
     calc: 'cmsCalcBlocks', resources: 'cmsResourcesBlocks'
   };
+  // "Бусад хуудсууд" — the functional pages removed from the header (Зар хайх / Түрээс / Шинэ
+  // орон сууц) still carry a few static texts (page title, banner heading + description). The
+  // admin overrides them from Хуудас удирдлага → "Бусад хуудсууд"; overrides live in
+  // siteSettings/systemPages and are applied to these element ids by textContent. An empty
+  // value keeps the built-in default text in the markup.
+  const CMS_SYSTEM_PAGES = [
+    { id: 'listings', title: 'Зар хайх', fields: [
+      { key: 'title', label: 'Хуудасны гарчиг', el: 'listingsPageTitle', type: 'text', ph: 'Идэвхтэй зарууд' }
+    ] },
+    { id: 'rent', title: 'Түрээс', fields: [
+      { key: 'title', label: 'Хуудасны гарчиг', el: 'rentPageTitle', type: 'text', ph: 'Түрээслүүлэх зарууд' },
+      { key: 'ctaTitle', label: 'Баннерын гарчиг', el: 'rentCtaTitle', type: 'text', ph: 'Түрээслэгчийн эрхийг хамгаалахад туслах хэрэгслүүд' },
+      { key: 'ctaText', label: 'Баннерын тайлбар', el: 'rentCtaText', type: 'textarea', ph: 'Түрээсийн баннерын тайлбар текст' }
+    ] },
+    { id: 'newdev', title: 'Шинэ орон сууц', fields: [
+      { key: 'title', label: 'Хуудасны гарчиг', el: 'newdevPageTitle', type: 'text', ph: 'Шинээр баригдаж буй төслүүд' },
+      { key: 'ctaTitle', label: 'Баннерын гарчиг', el: 'newdevCtaTitle', type: 'text', ph: 'Та барилгын компани мөн үү?' },
+      { key: 'ctaText', label: 'Баннерын тайлбар', el: 'newdevCtaText', type: 'textarea', ph: 'Шинэ орон сууцны баннерын тайлбар текст' }
+    ] }
+  ];
 
   // Icon set for the "Онцлох давуу тал / Бүх боломжууд" feature cards. The admin picks a KEY
   // (never raw markup), so rendering the matching static SVG via innerHTML stays XSS-safe.
@@ -534,6 +554,9 @@
     const host = document.getElementById(cid); if (!host) return;
     const ok = await cmsRenderContentPage(pageId, host);
     host.hidden = !ok;
+    // Also apply the page's static-text overrides (title / banner) whenever it's opened, so a
+    // direct visit to /rent, /newdev, /listings reflects the admin's edits even before home load.
+    cmsLoadSystemPages().then(cmsApplySystemPages).catch(() => {});
   }
   async function cmsApplyNewdev() { return cmsApplyTargetPage('newdev'); }
   // Apply the (optional) custom home section headings — only overrides when the admin set a
@@ -1080,6 +1103,28 @@
       });
     });
   }
+  // ---- System pages static text (siteSettings/systemPages) — public read, admin write ----
+  let _cmsSysPagesCache = null;
+  function cmsDefaultSystemPages() { return { listings: {}, rent: {}, newdev: {} }; }
+  async function cmsLoadSystemPages() {
+    if (_cmsSysPagesCache) return _cmsSysPagesCache;
+    let d = cmsDefaultSystemPages();
+    try { const snap = await db.collection('siteSettings').doc('systemPages').get(); if (snap.exists && snap.data()) d = Object.assign(d, snap.data()); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadSystemPages failed:', e.code, e.message); }
+    _cmsSysPagesCache = d; return d;
+  }
+  // Apply the admin's static-text overrides onto the code-driven pages. textContent only (no
+  // HTML); an empty/absent value leaves the built-in default text untouched.
+  function cmsApplySystemPages(cfg) {
+    if (!cfg) return;
+    CMS_SYSTEM_PAGES.forEach(pg => {
+      const data = cfg[pg.id] || {};
+      pg.fields.forEach(f => {
+        const v = data[f.key];
+        if (typeof v === 'string' && v.trim()) { const el = document.getElementById(f.el); if (el) el.textContent = v.trim(); }
+      });
+    });
+  }
   function cmsApplyLogo(org) {
     const logo = cmsSafeUrl(org && org.logoUrl); if (!logo) return;
     document.querySelectorAll('.nav .logo img.logo-wordmark, .nav .logo img.logo-square').forEach(img => { img.src = logo; img.alt = (org && org.name) || 'TP Property'; });
@@ -1239,12 +1284,12 @@
   }
   async function applySiteCms() {
     try {
-      const [sections, org, theme, nav, banner, footer] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner(), cmsLoadFooter()]);
+      const [sections, org, theme, nav, banner, footer, sysPages] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner(), cmsLoadFooter(), cmsLoadSystemPages()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
-      cmsApplyHeroBanner(banner); cmsApplyFooter(footer);
+      cmsApplyHeroBanner(banner); cmsApplyFooter(footer); cmsApplySystemPages(sysPages);
       applyHomeAgents();
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
@@ -1346,10 +1391,16 @@
       return o;
     }).catch(() => ({}));
     _cmsInfoEditKey = cmsInfoEditableKeys()[0].key;
+    _cmsSysPagesDraft = await cmsLoadSystemPages().then(d => {
+      const o = cmsDefaultSystemPages();
+      CMS_SYSTEM_PAGES.forEach(pg => { o[pg.id] = Object.assign({}, d[pg.id] || {}); });
+      return o;
+    }).catch(() => cmsDefaultSystemPages());
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
           <button class="mytab active" onclick="cmsSwitchTab(this,'pages')">Хуудсууд</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'syspages')">Бусад хуудсууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'footer')">Хөл хэсэг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
@@ -1366,6 +1417,9 @@
             <div class="admin-list-table">${CMS_PAGES.map(pg => cmsPageRowHtml(pg, pageMeta[pg.id])).join('')}</div>
           </div>
           <div id="cmsEditorWrap"></div>
+        </div>
+        <div id="cmsTab-syspages" hidden>
+          <div class="admin-panel"><div id="cmsSysPagesEditor">${cmsSystemPagesEditorHtml()}</div></div>
         </div>
         <div id="cmsTab-org" hidden>
           <div class="admin-panel"><div class="admin-panel-head">Байгууллагын мэдээлэл</div>
@@ -1385,7 +1439,7 @@
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'org', 'footer', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'syspages', 'org', 'footer', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
     if (tab === 'agents' && !_cmsAgentPool) cmsFetchAgentPool();
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
@@ -1574,6 +1628,53 @@
       showToast('Цэс хадгалагдлаа', 'success');
       const nv = await cmsLoadNav(); cmsApplyNav(nv);
     } catch (e) { console.error('cmsSaveNav failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+
+  // ---- "Бусад хуудсууд" editor (siteSettings/systemPages) ----
+  let _cmsSysPagesDraft = null;
+  function cmsSystemPagesEditorHtml() {
+    const d = _cmsSysPagesDraft || cmsDefaultSystemPages();
+    const card = pg => {
+      const data = d[pg.id] || {};
+      const fields = pg.fields.map(f => {
+        const val = data[f.key] || '';
+        const onin = `cmsUpdateSysField('${pg.id}','${f.key}', this.value)`;
+        if (f.type === 'textarea') return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><textarea class="form-input" rows="3" placeholder="${esc(f.ph || '')}" oninput="${onin}">${esc(val)}</textarea></div>`;
+        return `<div class="cms-field"><label class="cms-label">${esc(f.label)}</label><input class="form-input" type="text" placeholder="${esc(f.ph || '')}" value="${esc(val)}" oninput="${onin}" /></div>`;
+      }).join('');
+      return `<div class="admin-panel" style="margin-bottom:14px;"><div class="admin-panel-head">${esc(pg.title)}</div>${fields}</div>`;
+    };
+    return `<div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <span>Бусад хуудсууд — статик бичвэр</span>
+        <button class="btn btn-blue btn-sm" onclick="cmsSaveSystemPages()">Хадгалах</button>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 14px;">Толгой цэснээс хассан <strong>Зар хайх / Түрээс / Шинэ орон сууц</strong> хуудсуудын дээд гарчиг, баннерын бичвэрийг эндээс засна. Хоосон талбар нь өгөгдмөл бичвэрийг хэвээр үлдээнэ.</p>
+      ${CMS_SYSTEM_PAGES.map(card).join('')}`;
+  }
+  function cmsUpdateSysField(pageId, key, val) {
+    _cmsSysPagesDraft = _cmsSysPagesDraft || cmsDefaultSystemPages();
+    _cmsSysPagesDraft[pageId] = _cmsSysPagesDraft[pageId] || {};
+    _cmsSysPagesDraft[pageId][key] = val;
+  }
+  function cmsCleanSystemPages(draft) {
+    const out = {};
+    CMS_SYSTEM_PAGES.forEach(pg => {
+      const data = (draft && draft[pg.id]) || {}; const o = {};
+      pg.fields.forEach(f => { const v = data[f.key]; if (typeof v === 'string' && v.trim()) o[f.key] = v.trim().slice(0, 2000); });
+      out[pg.id] = o;
+    });
+    return out;
+  }
+  async function cmsSaveSystemPages() {
+    if (!cmsRequireEditor()) return;
+    const cfg = cmsCleanSystemPages(_cmsSysPagesDraft);
+    try {
+      await db.collection('siteSettings').doc('systemPages').set(Object.assign(cfg, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }));
+      _cmsSysPagesCache = null;
+      logAdminAction('cms_syspages_save', 'siteSettings', 'systemPages', '');
+      showToast('Хуудсын бичвэр хадгалагдлаа', 'success');
+      const nv = await cmsLoadSystemPages(); cmsApplySystemPages(nv);
+    } catch (e) { console.error('cmsSaveSystemPages failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
 
   // ---- Hero banner editor (site_settings/hero_banner) ----
