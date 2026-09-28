@@ -1872,7 +1872,7 @@
      scroll (touch/drag) or step with the ‹ › arrows; a single ad spans full width as before. */
   .site-ad-carousel { position: relative; margin-bottom: 20px; }
   .site-ad-track {
-    display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory;
+    display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x proximity;
     scrollbar-width: none; -webkit-overflow-scrolling: touch;
   }
   .site-ad-track::-webkit-scrollbar { display: none; }
@@ -4300,7 +4300,7 @@
        padding lets the last one clear the card edge. */
     .hs-cat-shortcuts {
       margin: 12px -12px 0; padding: 12px 12px 2px;
-      gap: 4px; scroll-snap-type: x mandatory; scroll-padding-left: 12px; overscroll-behavior-x: contain;
+      gap: 4px; scroll-snap-type: x proximity; scroll-padding-left: 12px; overscroll-behavior-x: contain;
       /* A tile sliced flat at the card edge reads as broken; fading the last 22px makes the
          same overflow read as "swipe for more". Purely visual — the tile is still fully
          scrollable to, and scroll-snap lands each swipe on a whole tile. */

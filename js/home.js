@@ -84,23 +84,85 @@
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncHomeCarouselArrows);
   }
 
-  // Step a home carousel (listings, featured agents, OR the category shortcuts) ~one visible
-  // width left/right.
+  // ---- Home carousels: step ONE card per arrow click, with a seamless infinite loop. ----
+  // Each native-scroll track is doubled by appending a clone of its cards (homeSetupLoop); an
+  // arrow click scrolls by exactly one card and silently wraps scrollLeft by one full cycle at
+  // the ends, so the first card follows the last (and vice-versa) with no visible jump.
+  function homeTrackGap(track) {
+    const cs = getComputedStyle(track);
+    const g = parseFloat(cs.columnGap || cs.gap || '0');
+    return isFinite(g) ? g : 0;
+  }
+  function homeTrackCardSel(track) {
+    if (track.classList.contains('home-agents-grid')) return '.agent-card';
+    if (track.classList.contains('hs-cat-shortcuts')) return '.hs-cat-shortcut';
+    if (track.classList.contains('site-ad-track')) return '.site-ad-banner';
+    return '.listing-card';
+  }
+  function homeLoopReals(track, sel) {
+    return Array.from(track.children).filter(c => c.matches(sel) && !c.hasAttribute('data-loop-clone'));
+  }
+  // Clone the real cards once (re-runnable) so the track can loop — only when they overflow.
+  function homeSetupLoop(track) {
+    if (!track) return;
+    const sel = homeTrackCardSel(track);
+    track.querySelectorAll('[data-loop-clone]').forEach(n => n.remove());
+    const reals = homeLoopReals(track, sel);
+    if (reals.length < 2 || track.scrollWidth <= track.clientWidth + 4) return;
+    const frag = document.createDocumentFragment();
+    reals.forEach(card => {
+      const c = card.cloneNode(true);
+      c.setAttribute('data-loop-clone', '1'); c.setAttribute('aria-hidden', 'true'); c.tabIndex = -1;
+      frag.appendChild(c);
+    });
+    track.appendChild(frag);
+  }
+  // Step one card left/right (dir -1/1) with seamless wrap-around at both ends.
+  function homeLoopStep(track, dir) {
+    if (!track) return;
+    const sel = homeTrackCardSel(track);
+    const reals = homeLoopReals(track, sel);
+    const clones = track.querySelectorAll('[data-loop-clone]');
+    const step = reals.length ? reals[0].getBoundingClientRect().width + homeTrackGap(track) : Math.max(200, track.clientWidth * 0.85);
+    if (clones.length && reals.length) {
+      const cycle = clones[0].offsetLeft - reals[0].offsetLeft;   // exact width of one full loop
+      if (cycle > 0) {
+        // The wrap must be INSTANT (invisible) — the track has CSS scroll-behavior:smooth, which
+        // would otherwise animate the jump, so override it just for this hop.
+        const prev = track.style.scrollBehavior;
+        track.style.scrollBehavior = 'auto';
+        if (dir > 0) { if (track.scrollLeft >= cycle - 1) track.scrollLeft -= cycle; }
+        else if (track.scrollLeft <= 1) track.scrollLeft += cycle;
+        track.style.scrollBehavior = prev;
+      }
+    }
+    track.scrollBy({ left: dir * step, behavior: 'smooth' });
+  }
   function scrollHomeRow(btn, dir) {
     const car = btn.closest('.home-carousel, .hs-cat-carousel');
     const track = car && car.querySelector('.home-listings-grid, .home-agents-grid, .hs-cat-shortcuts');
-    if (!track) return;
-    track.scrollBy({ left: dir * Math.max(200, track.clientWidth * 0.8), behavior: 'smooth' });
+    homeLoopStep(track, dir);
   }
-  // Hide the arrows on a carousel whose items already fit (or that has no items / is hidden).
+  // Set up loops + show/hide arrows on the listing / agent / category carousels.
   function syncHomeCarouselArrows() {
     document.querySelectorAll('.home-carousel, .hs-cat-carousel').forEach(car => {
       const t = car.querySelector('.home-listings-grid, .home-agents-grid, .hs-cat-shortcuts');
-      const overflow = !!t && !!t.querySelector('.listing-card, .agent-card, .hs-cat-shortcut') && t.scrollWidth > t.clientWidth + 4;
+      if (!t) return;
+      homeSetupLoop(t);
+      const overflow = !!t.querySelector('[data-loop-clone]') || (!!t.querySelector('.listing-card, .agent-card, .hs-cat-shortcut') && t.scrollWidth > t.clientWidth + 4);
       car.querySelectorAll('.home-listings-arrow, .hs-cat-arrow').forEach(a => { a.style.display = overflow ? '' : 'none'; });
     });
   }
-  window.addEventListener('resize', () => { if (typeof syncHomeCarouselArrows === 'function') syncHomeCarouselArrows(); });
+  // Same, for the sponsored-ad carousels (separate markup/classes).
+  function syncSiteAdArrows() {
+    document.querySelectorAll('.site-ad-carousel').forEach(c => {
+      const t = c.querySelector('.site-ad-track'); if (!t) return;
+      homeSetupLoop(t);
+      const overflow = !!t.querySelector('[data-loop-clone]') || t.scrollWidth > t.clientWidth + 2;
+      c.querySelectorAll('.site-ad-nav').forEach(n => { n.style.display = overflow ? '' : 'none'; });
+    });
+  }
+  window.addEventListener('resize', () => { if (typeof syncHomeCarouselArrows === 'function') syncHomeCarouselArrows(); if (typeof syncSiteAdArrows === 'function') syncSiteAdArrows(); });
 
   // "Онцлох зарууд" — ranked by propertyScore() (utils.js), the same real, documented,
   // rule-based composite (price fairness vs. real comparables + verification + feature/
@@ -225,11 +287,10 @@
       ? `<a class="site-ad-banner" href="${esc(safe)}" target="_blank" rel="noopener sponsored">${inner}</a>`
       : `<div class="site-ad-banner" role="group">${inner}</div>`;
   }
-  // Scroll a carousel one "page" (~80% of the visible width) left/right.
+  // Step the sponsored-ad carousel one card left/right with the same seamless infinite loop.
   function scrollSiteAds(btn, dir) {
     const track = btn.parentElement && btn.parentElement.querySelector('.site-ad-track');
-    if (!track) return;
-    track.scrollBy({ left: dir * Math.max(240, track.clientWidth * 0.8), behavior: 'smooth' });
+    homeLoopStep(track, dir);
   }
   function paintSiteAdSlots() {
     if (!_siteAdsCache) return;
@@ -248,12 +309,6 @@
             <button type="button" class="site-ad-nav next" aria-label="Дараах" onclick="scrollSiteAds(this,1)">›</button>
           </div>`;
     });
-    // Hide the arrows on any carousel whose cards already fit (no horizontal overflow).
-    requestAnimationFrame(() => {
-      document.querySelectorAll('.site-ad-carousel').forEach(c => {
-        const t = c.querySelector('.site-ad-track');
-        const overflow = !!t && t.scrollWidth > t.clientWidth + 2;
-        c.querySelectorAll('.site-ad-nav').forEach(n => { n.style.display = overflow ? '' : 'none'; });
-      });
-    });
+    // Set up the infinite loop + hide arrows on any carousel whose cards already fit.
+    requestAnimationFrame(() => { if (typeof syncSiteAdArrows === 'function') syncSiteAdArrows(); });
   }
