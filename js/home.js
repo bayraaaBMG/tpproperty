@@ -102,40 +102,54 @@
   function homeLoopReals(track, sel) {
     return Array.from(track.children).filter(c => c.matches(sel) && !c.hasAttribute('data-loop-clone'));
   }
-  // Clone the real cards once (re-runnable) so the track can loop — only when they overflow.
+  // Instantly (invisibly) shift scrollLeft by whole cycles so it stays over the REAL cards — this
+  // is what makes touch-swipe AND arrows loop forever. The track has CSS scroll-behavior:smooth,
+  // so the shift is wrapped in an `auto` override to stay instant (else it would animate/be seen).
+  function homeLoopNormalize(track) {
+    const cycle = track._loopCycle; if (!cycle) return;
+    let target = track.scrollLeft; const start = target;
+    while (target >= 2 * cycle - 1) target -= cycle;   // drifted into the trailing clone copy
+    while (target < cycle - 1) target += cycle;         // drifted into the leading clone copy
+    if (Math.abs(target - start) > 0.5) {
+      const prev = track.style.scrollBehavior; track.style.scrollBehavior = 'auto';
+      track.scrollLeft = target; track.style.scrollBehavior = prev;
+    }
+  }
+  // Clone the real cards on BOTH sides (re-runnable) so the track loops in either direction for
+  // touch-swipe and arrows alike, and start centred on the real set. Only when they overflow.
   function homeSetupLoop(track) {
     if (!track) return;
     const sel = homeTrackCardSel(track);
     track.querySelectorAll('[data-loop-clone]').forEach(n => n.remove());
+    track._loopCycle = 0;
     const reals = homeLoopReals(track, sel);
     if (reals.length < 2 || track.scrollWidth <= track.clientWidth + 4) return;
-    const frag = document.createDocumentFragment();
+    const before = document.createDocumentFragment(), after = document.createDocumentFragment();
     reals.forEach(card => {
-      const c = card.cloneNode(true);
-      c.setAttribute('data-loop-clone', '1'); c.setAttribute('aria-hidden', 'true'); c.tabIndex = -1;
-      frag.appendChild(c);
+      const a = card.cloneNode(true); a.setAttribute('data-loop-clone', '1'); a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1; after.appendChild(a);
+      const b = card.cloneNode(true); b.setAttribute('data-loop-clone', '1'); b.setAttribute('aria-hidden', 'true'); b.tabIndex = -1; before.appendChild(b);
     });
-    track.appendChild(frag);
+    track.appendChild(after);
+    track.insertBefore(before, track.firstChild);
+    const firstReal = homeLoopReals(track, sel)[0];
+    const cycle = firstReal ? firstReal.offsetLeft : 0;   // width of one full set (the leading copy)
+    track._loopCycle = cycle;
+    const prev = track.style.scrollBehavior; track.style.scrollBehavior = 'auto';
+    track.scrollLeft = cycle; track.style.scrollBehavior = prev;   // centre on the real cards
+    // Normalise after every touch / wheel / programmatic scroll settles -> seamless infinite loop.
+    if (!track._loopWired) {
+      track._loopWired = true;
+      let tmr = null;
+      track.addEventListener('scroll', () => { if (tmr) clearTimeout(tmr); tmr = setTimeout(() => homeLoopNormalize(track), 90); }, { passive: true });
+    }
   }
-  // Step one card left/right (dir -1/1) with seamless wrap-around at both ends.
+  // Step one card left/right (dir -1/1). Loops seamlessly on looping tracks; plain scroll otherwise.
   function homeLoopStep(track, dir) {
     if (!track) return;
     const sel = homeTrackCardSel(track);
     const reals = homeLoopReals(track, sel);
-    const clones = track.querySelectorAll('[data-loop-clone]');
     const step = reals.length ? reals[0].getBoundingClientRect().width + homeTrackGap(track) : Math.max(200, track.clientWidth * 0.85);
-    if (clones.length && reals.length) {
-      const cycle = clones[0].offsetLeft - reals[0].offsetLeft;   // exact width of one full loop
-      if (cycle > 0) {
-        // The wrap must be INSTANT (invisible) — the track has CSS scroll-behavior:smooth, which
-        // would otherwise animate the jump, so override it just for this hop.
-        const prev = track.style.scrollBehavior;
-        track.style.scrollBehavior = 'auto';
-        if (dir > 0) { if (track.scrollLeft >= cycle - 1) track.scrollLeft -= cycle; }
-        else if (track.scrollLeft <= 1) track.scrollLeft += cycle;
-        track.style.scrollBehavior = prev;
-      }
-    }
+    if (track._loopCycle) homeLoopNormalize(track);     // keep centred so there's always room + a wrap
     track.scrollBy({ left: dir * step, behavior: 'smooth' });
   }
   function scrollHomeRow(btn, dir) {

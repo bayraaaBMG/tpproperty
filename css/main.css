@@ -479,7 +479,13 @@
   .hs-cat-arrow:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
   .hs-cat-arrow.prev { left: -6px; }
   .hs-cat-arrow.next { right: -6px; }
-  @media (max-width: 640px) { .hs-cat-arrow { display: none !important; } }   /* touch-scroll only on phones */
+  /* Phones: keep the arrows (tappable, clearer shadow, pulled just inside the edge) so the loop
+     works by tap AND swipe — JS still hides them when the row doesn't overflow. */
+  @media (max-width: 640px) {
+    .hs-cat-arrow { box-shadow: 0 2px 10px rgba(10, 22, 40, 0.22); }
+    .hs-cat-arrow.prev { left: 2px; }
+    .hs-cat-arrow.next { right: 2px; }
+  }
   .hs-cat-shortcut {
     display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0;
     width: 72px; min-height: 40px; padding: 6px 4px; border-radius: 10px; border: 1px solid transparent;
@@ -589,7 +595,10 @@
   @media (max-width: 640px) {
     .home-listings-grid { gap: 10px; }
     .home-listings-grid > .listing-card { width: 160px; }
-    .home-listings-arrow { display: none !important; }   /* touch-scroll only on phones */
+    /* Keep tappable arrows on phones (loop by tap + swipe). JS hides them when it doesn't overflow. */
+    .home-listings-arrow { width: 34px; height: 34px; font-size: 20px; box-shadow: 0 3px 12px rgba(10, 22, 40, 0.28); }
+    .home-listings-arrow.prev { left: 2px; }
+    .home-listings-arrow.next { right: 2px; }
   }
 
   /* ============ SECTION ============ */
@@ -1888,7 +1897,10 @@
   .site-ad-nav.prev { left: 6px; }
   .site-ad-nav.next { right: 6px; }
   @media (max-width: 640px) {
-    .site-ad-nav { display: none !important; }
+    /* Keep tappable arrows on phones (loop by tap + swipe). JS hides them when it doesn't overflow. */
+    .site-ad-nav { box-shadow: 0 3px 12px rgba(10, 22, 40, 0.28); }
+    .site-ad-nav.prev { left: 2px; }
+    .site-ad-nav.next { right: 2px; }
     .site-ad-track .site-ad-banner { width: min(88%, 320px); }
   }
   .site-ad-banner img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
