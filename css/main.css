@@ -371,9 +371,9 @@
     max-width: 900px; margin: 0 auto 20px;
   }
   .hero-tagline:empty { display: none; }
-  .hero-tagline em { font-style: italic; color: var(--primary); }
+  .hero-tagline em.hl { font-style: italic; color: var(--primary); }
   .hero-has-bg .hero-tagline { color: #fff; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.55); }
-  .hero-has-bg .hero-tagline em { color: var(--primary-glow); }
+  .hero-has-bg .hero-tagline em.hl { color: var(--primary-glow); }
   @media (max-width: 640px) { .hero-tagline { font-size: clamp(19px, 6vw, 26px); margin-bottom: 16px; } }
   h1.hero-compact-title {
     font-size: 20px; margin-bottom: 4px; font-weight: 700;

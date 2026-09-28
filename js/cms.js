@@ -546,12 +546,25 @@
     // applied as live inline style overrides on #heroTagline.
     const tag = document.getElementById('heroTagline');
     if (tag) {
-      if (typeof c.heroTagline === 'string' && c.heroTagline.trim()) tag.textContent = c.heroTagline.trim();
+      // Text: prefer the rich HTML (inline bold/italic/colour/size the admin set); fall back to the
+      // plain string; if both are empty keep the built-in default already in the markup.
+      if (typeof c.heroTaglineHtml === 'string' && cmsHeroHasContent(c.heroTaglineHtml)) {
+        tag.textContent = ''; tag.appendChild(cmsHeroRichFragment(c.heroTaglineHtml));
+      } else if (typeof c.heroTagline === 'string' && c.heroTagline.trim()) {
+        tag.textContent = c.heroTagline.trim();
+      }
       const size = parseInt(c.heroTaglineSize, 10);
       tag.style.fontSize = (isFinite(size) && size >= 10 && size <= 120) ? size + 'px' : '';
       const col = cmsSafeHex(c.heroTaglineColor);
       tag.style.color = col || '';
       tag.style.display = (c.heroTaglineVisible === false) ? 'none' : '';
+      // Whole-field formatting options (empty -> CSS default). No forced casing/font in CSS.
+      const tf = c.heroTaglineTransform;
+      tag.style.textTransform = (tf === 'uppercase' || tf === 'capitalize' || tf === 'lowercase') ? tf : '';
+      const wt = String(c.heroTaglineWeight || '');
+      tag.style.fontWeight = (wt === '400' || wt === '600' || wt === '700') ? wt : '';
+      const ff = c.heroTaglineFont;
+      tag.style.fontFamily = ff === 'sans' ? "'Manrope', sans-serif" : (ff === 'serif' ? "'Fraunces', serif" : '');
     }
     const map = { newTitle: 'homeNewTitle', featuredTitle: 'homeFeaturedTitle' };
     Object.keys(map).forEach(k => {
@@ -2040,16 +2053,30 @@
     const visible = c.heroTaglineVisible !== false;
     const size = (c.heroTaglineSize == null ? '' : String(c.heroTaglineSize));
     const color = cmsSafeHex(c.heroTaglineColor) || '';
+    const transform = ['none', 'uppercase', 'capitalize', 'lowercase'].indexOf(c.heroTaglineTransform) >= 0 ? c.heroTaglineTransform : 'none';
+    const weight = ['400', '600', '700'].indexOf(String(c.heroTaglineWeight)) >= 0 ? String(c.heroTaglineWeight) : '';
+    const font = ['serif', 'sans'].indexOf(c.heroTaglineFont) >= 0 ? c.heroTaglineFont : 'serif';
+    const sel = (cur, opts) => opts.map(([v, t]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
     return `
       <div class="cms-field"><label class="cms-label">Hero-ийн том бичвэр (хайлтын дээр)</label>
-        <input class="form-input" type="text" value="${esc(c.heroTagline || CMS_HERO_TAGLINE_DEFAULT)}" oninput="cmsUpdateField('${bid}','heroTagline', this.value)" /></div>
+        ${cmsHeroToolbarHtml()}
+        <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-block-id="${bid}" data-key="heroTaglineHtml" data-plain="heroTagline" data-default="${esc(CMS_HERO_TAGLINE_DEFAULT)}" oninput="cmsHeroInput(this)" aria-label="Hero бичвэр"></div>
+        <div style="font-size:11.5px;color:var(--ink-3);margin-top:5px;">Үг сонгоод <b>B</b>/<i>I</i>, өнгө, хэмжээ өгч болно. Том/жижиг үсэг бичсэнээрээ хэвээр харагдана.</div></div>
       <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" ${visible ? 'checked' : ''} onchange="cmsUpdateFieldBool('${bid}','heroTaglineVisible', this.checked); cmsSaveHint()" />
         <span class="cms-label" style="margin:0;">Нүүр хуудас дээр харуулах</span></label>
       <div class="cms-grid">
+        <div class="cms-field"><label class="cms-label">Үсгийн хэлбэр</label>
+          <select class="form-input" onchange="cmsUpdateField('${bid}','heroTaglineTransform', this.value)">${sel(transform, [['none', 'Хэвээр (бичсэнээр)'], ['uppercase', 'БҮГД ТОМ'], ['capitalize', 'Үг Бүрийн Эхэнд Том'], ['lowercase', 'бүгд жижиг']])}</select></div>
+        <div class="cms-field"><label class="cms-label">Үсгийн зузаан</label>
+          <select class="form-input" onchange="cmsUpdateField('${bid}','heroTaglineWeight', this.value)">${sel(weight, [['', 'Автомат'], ['400', 'Энгийн'], ['600', 'Хагас тод'], ['700', 'Тод']])}</select></div>
+        <div class="cms-field"><label class="cms-label">Фонтын хэв маяг</label>
+          <select class="form-input" onchange="cmsUpdateField('${bid}','heroTaglineFont', this.value)">${sel(font, [['serif', 'Serif (сонгодог)'], ['sans', 'Sans-serif (энгийн)']])}</select></div>
+      </div>
+      <div class="cms-grid">
         <div class="cms-field"><label class="cms-label">Бичвэрийн хэмжээ (px)</label>
           <input class="form-input" type="number" min="14" max="80" value="${esc(size)}" placeholder="Авто (жишээ: 42)" oninput="cmsUpdateField('${bid}','heroTaglineSize', this.value)" /></div>
-        <div class="cms-field"><label class="cms-label">Бичвэрийн өнгө</label>
+        <div class="cms-field"><label class="cms-label">Үндсэн өнгө</label>
           <div class="cms-theme-inputs">
             <input type="color" value="${color || '#ffffff'}" oninput="cmsUpdateField('${bid}','heroTaglineColor', this.value)" />
             <input type="text" class="form-input" value="${esc(color)}" maxlength="7" placeholder="Авто" oninput="cmsUpdateField('${bid}','heroTaglineColor', this.value)" />
@@ -2282,7 +2309,7 @@
       const c = (b && b.content) || {};
       const html = c[area.dataset.key];
       if (cmsHeroHasContent(html)) area.appendChild(cmsHeroRichFragment(html));      // safe DOM nodes
-      else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); }
+      else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); else if (area.dataset.default) area.appendChild(document.createTextNode(area.dataset.default)); }
     });
     if (typeof cmsUpdateBannerPreview === 'function') cmsUpdateBannerPreview();
   }
@@ -2411,6 +2438,7 @@
     if (typeof out.bodyHtml === 'string') out.bodyHtml = cmsSanitizeRichHtml(out.bodyHtml);   // strict allowlist
     if (typeof out.titleHtml === 'string') out.titleHtml = cmsSanitizeHeroHtml(out.titleHtml);
     if (typeof out.subtitleHtml === 'string') out.subtitleHtml = cmsSanitizeHeroHtml(out.subtitleHtml);
+    if (typeof out.heroTaglineHtml === 'string') out.heroTaglineHtml = cmsSanitizeHeroHtml(out.heroTaglineHtml);
     Object.keys(out).forEach(k => { if (/url$/i.test(k) && typeof out[k] === 'string') out[k] = cmsSafeUrl(out[k]); });
     if (out.color) out.color = cmsSafeHex(out.color);
     if (Array.isArray(content.items)) {
