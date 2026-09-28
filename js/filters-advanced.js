@@ -281,15 +281,17 @@
     // never match a subtype key (l.cat is always the broad bucket).
     if (currentCat !== 'all') results = results.filter(l => listingMatchesCategory(l, currentCat));
 
+    // "Зөвхөн онцлох" — narrow to featured (VIP) listings only (the whole list, not just a re-sort).
+    if (currentSort === 'featured-only') results = results.filter(l => listingIsFeatured(l));
+
     // Apply sort
     if (currentSort === 'price-asc') results.sort((a, b) => a.price - b.price);
     else if (currentSort === 'price-desc') results.sort((a, b) => b.price - a.price);
     else if (currentSort === 'area-desc') results.sort((a, b) => b.area - a.area);
     else if (currentSort === 'vip-first') results.sort((a, b) => {
-      const av = a.badges && a.badges.includes('vip') ? 1 : 0;
-      const bv = b.badges && b.badges.includes('vip') ? 1 : 0;
-      return bv - av || b.id - a.id;
+      return (listingIsFeatured(b) - listingIsFeatured(a)) || (listingRecencyMs(b) - listingRecencyMs(a)) || (b.id - a.id);
     });
+    else if (currentSort === 'featured-only') results.sort((a, b) => (listingRecencyMs(b) - listingRecencyMs(a)) || (b.id - a.id));
     else if (currentSort === 'date-asc') results.sort((a, b) => a.id - b.id);
     // Default: VIP/Featured-plan listings first (the plan's actual promised benefit), then
     // whichever is more recent of a paid bump or a content refresh (_lastRefreshedAtMs

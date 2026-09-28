@@ -1168,7 +1168,7 @@
       id: 0,
       img: s.images[0]?.previewUrl || s.images[0]?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
       title: s.title || 'Гарчиг оруулаагүй',
-      badges: [],
+      badges: (s.plan === 'vip' || s.plan === 'featured') ? ['vip'] : [],
       listingVerified: false, sellerVerified: false, userSubmitted: true,
       price: parseFloat(s.price) || 0,
       cat: s.intent === 'rent' ? 'rent' : propertyTypeBucket(s.propertyType || 'apartment'),
@@ -1841,12 +1841,12 @@
     // fallback strings is exactly how the old base64-in-Firestore bug happened).
     const allImages = s.images.map(im => im.url || im.localDataUrl).filter(Boolean);
     const allImagesSynced = s.images.length > 0 && s.images.every(im => !!im.url);
-    // VIP/Онцлох cards in the plan picker above are a preview only — no real payment
-    // system is connected, so selecting one must never actually grant the paid duration
-    // or badge here. Every new listing gets the same free (basic) terms regardless of
-    // s.plan; a real payment integration would need to gate this properly before it could
-    // vary. (openBoostModal's separate, already-disclosed demo boost flow for an existing
-    // published listing is untouched — this only concerns entitlement granted at creation.)
+    // "Онцлох" (VIP) is a self-service choice in the plan step: picking the VIP or Онцлох plan
+    // marks the listing featured (the 'vip' badge) so it flows into the home "Онцлох зарууд"
+    // section and the "Онцлох" sort automatically. There's no payment integration, so this only
+    // grants the featured FLAG, not the plans' longer durations (everyone still gets 30 days);
+    // and it still goes through admin review (status:'pending') before it can appear publicly.
+    const isFeaturedPlan = (s.plan === 'vip' || s.plan === 'featured');
     const now = Date.now();
     const expiresAt = now + 30 * 86400000;
     const newListing = {
@@ -1887,8 +1887,9 @@
       landArea: parseFloat(s.landArea) || null,
       usageType: usageTypeLabels[s.usageType] || '',
       tag: { type: 'new', text: 'Шинэ зар' },
-      // No "vip" badge here regardless of s.plan — see the expiresAt comment above.
-      badges: ['new', 'user'],
+      // 'vip' == featured/Онцлох (see isFeaturedPlan above): grants the featured flag when the
+      // user picked the VIP/Онцлох plan, so it auto-appears in the home "Онцлох" section + sort.
+      badges: isFeaturedPlan ? ['new', 'user', 'vip'] : ['new', 'user'],
       loanType: 'Тохиролцоно',
       monthly: 0,
       img: allImages[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
@@ -1998,7 +1999,7 @@
         sellerViber: currentUser.viber || '',
         status: 'pending', rejectionReason: '',
         badges: newListing.badges,
-        boosted: false,
+        boosted: (newListing.badges || []).includes('vip'),
         userSubmitted: true,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };

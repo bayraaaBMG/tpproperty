@@ -68,10 +68,10 @@
   function renderHomeListings() {
     const grid = document.getElementById('homeListingsGrid');
     if (grid) {
-      // VIP/Featured plans promise homepage placement — boosted listings sort first (by
-      // recency among themselves), everything else fills the remaining slots by recency.
+      // Strictly newest-first (created/updated DESC) — NO VIP boosting here. This section is
+      // purely "latest added / refreshed"; featured placement lives in the "Онцлох" section below.
       const recent = listings.filter(l => !l._inactive)
-        .sort((a, b) => (b.badges.includes('vip') - a.badges.includes('vip')) || (b.id - a.id))
+        .sort((a, b) => (listingRecencyMs(b) - listingRecencyMs(a)) || (b.id - a.id))
         .slice(0, 8);
       grid.innerHTML = recent.length ? recent.map(l => listingCardHtml(l)).join('') : buyerEmptyState({
         icon: BUYER_EMPTY_ICON_SEARCH,
@@ -186,16 +186,17 @@
   function renderFeaturedListings() {
     const grid = document.getElementById('homeFeaturedGrid');
     if (!grid) return;
-    const featured = listings.filter(l => !l._inactive)
-      .map(l => ({ l, score: propertyScore(l) }))
-      .sort((a, b) => b.score - a.score || b.id - a.id)
-      .slice(0, 8)
-      .map(x => x.l);
-    grid.innerHTML = featured.length ? featured.map(l => listingCardHtml(l)).join('') : buyerEmptyState({
-      icon: BUYER_EMPTY_ICON_SEARCH,
-      title: 'Одоогоор зар алга',
-      sub: 'Удахгүй шинэ зарууд нэмэгдэнэ.'
-    });
+    // ONLY admin/user-marked "Онцлох" (VIP) listings, newest-first. If none are featured the
+    // whole section (heading + carousel) hides rather than showing unrelated top-scored ads.
+    const featured = listings.filter(l => !l._inactive && listingIsFeatured(l))
+      .sort((a, b) => (listingRecencyMs(b) - listingRecencyMs(a)) || (b.id - a.id))
+      .slice(0, 8);
+    const head = document.getElementById('homeFeaturedHead');
+    const carousel = document.getElementById('homeFeaturedCarousel');
+    const has = featured.length > 0;
+    if (head) head.style.display = has ? '' : 'none';
+    if (carousel) carousel.style.display = has ? '' : 'none';
+    grid.innerHTML = has ? featured.map(l => listingCardHtml(l)).join('') : '';
   }
 
   // "Категориуд" — every count is a live tally over the real `listings` array, the same

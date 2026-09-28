@@ -303,7 +303,7 @@
       <button type="button" class="home-listings-arrow next" aria-label="Дараах" onclick="scrollHomeRow(this,1)">›</button>
     </div>
 
-    <div class="portal-section-head portal-section-head-spaced">
+    <div class="portal-section-head portal-section-head-spaced" id="homeFeaturedHead">
       <div>
         <h2 class="portal-section-title display" id="homeFeaturedTitle">Онцлох <em>зарууд</em></h2>
       </div>
@@ -312,7 +312,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
     </div>
-    <div class="home-carousel">
+    <div class="home-carousel" id="homeFeaturedCarousel">
       <button type="button" class="home-listings-arrow prev" aria-label="Өмнөх" onclick="scrollHomeRow(this,-1)">‹</button>
       <div id="homeFeaturedGrid" class="home-listings-grid"></div>
       <button type="button" class="home-listings-arrow next" aria-label="Дараах" onclick="scrollHomeRow(this,1)">›</button>
@@ -858,7 +858,8 @@
                 <option value="price-asc">Үнэ өсөх</option>
                 <option value="price-desc">Үнэ буурах</option>
                 <option value="area-desc">Талбай</option>
-                <option value="vip-first">⭐ VIP эхэндээ</option>
+                <option value="vip-first">⭐ Онцлох эхэндээ</option>
+                <option value="featured-only">⭐ Зөвхөн онцлох зар</option>
                 <option value="date-asc">Хуучин эхэлсэн</option>
               </select>
             </div>

@@ -220,6 +220,25 @@
     return new Date(ms).toLocaleDateString('mn-MN');
   }
 
+  // A single comparable "recency" value for sorting newest-first (created/updated DESC). Prefers a
+  // real bump/refresh timestamp, then the genuine createdAt/updatedAt; falls back to the numeric id
+  // so demo/legacy rows (which carry no timestamps) still order sensibly among themselves. Real
+  // timestamped listings therefore sort above id-only ones — i.e. genuinely recent posts on top.
+  function listingRecencyMs(l) {
+    if (!l) return 0;
+    const REAL_MS_THRESHOLD = 1000000000000; // ~Sept 2001; rules out id-sized fallback values
+    if (l._bumpedAt > REAL_MS_THRESHOLD) return l._bumpedAt;
+    if (l._createdAtMs > 0) return l._createdAtMs;
+    if (l._updatedAtMs > 0) return l._updatedAtMs;
+    return l.id || 0;
+  }
+  // "Featured/Онцлох" (VIP) status — the single source of truth used everywhere (home Онцлох
+  // section, the sort menu, the listing card). In this codebase a featured listing is one
+  // carrying the 'vip' boost badge (data.js: "VIP/Featured plans").
+  function listingIsFeatured(l) {
+    return !!(l && Array.isArray(l.badges) && l.badges.includes('vip'));
+  }
+
   // Days since a listing was last refreshed, using the fallback chain
   // lastRefreshedAt -> createdAt -> updatedAt (whichever is populated first) so legacy
   // listings created before this feature existed still get a sensible age instead of null.
