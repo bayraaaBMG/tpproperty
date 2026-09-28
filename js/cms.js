@@ -29,6 +29,14 @@
   // No page is block-based-info any more; every footer info modal renders from the shared
   // rich-text store (siteSettings/infoContent). Kept as an (empty) object so existing checks work.
   const CMS_INFO_PAGE_IDS = {};
+  // Info (rich-text) pages also surfaced in the "Вэбсайтын хуудсууд" list with Засах / Урьдчилан
+  // харах buttons. Засах jumps to the shared rich-text editor focused on that page; their content
+  // lives in siteSettings/infoContent (edited exactly like terms/privacy in Хөл хэсэг).
+  const CMS_LIST_INFO_PAGES = [
+    { id: 'about', title: 'Бидний тухай' },
+    { id: 'career', title: 'Карьер' },
+    { id: 'news', title: 'Мэдээ' }
+  ];
   // Pages whose functional content is code-controlled but which accept editable CMS blocks
   // rendered into a container at the top of the page (the "target" pattern newdev already used).
   const CMS_TARGET_CONTAINERS = {
@@ -1415,7 +1423,7 @@
               <span>Вэбсайтын хуудсууд</span>
               ${pageMeta['home'] ? '' : `<button class="btn btn-ghost btn-sm" onclick="cmsSeedFromCurrentContent()">Анхны агуулга үүсгэх</button>`}
             </div>
-            <div class="admin-list-table">${CMS_PAGES.map(pg => cmsPageRowHtml(pg, pageMeta[pg.id])).join('')}</div>
+            <div class="admin-list-table">${CMS_PAGES.map(pg => cmsPageRowHtml(pg, pageMeta[pg.id])).join('')}${CMS_LIST_INFO_PAGES.map(cmsInfoPageRowHtml).join('')}</div>
           </div>
           <div id="cmsEditorWrap"></div>
         </div>
@@ -1454,6 +1462,27 @@
         <div class="admin-row-title">${esc(pg.title)} ${cmsStatusPill(meta)}</div>
         <div class="admin-row-meta">Сүүлд шинэчилсэн: ${esc(updated)}</div>
       </div><div class="admin-row-actions">${actions}</div></div>`;
+  }
+  // Row for a rich-text info page (Бидний тухай / Карьер / Мэдээ) in the pages list. Засах opens
+  // the shared rich-text editor focused on this page; Урьдчилан харах opens its public modal.
+  function cmsInfoPageRowHtml(pg) {
+    return `<div class="admin-row"><div class="admin-row-body">
+        <div class="admin-row-title">${esc(pg.title)} <span class="admin-status-pill status-active">Rich text</span></div>
+        <div class="admin-row-meta">Хуудасны бичвэр — текст, зураг, хүснэгт, холбоос</div>
+      </div><div class="admin-row-actions">
+        <button class="btn btn-blue btn-sm" onclick="cmsOpenInfoEditor('${pg.id}')">Засах</button>
+        <button class="btn btn-ghost btn-sm" onclick="openInfoPage('${pg.id}')">Урьдчилан харах</button>
+      </div></div>`;
+  }
+  // Jump to the shared rich-text (info-content) editor in the footer tab, focused on `key`.
+  function cmsOpenInfoEditor(key) {
+    if (!cmsRequireEditor()) return;
+    _cmsInfoEditKey = key;
+    const tabBtn = document.querySelector('.cms-wrap .admin-tabs .mytab[onclick*="\'footer\'"]');
+    if (tabBtn) cmsSwitchTab(tabBtn, 'footer');
+    cmsInfoRerender();
+    const ed = document.getElementById('cmsInfoEditor');
+    if (ed) setTimeout(() => ed.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
   }
 
   // ---- Organization editor ----
