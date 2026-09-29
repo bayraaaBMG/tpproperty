@@ -176,7 +176,7 @@
   function siteAdCardStep(track) {
     const card = track.querySelector('.site-ad-banner');
     const cs = getComputedStyle(track); const gap = parseFloat(cs.columnGap || cs.gap || '0') || 0;
-    return card ? card.getBoundingClientRect().width + gap : Math.max(180, track.clientWidth / 5);
+    return card ? card.getBoundingClientRect().width + gap : Math.max(200, track.clientWidth / 4);
   }
   function siteAdYoyoTick(track) {
     const max = track.scrollWidth - track.clientWidth;

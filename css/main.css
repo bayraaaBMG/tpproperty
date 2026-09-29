@@ -1885,17 +1885,14 @@
     scrollbar-width: none; -webkit-overflow-scrolling: touch;
   }
   .site-ad-track::-webkit-scrollbar { display: none; }
-  /* 5 sponsored cards evenly across one row (4 x 12px gaps). Each is a compact vertical card
-     (image on top, text below) so it stays readable at ~1/5 width; the yoyo scroll reveals any
-     beyond the 5th. */
+  /* 4 sponsored cards across one row (3 x 12px gaps). The original compact HORIZONTAL banner
+     (small logo left, text right — inherited from .site-ad-banner); the yoyo scroll reveals any
+     beyond the 4th. */
   .site-ad-track .site-ad-banner {
-    margin-bottom: 0; flex: 0 0 auto; width: calc((100% - 48px) / 5); min-width: 150px;
-    flex-direction: column; align-items: stretch; gap: 10px; scroll-snap-align: start;
+    margin-bottom: 0; flex: 0 0 auto; width: calc((100% - 36px) / 4); min-width: 200px;
+    scroll-snap-align: start;
   }
-  .site-ad-track .site-ad-banner img { width: 100%; height: 92px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
-  /* A lone ad keeps the original full-width horizontal banner. */
-  .site-ad-track.single .site-ad-banner { width: 100%; flex-direction: row; align-items: center; gap: 16px; }
-  .site-ad-track.single .site-ad-banner img { width: 64px; height: 64px; }
+  .site-ad-track.single .site-ad-banner { width: 100%; }
   .site-ad-nav {
     position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
     width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
@@ -1910,9 +1907,8 @@
     .site-ad-nav { box-shadow: 0 3px 12px rgba(10, 22, 40, 0.28); }
     .site-ad-nav.prev { left: 2px; }
     .site-ad-nav.next { right: 2px; }
-    /* Phones can't fit 5 across — show a wider horizontal banner and swipe/yoyo through them. */
-    .site-ad-track .site-ad-banner { width: min(88%, 320px); flex-direction: row; align-items: center; gap: 14px; }
-    .site-ad-track .site-ad-banner img { width: 64px; height: 64px; }
+    /* Phones can't fit 4 across — show a wider horizontal banner and swipe/yoyo through them. */
+    .site-ad-track .site-ad-banner { width: min(88%, 320px); }
   }
   .site-ad-banner img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
   .site-ad-body { min-width: 0; }
