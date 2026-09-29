@@ -2345,10 +2345,14 @@
     const weight = ['400', '600', '700'].indexOf(String(c.heroTaglineWeight)) >= 0 ? String(c.heroTaglineWeight) : '';
     const font = ['serif', 'sans'].indexOf(c.heroTaglineFont) >= 0 ? c.heroTaglineFont : 'serif';
     const sel = (cur, opts) => opts.map(([v, t]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    // Embed the SAVED value directly at render time (rich HTML, else the plain string) so the
+    // editor binds to it reliably — independent of the _cmsDraft block lookup in cmsInitHeroEditors.
+    const seed = (typeof c.heroTaglineHtml === 'string' && c.heroTaglineHtml.trim()) ? c.heroTaglineHtml
+      : (typeof c.heroTagline === 'string' ? c.heroTagline : '');
     return `
       <div class="cms-field"><label class="cms-label">Hero-ийн том бичвэр (хайлтын дээр)</label>
         ${cmsHeroToolbarHtml()}
-        <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-block-id="${bid}" data-key="heroTaglineHtml" data-plain="heroTagline" data-default="${esc(CMS_HERO_TAGLINE_DEFAULT)}" oninput="cmsHeroInput(this)" aria-label="Hero бичвэр"></div>
+        <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-block-id="${bid}" data-key="heroTaglineHtml" data-plain="heroTagline" data-seed="${esc(seed)}" data-default="${esc(CMS_HERO_TAGLINE_DEFAULT)}" oninput="cmsHeroInput(this)" aria-label="Hero бичвэр"></div>
         <div style="font-size:11.5px;color:var(--ink-3);margin-top:5px;">Үг сонгоод <b>B</b>/<i>I</i>, өнгө, хэмжээ өгч болно. Том/жижиг үсэг бичсэнээрээ хэвээр харагдана.</div></div>
       <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" ${visible ? 'checked' : ''} onchange="cmsUpdateFieldBool('${bid}','heroTaglineVisible', this.checked); cmsSaveHint()" />
@@ -2611,7 +2615,10 @@
       }
       const b = _cmsDraft && _cmsDraft.find(x => x.id === area.dataset.blockId);
       const c = (b && b.content) || {};
-      const html = c[area.dataset.key];
+      let html = c[area.dataset.key];
+      // Fallback to the value embedded at render time (data-seed) if the block lookup missed it —
+      // this is what makes the saved value reliably bind back into the editor on reopen.
+      if (!cmsHeroHasContent(html) && cmsHeroHasContent(area.dataset.seed)) html = area.dataset.seed;
       if (cmsHeroHasContent(html)) area.appendChild(cmsHeroRichFragment(html));      // safe DOM nodes
       else { const plain = c[area.dataset.plain]; if (typeof plain === 'string' && plain) area.appendChild(document.createTextNode(plain)); else if (area.dataset.default) area.appendChild(document.createTextNode(area.dataset.default)); }
     });
