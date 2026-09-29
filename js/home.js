@@ -218,17 +218,21 @@
   function renderFeaturedListings() {
     const grid = document.getElementById('homeFeaturedGrid');
     if (!grid) return;
-    // ONLY admin/user-marked "Онцлох" (VIP) listings, newest-first. If none are featured the
-    // whole section (heading + carousel) hides rather than showing unrelated top-scored ads.
+    // ONLY admin/user-marked "Онцлох" (VIP) listings, newest-first. The section (heading +
+    // slider) ALWAYS shows — when nothing is featured yet, the slider shows a friendly empty
+    // state rather than hiding the whole section.
     const featured = listings.filter(l => !l._inactive && listingIsFeatured(l))
       .sort((a, b) => (listingRecencyMs(b) - listingRecencyMs(a)) || (b.id - a.id))
       .slice(0, 8);
     const head = document.getElementById('homeFeaturedHead');
     const carousel = document.getElementById('homeFeaturedCarousel');
-    const has = featured.length > 0;
-    if (head) head.style.display = has ? '' : 'none';
-    if (carousel) carousel.style.display = has ? '' : 'none';
-    grid.innerHTML = has ? featured.map(l => listingCardHtml(l)).join('') : '';
+    if (head) head.style.display = '';
+    if (carousel) carousel.style.display = '';
+    grid.innerHTML = featured.length ? featured.map(l => listingCardHtml(l)).join('') : buyerEmptyState({
+      icon: BUYER_EMPTY_ICON_SEARCH,
+      title: 'Онцлох зар одоогоор байхгүй байна',
+      sub: 'Онцлох (VIP) зар нэмэгдмэгц энд харагдана.'
+    });
   }
 
   // "Категориуд" — every count is a live tally over the real `listings` array, the same
