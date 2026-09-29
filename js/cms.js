@@ -243,7 +243,9 @@
     return {
       name: 'TP Property', description: 'Үл хөдлөх хөрөнгийн худалдаа, түрээс, зуучлалын мэргэжлийн үйлчилгээ.',
       phone: '', email: '', website: '', address: '', workingHours: '',
-      facebook: 'https://www.facebook.com/TPprivatepropertyLLC', instagram: '', youtube: '', tiktok: '', mapUrl: '', logoUrl: ''
+      facebook: 'https://www.facebook.com/TPprivatepropertyLLC', instagram: '', youtube: '', tiktok: '', mapUrl: '', logoUrl: '',
+      // Footer bottom row: the year is generated automatically; these two are admin-editable.
+      footerLegal: 'Бүх эрх хуулиар хамгаалагдсан.', footerNote: 'Made with care in Ulaanbaatar'
     };
   }
   function cmsDefaultTheme() {
@@ -1147,8 +1149,100 @@
     if (fb) { const u = cmsSafeUrl(org.facebook); if (u) { fb.setAttribute('href', u); fb.hidden = false; } else fb.hidden = true; }
     const ig = document.querySelector('.footer a[aria-label="Instagram"]');
     if (ig) { const u = cmsSafeUrl(org.instagram); if (u) { ig.setAttribute('href', u); ig.hidden = false; } else ig.hidden = true; }
+    // Footer bottom row — year auto-generated, name + legal/note admin-editable (Байгууллага).
+    const cop = document.getElementById('footerCopyright');
+    if (cop) cop.textContent = '© ' + new Date().getFullYear() + ' ' + (org.name || 'TP Property') + '. ' + (org.footerLegal || 'Бүх эрх хуулиар хамгаалагдсан.');
+    const note = document.getElementById('footerNote');
+    if (note && typeof org.footerNote === 'string') note.textContent = org.footerNote;
     cmsApplyLogo(org);
   }
+  // ---- Category shortcuts (siteSettings/categoryShortcuts) — the tiles under the home search bar.
+  // Admin manages label / icon / colour / order / visibility; public read, admin write. ----
+  // Curated, key-selected icons (never raw markup from data) — same XSS-safe pattern as features.
+  const CMS_CAT_ICONS = [
+    { key: 'apartment', label: 'Орон сууц', svg: '<path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 3v7"/>' },
+    { key: 'key', label: 'Түлхүүр', svg: '<circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3M17 6l3 3M14 9l2 2"/>' },
+    { key: 'newbuilding', label: 'Шинэ барилга', svg: '<path d="M4 21h16M6 21V10a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11M9 21v-4h6v4"/><path d="M12 8V3m0 0h5m-5 0-3 3"/>' },
+    { key: 'office', label: 'Оффис', svg: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+    { key: 'house', label: 'Байшин', svg: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { key: 'land', label: 'Газар', svg: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>' },
+    { key: 'cottage', label: 'Зуслан', svg: '<path d="M4 21V11L12 4l8 7v10"/><path d="M9 21v-6h6v6"/>' },
+    { key: 'garage', label: 'Гараж', svg: '<path d="M3 21V9l9-6 9 6v12"/><path d="M5 21v-8h14v8"/>' },
+    { key: 'shop', label: 'Дэлгүүр', svg: '<path d="M3 9l1-5h16l1 5M4 9h16v11H4z"/><path d="M9 20v-6h6v6"/>' },
+    { key: 'map', label: 'Газрын зураг', svg: '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>' },
+    { key: 'star', label: 'Од', svg: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' }
+  ];
+  function cmsCatIconSvg(key) {
+    const f = CMS_CAT_ICONS.find(i => i.key === key) || CMS_CAT_ICONS[0];
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + f.svg + '</svg>';
+  }
+  // Allowed shortcut destinations — a fixed set so a tile can only ever run a known, safe action
+  // (a category filter or a page route), never arbitrary code from stored data.
+  const CMS_CAT_TARGETS = {
+    apartment:  { label: 'Орон сууц', kind: 'cat', value: 'apartment' },
+    rent:       { label: 'Түрээс', kind: 'page', value: 'rent' },
+    newdev:     { label: 'Шинэ орон сууц', kind: 'page', value: 'newdev' },
+    office:     { label: 'Оффис', kind: 'cat', value: 'office' },
+    house:      { label: 'Хашаа байшин', kind: 'cat', value: 'house' },
+    land:       { label: 'Газар', kind: 'cat', value: 'land' },
+    cottage:    { label: 'Зуслан', kind: 'cat', value: 'cottage' },
+    garage:     { label: 'Гараж', kind: 'cat', value: 'garage' },
+    commercial: { label: 'Худалдаа үйлчилгээ', kind: 'cat', value: 'commercial' }
+  };
+  function cmsCatShortcutGo(targetKey) {
+    const t = CMS_CAT_TARGETS[targetKey]; if (!t) return;
+    if (t.kind === 'page' && typeof showPage === 'function') showPage(t.value);
+    else if (t.kind === 'cat' && typeof goHomeCategory === 'function') goHomeCategory(t.value);
+  }
+  function cmsHexToRgba(hex, alpha) {
+    const h = cmsSafeHex(hex); if (!h) return 'var(--primary-soft)';
+    const s = h.slice(1); const full = s.length === 3 ? s.split('').map(c => c + c).join('') : s;
+    const r = parseInt(full.slice(0, 2), 16), g = parseInt(full.slice(2, 4), 16), b = parseInt(full.slice(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+  function cmsDefaultCategoryShortcuts() {
+    return { items: [
+      { target: 'apartment',  label: 'Орон сууц',          icon: 'apartment',   color: '#272B68', visible: true },
+      { target: 'rent',       label: 'Түрээс',             icon: 'key',         color: '#C77700', visible: true },
+      { target: 'newdev',     label: 'Шинэ орон сууц',      icon: 'newbuilding', color: '#272B68', visible: true },
+      { target: 'office',     label: 'Оффис',              icon: 'office',      color: '#7B2CBF', visible: true },
+      { target: 'house',      label: 'Хашаа байшин',        icon: 'house',       color: '#00A886', visible: true },
+      { target: 'land',       label: 'Газар',              icon: 'land',        color: '#009878', visible: true },
+      { target: 'cottage',    label: 'Зуслан',             icon: 'cottage',     color: '#00A886', visible: true },
+      { target: 'garage',     label: 'Гараж',              icon: 'garage',      color: '#00A886', visible: true },
+      { target: 'commercial', label: 'Худалдаа үйлчилгээ',  icon: 'shop',        color: '#7B2CBF', visible: true }
+    ] };
+  }
+  let _cmsCatShortcutsCache = null;
+  async function cmsLoadCategoryShortcuts() {
+    if (_cmsCatShortcutsCache) return _cmsCatShortcutsCache;
+    let cfg = cmsDefaultCategoryShortcuts();
+    try { const snap = await db.collection('siteSettings').doc('categoryShortcuts').get(); if (snap.exists && snap.data() && Array.isArray(snap.data().items)) cfg = snap.data(); }
+    catch (e) { if (e.code !== 'permission-denied') console.error('cmsLoadCategoryShortcuts failed:', e.code, e.message); }
+    _cmsCatShortcutsCache = cfg; return cfg;
+  }
+  // Rebuild the tiles under the home search bar from the admin config (safe DOM only: key-selected
+  // icon SVG, validated colour, textContent label, and a fixed-set click action).
+  function cmsApplyCategoryShortcuts(cfg) {
+    const host = document.getElementById('homeCatShortcuts'); if (!host) return;
+    const src = (cfg && Array.isArray(cfg.items) && cfg.items.length) ? cfg.items : cmsDefaultCategoryShortcuts().items;
+    const items = src.filter(it => it && it.visible !== false && CMS_CAT_TARGETS[it.target]);
+    host.textContent = '';
+    items.forEach(it => {
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'hs-cat-shortcut';
+      const tk = it.target; btn.addEventListener('click', function () { cmsCatShortcutGo(tk); });
+      const icon = document.createElement('span'); icon.className = 'hs-cs-icon';
+      const color = cmsSafeHex(it.color) || '#272B68';
+      icon.style.setProperty('--cat-color', color);
+      icon.style.setProperty('--cat-color-soft', cmsHexToRgba(color, 0.14));
+      icon.innerHTML = cmsCatIconSvg(it.icon);
+      btn.appendChild(icon);
+      btn.appendChild(document.createTextNode(String(it.label || (CMS_CAT_TARGETS[tk] || {}).label || '')));
+      host.appendChild(btn);
+    });
+    if (typeof requestAnimationFrame === 'function' && typeof syncHomeCarouselArrows === 'function') requestAnimationFrame(syncHomeCarouselArrows);
+  }
+
   // ---- Footer columns + links (siteSettings/footer) — public read, admin write ----
   function cmsDefaultFooter() {
     return { columns: [
@@ -1294,12 +1388,12 @@
   }
   async function applySiteCms() {
     try {
-      const [sections, org, theme, nav, banner, footer, sysPages] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner(), cmsLoadFooter(), cmsLoadSystemPages()]);
+      const [sections, org, theme, nav, banner, footer, sysPages, catShortcuts] = await Promise.all([cmsLoadPublishedPage('home'), cmsLoadOrganization(), cmsLoadTheme(), cmsLoadNav(), cmsLoadHeroBanner(), cmsLoadFooter(), cmsLoadSystemPages(), cmsLoadCategoryShortcuts()]);
       cmsApplyTheme(theme);
       const by = cmsBySection(sections);
       cmsApplyHero(by.hero); cmsApplyBanks(by.banks); cmsApplyFeatures(by.features); cmsApplyHomeHeadings(by.headings);
       cmsRenderAdditiveBlocks(sections); cmsApplyOrganization(org); cmsApplySectionOrder(sections); cmsApplyNav(nav);
-      cmsApplyHeroBanner(banner); cmsApplyFooter(footer); cmsApplySystemPages(sysPages);
+      cmsApplyHeroBanner(banner); cmsApplyFooter(footer); cmsApplySystemPages(sysPages); cmsApplyCategoryShortcuts(catShortcuts);
       applyHomeAgents();
       const seo = await cmsLoadPublishedSeo('home'); cmsApplySeo('home', seo);
     } catch (e) { console.error('applySiteCms failed:', e.code, e.message); }
@@ -1406,6 +1500,7 @@
       CMS_SYSTEM_PAGES.forEach(pg => { o[pg.id] = Object.assign({}, d[pg.id] || {}); });
       return o;
     }).catch(() => cmsDefaultSystemPages());
+    _cmsCatShortcutsDraft = await cmsLoadCategoryShortcuts().then(c => ({ items: (c.items || cmsDefaultCategoryShortcuts().items).map(it => Object.assign({}, it)) })).catch(() => cmsDefaultCategoryShortcuts());
     el.innerHTML = `
       <div class="cms-wrap">
         <div class="admin-tabs" style="margin-bottom:16px;">
@@ -1414,6 +1509,7 @@
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'footer')">Хөл хэсэг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'catshortcuts')">Ангилалын товч</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Баннерын зураг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'agents')">Онцлох агентууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'theme')">Дизайн ба өнгө</button>
@@ -1437,6 +1533,7 @@
         </div>
         <div id="cmsTab-footer" hidden><div id="cmsFooterEditor">${cmsFooterEditorHtml(_cmsFooterDraft)}</div><div id="cmsInfoEditor">${cmsInfoEditorHtml()}</div></div>
         <div id="cmsTab-nav" hidden><div id="cmsNavEditor"></div></div>
+        <div id="cmsTab-catshortcuts" hidden><div class="admin-panel"><div id="cmsCatShortcutsEditor">${cmsCategoryShortcutsEditorHtml()}</div></div></div>
         <div id="cmsTab-herobanner" hidden><div id="cmsHeroBannerEditor">${cmsHeroBannerEditorHtml(_cmsHeroBannerDraft)}</div></div>
         <div id="cmsTab-agents" hidden><div id="cmsAgentsEditor"></div></div>
         <div id="cmsTab-theme" hidden><div id="cmsThemeEditor">${cmsThemeEditorHtml(_cmsThemeDraft)}</div></div>
@@ -1449,7 +1546,7 @@
   function cmsSwitchTab(btn, tab) {
     document.querySelectorAll('.cms-wrap .admin-tabs .mytab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['pages', 'syspages', 'org', 'footer', 'nav', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
+    ['pages', 'syspages', 'org', 'footer', 'nav', 'catshortcuts', 'herobanner', 'agents', 'theme'].forEach(t => { const e = document.getElementById('cmsTab-' + t); if (e) e.hidden = t !== tab; });
     if (tab === 'agents' && !_cmsAgentPool) cmsFetchAgentPool();
   }
   function cmsStatusPill(meta) { const pub = meta && meta.status === 'published'; return `<span class="admin-status-pill status-${pub ? 'active' : 'pending'}">${pub ? 'Нийтэлсэн' : 'Ноорог'}</span>`; }
@@ -1508,6 +1605,11 @@
         </div></div>
       <div class="cms-field" style="margin-top:10px;"><label class="cms-label">Тайлбар</label>
         <textarea class="form-input" id="cmsOrg-description" rows="2">${esc(org.description || '')}</textarea></div>
+      <div class="cms-grid" style="margin-top:10px;">
+        ${cmsOrgField('Footer эрхийн мэдэгдэл', 'footerLegal', org.footerLegal)}
+        ${cmsOrgField('Footer тэмдэглэл', 'footerNote', org.footerNote)}
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-3);margin-top:4px;">Footer доод мөр: "© [он] [Нэр]. [эрхийн мэдэгдэл]" — он автоматаар шинэчлэгдэнэ.</div>
       <div style="margin-top:12px;"><button class="btn btn-blue" onclick="cmsSaveOrganization()">Хадгалах</button></div>`;
   }
   function cmsReadOrgForm() {
@@ -1515,7 +1617,8 @@
     return { name: g('name').trim(), phone: g('phone').trim(), email: g('email').trim(), website: cmsSafeUrl(g('website')),
       address: g('address').trim(), workingHours: g('workingHours').trim(), facebook: cmsSafeUrl(g('facebook')),
       instagram: cmsSafeUrl(g('instagram')), youtube: cmsSafeUrl(g('youtube')), tiktok: cmsSafeUrl(g('tiktok')),
-      mapUrl: cmsSafeUrl(g('mapUrl')), description: g('description').trim(), logoUrl: (_cmsOrgDraft && _cmsOrgDraft.logoUrl) || '' };
+      mapUrl: cmsSafeUrl(g('mapUrl')), description: g('description').trim(), logoUrl: (_cmsOrgDraft && _cmsOrgDraft.logoUrl) || '',
+      footerLegal: g('footerLegal').trim().slice(0, 200), footerNote: g('footerNote').trim().slice(0, 200) };
   }
   async function cmsSaveOrganization() {
     if (!cmsRequireEditor()) return;
@@ -1659,6 +1762,70 @@
       showToast('Цэс хадгалагдлаа', 'success');
       const nv = await cmsLoadNav(); cmsApplyNav(nv);
     } catch (e) { console.error('cmsSaveNav failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
+  }
+
+  // ---- "Ангилалын товч" editor (siteSettings/categoryShortcuts) ----
+  let _cmsCatShortcutsDraft = null;
+  function cmsCategoryShortcutsEditorHtml() {
+    const d = _cmsCatShortcutsDraft || cmsDefaultCategoryShortcuts();
+    const items = Array.isArray(d.items) ? d.items : [];
+    const iconOpts = cur => CMS_CAT_ICONS.map(ic => `<option value="${ic.key}" ${cur === ic.key ? 'selected' : ''}>${esc(ic.label)}</option>`).join('');
+    const targetOpts = cur => Object.keys(CMS_CAT_TARGETS).map(k => `<option value="${k}" ${cur === k ? 'selected' : ''}>${esc(CMS_CAT_TARGETS[k].label)}</option>`).join('');
+    const rows = items.map((it, i) => {
+      const color = cmsSafeHex(it.color) || '#272B68';
+      const head = esc(it.label || (CMS_CAT_TARGETS[it.target] || {}).label || ('Товч ' + (i + 1)));
+      return `<div class="cms-item ${it.visible === false ? 'cms-item-hidden' : ''}">
+        <div class="cms-item-head"><span>${head}${it.visible === false ? ' <span style="font-size:10px;color:var(--ink-3);">(нуусан)</span>' : ''}</span>
+          <div class="cms-block-controls">
+            <button class="cms-ctrl" title="Дээш" onclick="cmsCatMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button class="cms-ctrl" title="Доош" onclick="cmsCatMove(${i},1)" ${i === items.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="cms-ctrl" title="${it.visible === false ? 'Харагдуулах' : 'Нуух'}" onclick="cmsCatToggle(${i})">${it.visible === false ? '🚫' : '👁'}</button>
+            <button class="cms-ctrl cms-ctrl-danger" title="Устгах" onclick="cmsCatDelete(${i})">🗑</button>
+          </div></div>
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">Нэр</label><input class="form-input" type="text" value="${esc(it.label || '')}" oninput="cmsCatField(${i},'label',this.value)" /></div>
+          <div class="cms-field"><label class="cms-label">Үйлдэл (хаашаа очих)</label><select class="form-input" onchange="cmsCatField(${i},'target',this.value)">${targetOpts(it.target)}</select></div>
+        </div>
+        <div class="cms-grid">
+          <div class="cms-field"><label class="cms-label">Икон</label><select class="form-input" onchange="cmsCatField(${i},'icon',this.value)">${iconOpts(it.icon)}</select></div>
+          <div class="cms-field"><label class="cms-label">Өнгө</label><div class="cms-theme-inputs"><input type="color" value="${color}" oninput="cmsCatField(${i},'color',this.value)" /><input type="text" class="form-input" value="${esc(color)}" maxlength="7" oninput="cmsCatField(${i},'color',this.value)" /></div></div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <span>Ангилалын товч (нүүр хайлтын доор)</span>
+        <div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" onclick="cmsCatRestore()">Анхны байдлаар</button><button class="btn btn-blue btn-sm" onclick="cmsSaveCategoryShortcuts()">Хадгалах</button></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 14px;">Нүүр хуудасны хайлтын доорх ангиллын товчнуудын нэр, икон, өнгө, дараалал, харагдацыг эндээс удирдана.</p>
+      ${rows}
+      <div style="margin-top:12px;"><button class="btn btn-ghost btn-sm" onclick="cmsCatAdd()">+ Товч нэмэх</button></div>`;
+  }
+  function cmsCatRerender() { const e = document.getElementById('cmsCatShortcutsEditor'); if (e) e.innerHTML = cmsCategoryShortcutsEditorHtml(); }
+  function cmsCatEnsureDraft() { _cmsCatShortcutsDraft = _cmsCatShortcutsDraft || cmsDefaultCategoryShortcuts(); _cmsCatShortcutsDraft.items = Array.isArray(_cmsCatShortcutsDraft.items) ? _cmsCatShortcutsDraft.items : []; return _cmsCatShortcutsDraft; }
+  function cmsCatField(i, k, v) { const d = cmsCatEnsureDraft(); if (!d.items[i]) return; d.items[i][k] = v; }  // no rerender -> inputs keep focus
+  function cmsCatMove(i, dir) { const d = cmsCatEnsureDraft(); const j = i + dir; if (j < 0 || j >= d.items.length) return; const t = d.items[i]; d.items[i] = d.items[j]; d.items[j] = t; cmsCatRerender(); }
+  function cmsCatToggle(i) { const d = cmsCatEnsureDraft(); if (!d.items[i]) return; d.items[i].visible = d.items[i].visible === false; cmsCatRerender(); }
+  function cmsCatDelete(i) { const d = cmsCatEnsureDraft(); d.items.splice(i, 1); cmsCatRerender(); }
+  function cmsCatAdd() { const d = cmsCatEnsureDraft(); d.items.push({ target: 'apartment', label: 'Шинэ товч', icon: 'apartment', color: '#272B68', visible: true }); cmsCatRerender(); }
+  function cmsCatRestore() { if (!confirm('Ангилалын товчнуудыг анхны байдлаар сэргээх үү?')) return; _cmsCatShortcutsDraft = cmsDefaultCategoryShortcuts(); cmsCatRerender(); }
+  function cmsCleanCategoryShortcuts(draft) {
+    const items = (draft && Array.isArray(draft.items) ? draft.items : []).map(it => {
+      const target = CMS_CAT_TARGETS[it && it.target] ? it.target : 'apartment';
+      const icon = CMS_CAT_ICONS.find(x => x.key === (it && it.icon)) ? it.icon : 'apartment';
+      return { target, label: String((it && it.label) || CMS_CAT_TARGETS[target].label).slice(0, 60).trim(), icon, color: cmsSafeHex(it && it.color) || '#272B68', visible: !(it && it.visible === false) };
+    });
+    return { items };
+  }
+  async function cmsSaveCategoryShortcuts() {
+    if (!cmsRequireEditor()) return;
+    const cfg = cmsCleanCategoryShortcuts(_cmsCatShortcutsDraft);
+    try {
+      await db.collection('siteSettings').doc('categoryShortcuts').set(Object.assign(cfg, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }));
+      _cmsCatShortcutsCache = null;
+      logAdminAction('cms_cat_shortcuts', 'siteSettings', 'categoryShortcuts', '');
+      showToast('Ангилалын товч хадгалагдлаа', 'success');
+      const nv = await cmsLoadCategoryShortcuts(); cmsApplyCategoryShortcuts(nv);
+    } catch (e) { console.error('cmsSaveCategoryShortcuts failed:', e.code, e.message); showToast('Хадгалахад алдаа гарлаа' + (e.code ? ' (' + e.code + ')' : '')); }
   }
 
   // ---- "Бусад хуудсууд" editor (siteSettings/systemPages) ----
