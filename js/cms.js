@@ -2225,6 +2225,27 @@
   }
 
   // ---- Page editor ----
+  // Fill any hero/homeHeadings field the draft is missing/empty from the published snapshot, so
+  // the editor always reflects what is live even if the draft and published copies drifted apart.
+  // Non-empty draft values (unpublished edits) are preserved; only empty/missing ones are filled.
+  function cmsBackfillHomeFromPublished(draft, pubSections) {
+    if (!Array.isArray(draft) || !Array.isArray(pubSections)) return draft;
+    // Match a published section to a draft block by type OR by id — the id match recovers content
+    // saved by the old build that mangled "homeHeadings" -> "homeeadings" (its id is still "headings").
+    const findPub = dblk => pubSections.find(s => s && (s.type === dblk.type || (dblk.id && s.id === dblk.id)));
+    ['hero', 'homeHeadings'].forEach(type => {
+      const dblk = draft.find(b => b.type === type); const pblk = dblk && findPub(dblk);
+      if (dblk && pblk && pblk.content && typeof pblk.content === 'object') {
+        dblk.content = dblk.content || {};
+        Object.keys(pblk.content).forEach(k => {
+          if (k === 'items') return;
+          const dv = dblk.content[k], pv = pblk.content[k];
+          if ((dv === undefined || dv === null || dv === '') && pv !== undefined && pv !== null && pv !== '') dblk.content[k] = pv;
+        });
+      }
+    });
+    return draft;
+  }
   async function cmsOpenPageEditor(pageId) {
     if (!cmsRequireEditor()) return;
     const pg = CMS_PAGES.find(p => p.id === pageId); if (!pg || !pg.editable) return;
@@ -2252,6 +2273,18 @@
         if (!feat.content.eyebrow) feat.content.eyebrow = 'Бүх боломжууд';
         if (!feat.content.title) feat.content.title = 'Үл хөдлөхийн бүх асуудал нэг л дор';
       }
+    }
+    // Backfill the home system blocks (Гарчиг (Hero) + Хэсгийн гарчгууд) from the PUBLISHED
+    // snapshot: if the loaded draft is missing a field that the live site already shows, fill it
+    // in so reopening the editor always reflects what is actually published. This is what makes
+    // the saved hero tagline / its transform / size / colour bind back into the form on reload
+    // (previously the form fell back to defaults when the draft and published copies had drifted).
+    if (pageId === 'home') {
+      try {
+        const pub = await db.collection('sitePagesPublic').doc('home').get();
+        const pubSections = (pub.exists && Array.isArray(pub.data().sections)) ? pub.data().sections : [];
+        cmsBackfillHomeFromPublished(draft, pubSections);
+      } catch (e) { /* published backfill is best-effort */ }
     }
     _cmsDraft = draft.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     cmsRenderEditor();
@@ -2746,7 +2779,10 @@
     return clean || (fallback + '-' + Math.random().toString(36).slice(2, 8));
   }
   function cmsNormaliseDraft(sections) {
-    return sections.map((b, idx) => ({ id: cmsSafeId(b.id, b.type || 'block'), type: String(b.type).replace(/[^a-z]/g, ''), order: idx + 1, visible: b.visible !== false, content: cmsCleanContent(b.type, b.content) }));
+    // NOTE: [^a-zA-Z] (not [^a-z]) — camelCase block types like "homeHeadings" must keep their
+    // uppercase letters. Stripping them turned "homeHeadings" into "homeeadings", which
+    // cmsSanitizeSections then dropped on reopen, silently losing the block's saved content.
+    return sections.map((b, idx) => ({ id: cmsSafeId(b.id, b.type || 'block'), type: String(b.type).replace(/[^a-zA-Z]/g, ''), order: idx + 1, visible: b.visible !== false, content: cmsCleanContent(b.type, b.content) }));
   }
   function cmsCleanContent(type, content) {
     content = content || {}; const out = {};
