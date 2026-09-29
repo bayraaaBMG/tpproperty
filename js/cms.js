@@ -654,6 +654,16 @@
       if (cmsHeroHasContent(c.subtitleHtml)) { subEl.textContent = ''; subEl.appendChild(cmsHeroRichFragment(c.subtitleHtml)); }
       else if (typeof c.subtitle === 'string') subEl.textContent = c.subtitle;
     }
+    // Hero CTA button (Товч 1) — the hero block is now the single place that manages the hero's
+    // title / subtitle / button (the old "Гол баннер" tab no longer duplicates them).
+    const cta = document.getElementById('heroCtaBtn');
+    if (cta) {
+      const href = cmsSafeUrl(c.buttonUrl);
+      if (c.buttonText && href) {
+        cta.hidden = false; cta.textContent = String(c.buttonText); cta.setAttribute('href', href);
+        cta.setAttribute('target', '_blank'); cta.setAttribute('rel', 'noopener noreferrer'); cta.onclick = null;
+      } else { cta.hidden = true; cta.textContent = ''; cta.removeAttribute('href'); cta.onclick = null; }
+    }
   }
   function cmsRenderBrandTitle(el, text) {
     const BRAND = 'TP Property'; el.textContent = '';
@@ -986,24 +996,9 @@
       section.classList.remove('hero-has-bg');
       bgLayer.style.backgroundImage = '';
     }
-    // Rich headline / subheadline override the block-hero title only when set (sanitized nodes).
-    const titleEl = document.querySelector('.hero-compact-title'), subEl = document.querySelector('.hero-compact-sub');
-    if (titleEl && cmsHeroHasContent(b.headlineHtml)) { titleEl.textContent = ''; titleEl.appendChild(cmsHeroRichFragment(b.headlineHtml)); }
-    if (subEl && cmsHeroHasContent(b.subheadlineHtml)) { subEl.textContent = ''; subEl.appendChild(cmsHeroRichFragment(b.subheadlineHtml)); }
-    // Search widget visibility
+    // Title / subtitle / CTA are managed by the hero block (cmsApplyHero) — this record only
+    // drives the banner IMAGE + geometry and the search-widget visibility (no title duplication).
     const sw = document.getElementById('homeSearchWidget'); if (sw) sw.hidden = b.showSearchWidget === false;
-    // CTA button
-    const cta = document.getElementById('heroCtaBtn');
-    if (cta) {
-      const raw = String(b.ctaLink || '').trim();
-      const internal = /^#[a-z0-9_-]{1,40}$/i.test(raw) ? raw.slice(1) : '';
-      const href = internal ? raw : cmsSafeUrl(raw);
-      if (b.showCta && b.ctaText && href) {
-        cta.hidden = false; cta.textContent = String(b.ctaText); cta.setAttribute('href', href);
-        if (internal) { cta.onclick = function (e) { e.preventDefault(); if (typeof showPage === 'function') showPage(internal); }; cta.removeAttribute('target'); cta.removeAttribute('rel'); }
-        else { cta.onclick = null; cta.setAttribute('target', '_blank'); cta.setAttribute('rel', 'noopener noreferrer'); }
-      } else { cta.hidden = true; cta.textContent = ''; cta.removeAttribute('href'); cta.onclick = null; }
-    }
   }
 
   // ---- Featured agents (site_settings/home_agents) — admin-curated PUBLIC fields only.
@@ -1419,7 +1414,7 @@
           <button class="mytab" onclick="cmsSwitchTab(this,'org')">Байгууллага</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'footer')">Хөл хэсэг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'nav')">Толгой ба цэс</button>
-          <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Гол баннер</button>
+          <button class="mytab" onclick="cmsSwitchTab(this,'herobanner')">Баннерын зураг</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'agents')">Онцлох агентууд</button>
           <button class="mytab" onclick="cmsSwitchTab(this,'theme')">Дизайн ба өнгө</button>
         </div>
@@ -1721,9 +1716,10 @@
     const sizeC = hb.backgroundSize === 'contain' ? 'contain' : 'cover';
     return `<div class="admin-panel">
       <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span>Гол баннер (Hero)</span>
+        <span>Баннерын зураг</span>
         <button class="btn btn-blue btn-sm" onclick="cmsSaveHeroBanner()">Хадгалах</button>
       </div>
+      <div style="padding:0 16px;font-size:12.5px;color:var(--ink-3);">Гарчиг, дэд гарчиг, товчийг <strong>Хуудсууд → Нүүр хуудас → "Гарчиг (Hero)"</strong> хэсгээс засна. Энд зөвхөн баннерын дэвсгэр зураг, байрлал, хэмжээг удирдана.</div>
       <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
         <div class="cms-field"><label class="cms-label">Дэвсгэр зураг</label>
           <div class="cms-img-row">
@@ -1774,22 +1770,9 @@
         </div>
         <div><button type="button" class="btn btn-ghost btn-sm" onclick="cmsBannerDefaults()">Байрлал/хэмжээг өгөгдмөл болгох</button></div>
 
-        <div class="cms-field"><label class="cms-label">Гарчиг (Title)</label>${cmsHeroToolbarHtml()}
-          <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-banner-key="headlineHtml" oninput="cmsHeroInput(this)" aria-label="Гарчиг"></div></div>
-        <div class="cms-field"><label class="cms-label">Дэд гарчиг (Subtitle)</label>${cmsHeroToolbarHtml()}
-          <div class="cms-rt-area cms-hero-area form-input" contenteditable="true" data-banner-key="subheadlineHtml" oninput="cmsHeroInput(this)" aria-label="Дэд гарчиг"></div></div>
         <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" ${hb.showSearchWidget !== false ? 'checked' : ''} onchange="_cmsHeroBannerDraft.showSearchWidget=this.checked" />
           <span class="cms-label" style="margin:0;">Хайлтын хэсгийг харуулах</span></label>
-        <div class="cms-grid">
-          <div class="cms-field"><label class="cms-label">CTA товчны нэр</label>
-            <input type="text" class="form-input" value="${esc(hb.ctaText || '')}" maxlength="120" oninput="_cmsHeroBannerDraft.ctaText=this.value" placeholder="Жишээ: Агенттай холбогдоорой" /></div>
-          <div class="cms-field"><label class="cms-label">CTA холбоос</label>
-            <input type="text" class="form-input" value="${esc(hb.ctaLink || '')}" oninput="_cmsHeroBannerDraft.ctaLink=this.value" placeholder="#agents эсвэл https://…" /></div>
-        </div>
-        <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
-          <input type="checkbox" ${hb.showCta ? 'checked' : ''} onchange="_cmsHeroBannerDraft.showCta=this.checked" />
-          <span class="cms-label" style="margin:0;">CTA товч харуулах</span></label>
       </div></div>`;
   }
   function cmsBannerOverlayInput(v) {
