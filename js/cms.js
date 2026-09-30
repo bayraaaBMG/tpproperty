@@ -1055,6 +1055,8 @@
     else av.textContent = cmsAgentInitials(a.name);
     card.appendChild(av);
     const nm = document.createElement('div'); nm.className = 'agent-name'; nm.textContent = String(a.name || ''); card.appendChild(nm);
+    // Per-agent badge / subtitle (цол) — admin-set, rendered as a bordered pill (e.g. "Best of the YEAR").
+    if (a.badge) { const bd = document.createElement('div'); bd.className = 'agent-badge'; bd.textContent = String(a.badge); card.appendChild(bd); }
     if (a.title) { const t = document.createElement('div'); t.className = 'agent-title'; t.textContent = String(a.title); card.appendChild(t); }
     const digits = String(a.phone || '').replace(/[^0-9+]/g, '');
     if (digits) {
@@ -2089,8 +2091,12 @@
             <div class="cms-item-head"><span>
               <input type="checkbox" ${f ? 'checked' : ''} onchange="cmsAgentToggle('${esc(a.uid)}', this.checked)" style="vertical-align:middle;margin-right:8px;" />
               ${esc(a.name)}${a.phone ? ' · +976 ' + esc(a.phone) : ''}</span></div>
-            ${f ? `<div class="cms-item-body"><div class="cms-field"><label class="cms-label">Албан тушаал / Title</label>
-              <input type="text" class="form-input" value="${esc(f.title || '')}" maxlength="80" placeholder="Жишээ: Ахлах агент, Үл хөдлөхийн зөвлөх" oninput="cmsAgentTitleInput('${esc(a.uid)}', this.value)" /></div></div>` : ''}
+            ${f ? `<div class="cms-item-body">
+              <div class="cms-field"><label class="cms-label">Албан тушаал / Title</label>
+                <input type="text" class="form-input" value="${esc(f.title || '')}" maxlength="80" placeholder="Жишээ: Ахлах агент, Үл хөдлөхийн зөвлөх" oninput="cmsAgentTitleInput('${esc(a.uid)}', this.value)" /></div>
+              <div class="cms-field"><label class="cms-label">Дэд гарчиг / Badge (цол)</label>
+                <input type="text" class="form-input" value="${esc(f.badge || '')}" maxlength="40" placeholder="Жишээ: Best of the YEAR, Top Sales" oninput="cmsAgentBadgeInput('${esc(a.uid)}', this.value)" /></div>
+            </div>` : ''}
           </div>`; }).join(''));
     host.innerHTML = `<div class="admin-panel">
       <div class="admin-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -2114,7 +2120,7 @@
     if (on) {
       if (cmsAgentsFeatured(uid)) return;
       const src = (_cmsAgentPool || []).find(a => String(a.uid) === String(uid)); if (!src) return;
-      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', phone: src.phone, photoUrl: src.photoUrl,
+      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', badge: '', phone: src.phone, photoUrl: src.photoUrl,
         whatsapp: src.whatsapp, messenger: src.messenger, telegram: src.telegram, viber: src.viber,
         secondaryPhone: src.secondaryPhone, rank: src.rank, office: src.office, officeAddress: src.officeAddress });
     } else {
@@ -2123,6 +2129,7 @@
     cmsMarkDirty(); cmsRenderAgentsEditor();
   }
   function cmsAgentTitleInput(uid, val) { const f = cmsAgentsFeatured(uid); if (f) { f.title = val; cmsMarkDirty(); } }
+  function cmsAgentBadgeInput(uid, val) { const f = cmsAgentsFeatured(uid); if (f) { f.badge = val; cmsMarkDirty(); } }
   async function cmsSaveHomeAgents() {
     if (!cmsRequireEditor()) return;
     const d = _cmsAgentsDraft || cmsDefaultHomeAgents();
@@ -2134,6 +2141,7 @@
         uid: String(a.uid || ''),
         name: String(a.name || '').slice(0, 80).trim(),
         title: String(a.title || '').slice(0, 80).trim(),
+        badge: String(a.badge || '').slice(0, 40).trim(),
         phone: String(a.phone || '').replace(/[^0-9+]/g, '').slice(0, 20),
         photoUrl: cmsSafeImgUrl(a.photoUrl || ''),
         whatsapp: String(a.whatsapp || '').slice(0, 120),

@@ -4870,6 +4870,15 @@
   .agent-card:hover .agent-avatar { box-shadow: 0 0 0 3px var(--primary-glow); }
   .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .agent-name { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  /* Per-agent badge / цол — a rounded, bordered pill (e.g. "Best of the YEAR"), centred like the
+     rest of the card so name / badge / title / button all share one vertical axis. */
+  .agent-badge {
+    display: inline-flex; align-items: center; justify-content: center; align-self: center;
+    max-width: 100%; font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--primary); background: var(--primary-soft); border: 1.5px solid var(--primary);
+    border-radius: 100px; padding: 4px 14px; line-height: 1.25; margin: 2px 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .agent-title { font-size: 12.5px; color: var(--primary); font-weight: 600; }
   .agent-phone { font-size: 13px; color: var(--ink-2); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
   .agent-phone:hover { color: var(--primary); }
