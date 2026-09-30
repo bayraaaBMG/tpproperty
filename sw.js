@@ -1,4 +1,4 @@
-const CACHE = 'bairx-v6';
+const CACHE = 'bairx-v7';
 const OFFLINE_PAGE = '/';
 
 const PRECACHE = [
@@ -6,7 +6,8 @@ const PRECACHE = [
   '/index.html',
   '/manifest.json',
   '/zurag/icon-192.png',
-  '/zurag/icon-512.png'
+  '/zurag/icon-512.png',
+  '/zurag/icon-maskable.png'
 ];
 
 self.addEventListener('install', e => {
