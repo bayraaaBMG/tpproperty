@@ -1053,10 +1053,18 @@
     if (photo) { const img = document.createElement('img'); img.src = photo; img.alt = String(a.name || ''); img.loading = 'lazy';
       img.onerror = function () { const p = this.parentNode; if (p) { this.remove(); p.textContent = cmsAgentInitials(a.name); } }; av.appendChild(img); }
     else av.textContent = cmsAgentInitials(a.name);
+    // Per-agent badge / subtitle (цол) — admin-set, placed at the TOP of the card so every agent's
+    // badge lines up on one horizontal row; its text colour + size are admin-tunable (inline).
+    if (a.badge) {
+      const bd = document.createElement('div'); bd.className = 'agent-badge agent-badge-top'; bd.textContent = String(a.badge);
+      const col = cmsSafeHex(a.badgeColor);
+      if (col) { bd.style.color = col; bd.style.borderColor = col; bd.style.backgroundColor = cmsHexToRgba(col, 0.12); }
+      const sz = parseInt(a.badgeSize, 10);
+      if (isFinite(sz) && sz >= 8 && sz <= 22) bd.style.fontSize = sz + 'px';
+      card.appendChild(bd);
+    }
     card.appendChild(av);
     const nm = document.createElement('div'); nm.className = 'agent-name'; nm.textContent = String(a.name || ''); card.appendChild(nm);
-    // Per-agent badge / subtitle (цол) — admin-set, rendered as a bordered pill (e.g. "Best of the YEAR").
-    if (a.badge) { const bd = document.createElement('div'); bd.className = 'agent-badge'; bd.textContent = String(a.badge); card.appendChild(bd); }
     if (a.title) { const t = document.createElement('div'); t.className = 'agent-title'; t.textContent = String(a.title); card.appendChild(t); }
     const digits = String(a.phone || '').replace(/[^0-9+]/g, '');
     if (digits) {
@@ -2096,6 +2104,14 @@
                 <input type="text" class="form-input" value="${esc(f.title || '')}" maxlength="80" placeholder="Жишээ: Ахлах агент, Үл хөдлөхийн зөвлөх" oninput="cmsAgentTitleInput('${esc(a.uid)}', this.value)" /></div>
               <div class="cms-field"><label class="cms-label">Дэд гарчиг / Badge (цол)</label>
                 <input type="text" class="form-input" value="${esc(f.badge || '')}" maxlength="40" placeholder="Жишээ: Best of the YEAR, Top Sales" oninput="cmsAgentBadgeInput('${esc(a.uid)}', this.value)" /></div>
+              <div class="cms-grid">
+                <div class="cms-field"><label class="cms-label">Badge өнгө</label>
+                  <div class="cms-theme-inputs">
+                    <input type="color" value="${cmsSafeHex(f.badgeColor) || '#272B68'}" oninput="cmsAgentBadgeStyle('${esc(a.uid)}','badgeColor', this.value)" />
+                    <input type="text" class="form-input" value="${esc(cmsSafeHex(f.badgeColor) || '')}" maxlength="7" placeholder="Авто" oninput="cmsAgentBadgeStyle('${esc(a.uid)}','badgeColor', this.value)" /></div></div>
+                <div class="cms-field"><label class="cms-label">Badge хэмжээ (px)</label>
+                  <input type="number" class="form-input" min="8" max="22" value="${esc(f.badgeSize || '')}" placeholder="Авто (жишээ: 11)" oninput="cmsAgentBadgeStyle('${esc(a.uid)}','badgeSize', this.value)" /></div>
+              </div>
             </div>` : ''}
           </div>`; }).join(''));
     host.innerHTML = `<div class="admin-panel">
@@ -2120,7 +2136,7 @@
     if (on) {
       if (cmsAgentsFeatured(uid)) return;
       const src = (_cmsAgentPool || []).find(a => String(a.uid) === String(uid)); if (!src) return;
-      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', badge: '', phone: src.phone, photoUrl: src.photoUrl,
+      _cmsAgentsDraft.agents.push({ uid: src.uid, name: src.name, title: '', badge: '', badgeColor: '', badgeSize: '', phone: src.phone, photoUrl: src.photoUrl,
         whatsapp: src.whatsapp, messenger: src.messenger, telegram: src.telegram, viber: src.viber,
         secondaryPhone: src.secondaryPhone, rank: src.rank, office: src.office, officeAddress: src.officeAddress });
     } else {
@@ -2130,6 +2146,7 @@
   }
   function cmsAgentTitleInput(uid, val) { const f = cmsAgentsFeatured(uid); if (f) { f.title = val; cmsMarkDirty(); } }
   function cmsAgentBadgeInput(uid, val) { const f = cmsAgentsFeatured(uid); if (f) { f.badge = val; cmsMarkDirty(); } }
+  function cmsAgentBadgeStyle(uid, key, val) { const f = cmsAgentsFeatured(uid); if (f) { f[key] = val; cmsMarkDirty(); } }
   async function cmsSaveHomeAgents() {
     if (!cmsRequireEditor()) return;
     const d = _cmsAgentsDraft || cmsDefaultHomeAgents();
@@ -2142,6 +2159,8 @@
         name: String(a.name || '').slice(0, 80).trim(),
         title: String(a.title || '').slice(0, 80).trim(),
         badge: String(a.badge || '').slice(0, 40).trim(),
+        badgeColor: cmsSafeHex(a.badgeColor) || '',
+        badgeSize: (parseInt(a.badgeSize, 10) >= 8 && parseInt(a.badgeSize, 10) <= 22) ? String(parseInt(a.badgeSize, 10)) : '',
         phone: String(a.phone || '').replace(/[^0-9+]/g, '').slice(0, 20),
         photoUrl: cmsSafeImgUrl(a.photoUrl || ''),
         whatsapp: String(a.whatsapp || '').slice(0, 120),
