@@ -4869,14 +4869,22 @@
   }
   .agent-card:hover .agent-avatar { box-shadow: 0 0 0 3px var(--primary-glow); }
   .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .agent-name { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  /* Fixed 2-line height so the badge below always starts at the SAME vertical position across
+     every card — long names wrap/clamp to 2 lines, short names still reserve the space, so all
+     agents' badges land on one horizontal row. */
+  .agent-name {
+    font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; text-align: center;
+    min-height: 2.5em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
   /* Per-agent badge / цол — a rounded, bordered pill (e.g. "Best of the YEAR"), centred like the
-     rest of the card so name / badge / title / button all share one vertical axis. */
+     rest of the card so name / badge / title / button all share one vertical axis, and — thanks to
+     the fixed name height above — every card's badge sits on the same horizontal line. */
   .agent-badge {
     display: inline-flex; align-items: center; justify-content: center; align-self: center;
-    max-width: 100%; font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+    max-width: 100%; height: 26px; box-sizing: border-box; font-size: 10.5px; font-weight: 800;
+    letter-spacing: 0.05em; text-transform: uppercase;
     color: var(--primary); background: var(--primary-soft); border: 1.5px solid var(--primary);
-    border-radius: 100px; padding: 4px 14px; line-height: 1.25; margin: 2px 0;
+    border-radius: 100px; padding: 0 14px; line-height: 1; margin: 2px 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .agent-title { font-size: 12.5px; color: var(--primary); font-weight: 600; }
