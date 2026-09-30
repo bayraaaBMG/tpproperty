@@ -201,14 +201,10 @@
     <div class="home-search-bar" id="homeSearchWidget">
       <div class="hs-top-row">
         <div class="hs-primary-row">
-          <div class="hs-select-wrap hs-cat-select">
-            <svg class="hs-select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-            <!-- Ангилалуудыг доорх icon-той shortcut-ууд харуулдаг тул dropdown дотор давхардуулахгүй — зөвхөн "Ангилал" placeholder үлдэнэ. -->
-            <select id="hSearchType" aria-label="Ангилал" onchange="onHomeCategoryChange()">
-              <option value="all">Ангилал</option>
-            </select>
-            <svg class="hs-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+          <!-- "Ангилал" dropdown-ийг хассан: ангилал сонголтыг доорх icon-той
+               shortcut-ууд бүрэн хангадаг тул хайлтын барыг зөвхөн текст input +
+               "Хайх" товч болгож хялбарчилсан. hSearchType-г уншдаг JS бүр
+               `?.value || 'all'` fallback-тай тул элемент байхгүй үед бүх зар харагдана. -->
           <div class="hs-keyword-wrap">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" id="hSearchKeyword" placeholder="Хотхон, хороолол, байр, зар хайх…" autocomplete="off" onkeydown="if(event.key==='Enter') performSearch()" />
