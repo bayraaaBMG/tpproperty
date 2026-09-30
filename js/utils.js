@@ -483,6 +483,7 @@
       if (typeof _projectsLoaded !== 'undefined' && !_projectsLoaded && typeof loadProjects === 'function') loadProjects();
       else if (typeof renderProjectsGrid === 'function') renderProjectsGrid();
     }
+    if (target === 'agents' && typeof cmsRenderAgentsPage === 'function') cmsRenderAgentsPage();
     if (target === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
     if (target === 'agent-crm' && typeof renderAgentCrmPage === 'function') renderAgentCrmPage();
     if (target === 'admin' && typeof guardAdminRoute === 'function' && guardAdminRoute()

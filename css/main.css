@@ -4914,6 +4914,12 @@
   .agent-view-btn { margin-top: 10px; width: 100%; }
   @media (max-width: 640px) { .home-agents-grid { gap: 12px; } .home-agents-grid > .agent-card { width: 160px; } }
 
+  /* Агентуудын хуудас — carousel биш, бүрэн жагсаалтын дэлгэцэд тааруулсан ороодог сетка. */
+  .agents-page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }
+  .agents-page-grid > .agent-card { width: auto; }
+  .agents-page-empty { text-align: center; color: var(--ink-3); font-size: 14px; padding: 48px 16px; }
+  @media (max-width: 640px) { .agents-page-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; } }
+
   /* ---- Map view: search-this-area, count, empty overlay, marker preview card ---- */
   .map-view-wrap { position: relative; }
   .map-view-wrap:fullscreen { background: var(--paper); }

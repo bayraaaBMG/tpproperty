@@ -330,8 +330,10 @@
         <h2 class="portal-section-title display" id="homeAgentsTitle">Онцлох агентууд</h2>
         <p class="portal-section-sub" id="homeAgentsSub" hidden></p>
       </div>
-      <button class="btn btn-ghost" onclick="showPage('listings')">
-        Бүх зар үзэх
+      <!-- "Бүгдийг үзэх" — админаас (home_agents.viewAll) асаах/унтраах товч. OFF үед JS нь
+           hidden болгож бүрэн нууна. ON үед бүх агентын Агентуудын хуудас руу шилжинэ. -->
+      <button class="btn btn-ghost" id="homeAgentsViewAll" onclick="showPage('agents')" hidden>
+        Бүгдийг үзэх
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
     </div>
@@ -795,6 +797,25 @@
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ============ AGENTS (бүх агентууд) ============ -->
+<!-- "Бүгдийг үзэх" товч (home_agents.viewAll ON) энэ хуудас руу шилжинэ. Картуудыг JS
+     (cmsRenderAgentsPage) нь site_settings/home_agents.agents (public, админаар curated)-аас
+     дүүргэдэг — public сайт users коллекцийг уншдаггүй (firestore.rules нууцалдаг) тул онцолсон
+     агентын жагсаалт нь public талын цорын ганц эх сурвалж. -->
+<section class="agents-section" id="agents">
+  <div class="section-inner" style="padding-top:60px;padding-bottom:60px;">
+    <div class="section-head" style="margin-bottom:32px;">
+      <div>
+        <span class="section-eyebrow">Мэргэжлийн баг</span>
+        <h2 class="section-title display" id="agentsPageTitle">Бүх агентууд</h2>
+      </div>
+      <p class="section-sub" id="agentsPageSub">Танд туслахад бэлэн, баталгаажсан агентуудтай шууд холбогдоорой.</p>
+    </div>
+    <div class="agents-page-grid" id="agentsPageGrid"></div>
+    <div class="agents-page-empty" id="agentsPageEmpty" hidden>Одоогоор бүртгэлтэй агент алга байна.</div>
   </div>
 </section>
 

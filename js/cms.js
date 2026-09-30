@@ -1008,7 +1008,7 @@
   // curates a small list of public display fields, and the active-listing count is computed
   // from the already-loaded public listings[] (status=='active'), so no extra reads/indexes. ----
   function cmsDefaultHomeAgents() {
-    return { show: false, title: '\u041e\u043d\u0446\u043b\u043e\u0445 \u0430\u0433\u0435\u043d\u0442\u0443\u0443\u0434', subtitle: '', agents: [] };
+    return { show: false, viewAll: false, title: '\u041e\u043d\u0446\u043b\u043e\u0445 \u0430\u0433\u0435\u043d\u0442\u0443\u0443\u0434', subtitle: '', agents: [] };
   }
   let _cmsHomeAgentsCache = null;
   async function cmsLoadHomeAgents() {
@@ -1097,8 +1097,11 @@
     const agents = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
     const show = !!(cfg && cfg.show === true && agents.length);
     const syncArrows = () => { if (typeof syncHomeCarouselArrows === 'function') requestAnimationFrame(syncHomeCarouselArrows); };
-    if (!show) { grid.hidden = true; head.hidden = true; grid.textContent = ''; syncArrows(); return; }
+    const viewAllBtn = document.getElementById('homeAgentsViewAll');
+    if (!show) { grid.hidden = true; head.hidden = true; grid.textContent = ''; if (viewAllBtn) viewAllBtn.hidden = true; syncArrows(); return; }
     head.hidden = false; grid.hidden = false;
+    // "Бүгдийг үзэх" товч зөвхөн админ (home_agents.viewAll) асаасан үед харагдана.
+    if (viewAllBtn) viewAllBtn.hidden = !(cfg.viewAll === true);
     const titleEl = document.getElementById('homeAgentsTitle'); if (titleEl && cfg.title) titleEl.textContent = String(cfg.title);
     const subEl = document.getElementById('homeAgentsSub');
     if (subEl) { if (cfg.subtitle) { subEl.textContent = String(cfg.subtitle); subEl.hidden = false; } else { subEl.hidden = true; subEl.textContent = ''; } }
@@ -1106,9 +1109,28 @@
     agents.slice(0, 8).forEach(a => grid.appendChild(cmsBuildAgentCard(a)));
     syncArrows();
   }
+  // Агентуудын хуудас (showPage('agents')) — админаар онцолсон бүх агентыг (home carousel-ийн
+  // 8 хязгааргүйгээр) картаар жагсаана. Эх сурвалж нь public site_settings/home_agents тул
+  // нэмэлт унших/индекс шаардлагагүй бөгөөд firestore.rules сулраагүй.
+  async function cmsRenderAgentsPage(cfgArg) {
+    const grid = document.getElementById('agentsPageGrid'); if (!grid) return;
+    const empty = document.getElementById('agentsPageEmpty');
+    let cfg = cfgArg || _cmsHomeAgentsCache;
+    if (!cfg) { try { cfg = await cmsLoadHomeAgents(); } catch (e) { cfg = null; } }
+    const agents = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
+    grid.textContent = '';
+    if (!agents.length) { grid.hidden = true; if (empty) empty.hidden = false; return; }
+    if (empty) empty.hidden = true; grid.hidden = false;
+    agents.forEach(a => grid.appendChild(cmsBuildAgentCard(a)));
+  }
   async function applyHomeAgents() { const cfg = await cmsLoadHomeAgents(); cmsRenderHomeAgents(cfg); }
   // Re-render (counts) once listings are loaded, without another Firestore read.
-  function cmsRefreshHomeAgents() { if (_cmsHomeAgentsCache) cmsRenderHomeAgents(_cmsHomeAgentsCache); }
+  function cmsRefreshHomeAgents() {
+    if (_cmsHomeAgentsCache) cmsRenderHomeAgents(_cmsHomeAgentsCache);
+    // If the full Агентуудын хуудас is open, refresh its live listing counts too.
+    const ap = document.getElementById('agents');
+    if (ap && ap.classList.contains('page-active')) cmsRenderAgentsPage();
+  }
 
   function cmsApplyNav(nav) {
     const known = cmsNavKnownKeys();
@@ -2123,6 +2145,9 @@
         <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" ${d.show ? 'checked' : ''} onchange="_cmsAgentsDraft.show=this.checked;cmsMarkDirty()" />
           <span class="cms-label" style="margin:0;">Нүүр хуудсанд харуулах</span></label>
+        <label class="cms-field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" ${d.viewAll ? 'checked' : ''} onchange="_cmsAgentsDraft.viewAll=this.checked;cmsMarkDirty()" />
+          <span class="cms-label" style="margin:0;">«Бүгдийг үзэх» товч харуулах (Агентуудын хуудас руу)</span></label>
         <div class="cms-field"><label class="cms-label">Хэсгийн гарчиг</label>
           <input type="text" class="form-input" value="${esc(d.title || '')}" maxlength="120" oninput="_cmsAgentsDraft.title=this.value;cmsMarkDirty()" placeholder="Онцлох агентууд" /></div>
         <div class="cms-field"><label class="cms-label">Дэд гарчиг (сонголтоор)</label>
@@ -2152,6 +2177,7 @@
     const d = _cmsAgentsDraft || cmsDefaultHomeAgents();
     const clean = {
       show: d.show === true,
+      viewAll: d.viewAll === true,
       title: (String(d.title || '').slice(0, 120).trim()) || 'Онцлох агентууд',
       subtitle: String(d.subtitle || '').slice(0, 300).trim(),
       agents: (d.agents || []).slice(0, 8).map(a => ({
