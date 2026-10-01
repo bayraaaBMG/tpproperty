@@ -4914,42 +4914,47 @@
   .agent-view-btn { margin-top: 10px; width: 100%; }
   @media (max-width: 640px) { .home-agents-grid { gap: 12px; } .home-agents-grid > .agent-card { width: 160px; } }
 
-  /* Агентуудын хуудас — remax.mn маягийн хэвтээ мөр (row) жагсаалт. */
-  .agents-page-list { display: flex; flex-direction: column; gap: 14px; }
+  /* Агентуудын хуудас — remax.mn маягийн хэвтээ мөр (row) жагсаалт.
+     Профайл зураг портрет (remax business-card), карт сүрлэг padding-тэй. */
+  .agents-page-list { display: flex; flex-direction: column; gap: 18px; }
   .agent-row {
-    display: flex; gap: 20px; align-items: stretch;
+    display: flex; gap: 28px; align-items: stretch;
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
-    padding: 16px; transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    padding: 24px; transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
   .agent-row:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.07); border-color: var(--line-2); }
   .agent-row-photo {
-    flex: 0 0 120px; width: 120px; height: 120px; border-radius: 12px; overflow: hidden;
+    flex: 0 0 210px; width: 210px; height: 270px; border-radius: 14px; overflow: hidden;
     background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 28px; letter-spacing: 1px;
+    font-weight: 800; font-size: 56px; letter-spacing: 1px;
   }
   .agent-row-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .agent-row-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-  .agent-row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .agent-row-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+  .agent-row-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .agent-row-name {
-    font-family: inherit; font-size: 18px; font-weight: 800; color: var(--primary);
+    font-family: inherit; font-size: 24px; font-weight: 800; color: var(--primary);
     background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
   }
   .agent-row-name:hover { text-decoration: underline; }
-  .agent-row-title { font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+  .agent-row-title { font-size: 13.5px; color: var(--ink-3); font-weight: 600; }
   .agent-row-badge {
-    display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
-    padding: 3px 10px; border: 1.5px solid var(--primary); border-radius: 999px; color: var(--primary); background: var(--primary-soft);
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
+    padding: 4px 12px; border: 1.5px solid var(--primary); border-radius: 999px; color: var(--primary); background: var(--primary-soft);
   }
-  .agent-row-meta { display: flex; flex-direction: column; gap: 6px; }
+  .agent-row-meta { display: flex; flex-direction: column; gap: 9px; }
   .agent-row-metaitem {
-    display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2);
-    text-decoration: none; line-height: 1.4;
+    display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink-2);
+    text-decoration: none; line-height: 1.45;
   }
   .agent-row-metaitem.agent-row-phone { color: var(--primary); font-weight: 700; }
   .agent-row-metaitem.agent-row-phone:hover { text-decoration: underline; }
-  .agent-row-metaicon { flex: 0 0 auto; width: 15px; height: 15px; color: var(--ink-3); display: inline-flex; }
-  .agent-row-metaicon svg { width: 15px; height: 15px; }
-  .agent-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+  .agent-row-metaicon { flex: 0 0 auto; width: 18px; height: 18px; color: var(--ink-3); display: inline-flex; }
+  .agent-row-metaicon svg { width: 18px; height: 18px; }
+  .agent-row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+  /* Scale the action controls up to match the bigger card (local to the agents list only). */
+  .agent-row-actions .btn { height: 44px; padding: 0 22px; font-size: 14px; }
+  .agent-row-actions .agent-rc-soc { width: 42px; height: 42px; }
+  .agent-row-actions .agent-rc-soc svg { width: 20px; height: 20px; }
   .agents-page-empty { text-align: center; color: var(--ink-3); font-size: 14px; padding: 48px 16px; }
 
   /* Pagination (remax-style) */
@@ -4965,10 +4970,17 @@
   .agents-pager-ellipsis { padding: 0 4px; color: var(--ink-3); font-weight: 700; }
 
   @media (max-width: 640px) {
-    .agent-row { gap: 14px; padding: 14px; }
-    .agent-row-photo { flex-basis: 84px; width: 84px; height: 84px; font-size: 20px; }
-    .agent-row-name { font-size: 16px; }
-    .agent-row-metaitem { font-size: 12.5px; }
+    .agent-row { gap: 16px; padding: 16px; }
+    .agent-row-photo { flex-basis: 128px; width: 128px; height: 168px; font-size: 34px; border-radius: 12px; }
+    .agent-row-info { gap: 10px; }
+    .agent-row-name { font-size: 18px; }
+    .agent-row-metaitem { font-size: 13px; }
+    .agent-row-actions .btn { height: 40px; padding: 0 16px; font-size: 13px; }
+    .agent-row-actions .agent-rc-soc { width: 38px; height: 38px; }
+    .agent-row-actions .agent-rc-soc svg { width: 18px; height: 18px; }
+  }
+  @media (max-width: 400px) {
+    .agent-row-photo { flex-basis: 108px; width: 108px; height: 144px; font-size: 28px; }
   }
 
   /* ---- Map view: search-this-area, count, empty overlay, marker preview card ---- */
