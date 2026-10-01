@@ -207,6 +207,10 @@
     border: none; text-decoration: none; transition: all 0.18s ease;
     font-family: inherit;
   }
+  /* The author `.btn { display:inline-flex }` rule outranks the UA `[hidden]`
+     rule, so a .btn with the `hidden` attribute would otherwise stay visible.
+     Restore the expected semantics so toggles like #homeAgentsViewAll work. */
+  .btn[hidden] { display: none !important; }
   .btn-ghost { background: transparent; color: var(--ink-2); }
   .btn-ghost:hover { background: var(--paper-2); }
   .btn-primary {
