@@ -1112,16 +1112,129 @@
   // Агентуудын хуудас (showPage('agents')) — админаар онцолсон бүх агентыг (home carousel-ийн
   // 8 хязгааргүйгээр) картаар жагсаана. Эх сурвалж нь public site_settings/home_agents тул
   // нэмэлт унших/индекс шаардлагагүй бөгөөд firestore.rules сулраагүй.
-  async function cmsRenderAgentsPage(cfgArg) {
+  // Trusted inline icons for the agents-list rows (constants — never user data).
+  const _AGENT_ROW_ICON = {
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    office: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M9 7h2M9 11h2M9 15h2"/><path d="M17 9h2a2 2 0 0 1 2 2v10"/></svg>',
+    tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+  };
+  function _agentMetaItem(iconKey, text, href) {
+    const el = document.createElement(href ? 'a' : 'div');
+    el.className = 'agent-row-metaitem' + (href ? ' agent-row-phone' : '');
+    if (href) el.href = href;
+    const ic = document.createElement('span'); ic.className = 'agent-row-metaicon'; ic.innerHTML = _AGENT_ROW_ICON[iconKey] || '';
+    const tx = document.createElement('span'); tx.textContent = String(text);
+    el.appendChild(ic); el.appendChild(tx); return el;
+  }
+  // remax.mn-style horizontal list row: large photo on the left; name, phone, address,
+  // office and contact buttons on the right. Used only on the Агентуудын хуудас.
+  function cmsBuildAgentRow(rawA) {
+    const a = cmsAgentLive(rawA);
+    const row = document.createElement('div'); row.className = 'agent-row';
+    // Left — large profile photo (falls back to initials)
+    const ph = document.createElement('div'); ph.className = 'agent-row-photo';
+    const photo = cmsSafeImgUrl(a.photoUrl);
+    if (photo) { const img = document.createElement('img'); img.src = photo; img.alt = String(a.name || ''); img.loading = 'lazy';
+      img.onerror = function () { const p = this.parentNode; if (p) { this.remove(); p.textContent = cmsAgentInitials(a.name); } }; ph.appendChild(img); }
+    else ph.textContent = cmsAgentInitials(a.name);
+    row.appendChild(ph);
+    // Right — info block
+    const info = document.createElement('div'); info.className = 'agent-row-info';
+    const head = document.createElement('div'); head.className = 'agent-row-head';
+    const nm = document.createElement('button'); nm.type = 'button'; nm.className = 'agent-row-name';
+    nm.textContent = String(a.name || '');
+    nm.addEventListener('click', function () { if (typeof viewAgentListings === 'function') viewAgentListings(a.uid); });
+    head.appendChild(nm);
+    if (a.badge) {
+      const bd = document.createElement('span'); bd.className = 'agent-row-badge'; bd.textContent = String(a.badge);
+      const col = cmsSafeHex(a.badgeColor);
+      if (col) { bd.style.color = col; bd.style.borderColor = col; bd.style.backgroundColor = cmsHexToRgba(col, 0.12); }
+      head.appendChild(bd);
+    }
+    if (a.title) { const t = document.createElement('span'); t.className = 'agent-row-title'; t.textContent = String(a.title); head.appendChild(t); }
+    info.appendChild(head);
+    // Meta rows — phone / address / office / active-listing count
+    const meta = document.createElement('div'); meta.className = 'agent-row-meta';
+    const digits = String(a.phone || '').replace(/[^0-9+]/g, '');
+    if (digits) meta.appendChild(_agentMetaItem('phone', (/^\+/.test(digits) ? '' : '+976 ') + String(a.phone), 'tel:' + digits));
+    if (a.officeAddress) meta.appendChild(_agentMetaItem('pin', a.officeAddress));
+    if (a.office) meta.appendChild(_agentMetaItem('office', a.office));
+    meta.appendChild(_agentMetaItem('tag', cmsAgentActiveCount(a.uid) + ' зартай'));
+    info.appendChild(meta);
+    // Actions — Зарууд үзэх + messaging channels
+    const actions = document.createElement('div'); actions.className = 'agent-row-actions';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-blue btn-sm'; btn.textContent = 'Зарууд үзэх';
+    btn.addEventListener('click', function () { if (typeof viewAgentListings === 'function') viewAgentListings(a.uid); });
+    actions.appendChild(btn);
+    const socials = ['whatsapp', 'messenger', 'telegram', 'viber']
+      .map(k => ({ k, href: typeof agentSocialHref === 'function' ? agentSocialHref(k, a[k]) : null })).filter(s => s.href);
+    socials.forEach(s => {
+      const link = document.createElement('a'); link.className = 'agent-rc-soc agent-rc-soc-' + s.k;
+      link.href = s.href; link.target = '_blank'; link.rel = 'noopener nofollow'; link.title = s.k; link.setAttribute('aria-label', s.k);
+      if (typeof _AGENT_SOC_ICON !== 'undefined' && _AGENT_SOC_ICON[s.k]) link.innerHTML = _AGENT_SOC_ICON[s.k];
+      actions.appendChild(link);
+    });
+    info.appendChild(actions);
+    row.appendChild(info);
+    return row;
+  }
+  // Агентуудын хуудас — remax.mn маягийн мөрөөр жагсаасан бүрэн жагсаалт + хуудаслалт.
+  const _CMS_AGENTS_PER_PAGE = 6;
+  let _cmsAgentsPageNum = 1;
+  let _cmsAgentsCurrent = [];   // the resolved list currently shown — paginated without re-loading
+  function cmsAgentsGoPage(n) {
+    _cmsAgentsPageNum = Math.max(1, parseInt(n, 10) || 1);
+    cmsPaintAgentsPage();
+    const sec = document.getElementById('agents'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // Paint the current page from _cmsAgentsCurrent (no Firestore read — page changes are instant).
+  function cmsPaintAgentsPage() {
     const grid = document.getElementById('agentsPageGrid'); if (!grid) return;
     const empty = document.getElementById('agentsPageEmpty');
+    const agents = _cmsAgentsCurrent;
+    grid.textContent = '';
+    if (!agents.length) { grid.hidden = true; if (empty) empty.hidden = false; cmsRenderAgentsPager(0, 1); return; }
+    if (empty) empty.hidden = true; grid.hidden = false;
+    const totalPages = Math.ceil(agents.length / _CMS_AGENTS_PER_PAGE);
+    _cmsAgentsPageNum = Math.min(Math.max(1, _cmsAgentsPageNum), totalPages);
+    const start = (_cmsAgentsPageNum - 1) * _CMS_AGENTS_PER_PAGE;
+    agents.slice(start, start + _CMS_AGENTS_PER_PAGE).forEach(a => grid.appendChild(cmsBuildAgentRow(a)));
+    cmsRenderAgentsPager(totalPages, _cmsAgentsPageNum);
+  }
+  function cmsRenderAgentsPager(totalPages, cur) {
+    const pager = document.getElementById('agentsPagePager'); if (!pager) return;
+    pager.textContent = '';
+    if (totalPages <= 1) { pager.hidden = true; return; }
+    pager.hidden = false;
+    const mk = (label, page, opts) => {
+      opts = opts || {};
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'agents-pager-btn' + (opts.active ? ' active' : '') + (opts.nav ? ' agents-pager-nav' : '');
+      b.textContent = label;
+      if (opts.disabled) { b.disabled = true; } else { b.addEventListener('click', function () { cmsAgentsGoPage(page); }); }
+      return b;
+    };
+    pager.appendChild(mk('‹', cur - 1, { nav: true, disabled: cur <= 1 }));
+    // compact page numbers with ellipsis: 1 … (cur-1) cur (cur+1) … last
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= cur - 1 && i <= cur + 1)) pages.push(i);
+      else if (pages[pages.length - 1] !== '…') pages.push('…');
+    }
+    pages.forEach(p => {
+      if (p === '…') { const e = document.createElement('span'); e.className = 'agents-pager-ellipsis'; e.textContent = '…'; pager.appendChild(e); }
+      else pager.appendChild(mk(String(p), p, { active: p === cur }));
+    });
+    pager.appendChild(mk('›', cur + 1, { nav: true, disabled: cur >= totalPages }));
+  }
+  async function cmsRenderAgentsPage(cfgArg, page) {
+    if (!document.getElementById('agentsPageGrid')) return;
     let cfg = cfgArg || _cmsHomeAgentsCache;
     if (!cfg) { try { cfg = await cmsLoadHomeAgents(); } catch (e) { cfg = null; } }
-    const agents = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
-    grid.textContent = '';
-    if (!agents.length) { grid.hidden = true; if (empty) empty.hidden = false; return; }
-    if (empty) empty.hidden = true; grid.hidden = false;
-    agents.forEach(a => grid.appendChild(cmsBuildAgentCard(a)));
+    _cmsAgentsCurrent = (cfg && Array.isArray(cfg.agents)) ? cfg.agents.filter(a => a && a.uid && a.name) : [];
+    if (typeof page === 'number') _cmsAgentsPageNum = page;
+    cmsPaintAgentsPage();
   }
   async function applyHomeAgents() { const cfg = await cmsLoadHomeAgents(); cmsRenderHomeAgents(cfg); }
   // Re-render (counts) once listings are loaded, without another Firestore read.
