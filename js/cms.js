@@ -1425,7 +1425,7 @@
   function cmsDefaultFooter() {
     return { columns: [
       { title: 'Платформ', links: [ { label: 'Зар үзэх', url: 'listings' }, { label: 'Зар нэмэх', url: 'addListing' }, { label: 'Газрын зураг', url: 'map' }, { label: 'Шилдэг сонголт', url: 'topPicks' } ] },
-      { title: 'Тооцоолол', links: [ { label: 'Зээл тооцоолуур', url: 'calc' }, { label: 'Чадварын үнэлгээ', url: 'afford' }, { label: 'Хөрөнгө оруулалт', url: 'forecast' }, { label: 'Банкны харьцуулалт', url: 'calc' } ] },
+      { title: 'Тооцоолол', links: [ { label: 'Зээл тооцоолуур', url: 'calc' }, { label: 'Чадварын үнэлгээ', url: 'afford' }, { label: 'Банкны харьцуулалт', url: 'calc' } ] },
       { title: 'Компани', links: [ { label: 'Бидний тухай', url: 'about' }, { label: 'Үйлчилгээ', url: 'services' }, { label: 'Карьер', url: 'career' }, { label: 'Хэвлэл', url: 'press' }, { label: 'Холбоо барих', url: 'contact' } ] },
       { title: 'Хууль', links: [ { label: 'Үйлчилгээний нөхцөл', url: 'terms' }, { label: 'Нууцлал', url: 'privacy' }, { label: 'Аюулгүй байдал', url: 'security' } ] }
     ] };
@@ -1440,7 +1440,7 @@
   }
   // A footer link is EITHER an external http/https URL, or a short internal token (about,
   // listings, calc, map…) mapped to the app's own navigation — never inline onclick from data.
-  const FOOTER_SCROLL_IDS = ['listings', 'calc', 'afford', 'forecast', 'features', 'resources'];
+  const FOOTER_SCROLL_IDS = ['listings', 'calc', 'afford', 'features', 'resources'];
   function footerToken(url) { const t = String(url || '').trim().replace(/^#/, ''); return /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(t) ? t : ''; }
   function footerGo(t) {
     if (t === 'map') { if (typeof openMapSearch === 'function') openMapSearch(); return; }
@@ -1476,7 +1476,7 @@
   // js/info-pages.js) and isn't a functional route (listings/calc/map/…). Everything the
   // footer can link to for "content" — about, services, contact, terms, privacy, security,
   // career, press, topPicks — matches; functional links don't.
-  const CMS_INFO_FUNCTIONAL = { listings:1, calc:1, afford:1, forecast:1, map:1, addListing:1, features:1, resources:1, rent:1, newdev:1, home:1 };
+  const CMS_INFO_FUNCTIONAL = { listings:1, calc:1, afford:1, map:1, addListing:1, features:1, resources:1, rent:1, newdev:1, home:1 };
   function cmsIsInfoContentKey(key) {
     return !!key && !CMS_INFO_FUNCTIONAL[key] && typeof infoPages !== 'undefined' && !!infoPages[key];
   }

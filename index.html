@@ -2306,76 +2306,6 @@
   </div>
 </section>
 
-<!-- ============ INVESTMENT FORECAST ============ -->
-<section class="forecast-section" id="forecast">
-  <div class="section-inner">
-    <div class="section-head">
-      <div>
-        <span class="section-eyebrow">20 жилийн ирээдүйн тооцоо · Жишээ тооцоолол</span>
-        <h2 class="section-title display">Байр авбал надад<br><em>ямар ашигтай</em> вэ?</h2>
-      </div>
-      <p class="section-sub">Байрны үнийн өсөлт, зээлийн төлбөр, түрээсийн орлого — бүгдийг нэгтгэн 20 жилийн дараах хөрөнгийн ашгийг тооцоолно. Доорх тоо бол 412 сая ₮-ийн жишээ байрны тооцоолол — тодорхой зарын дэлгэрэнгүйгээс өөрийн бодит тооцоог үзнэ үү.</p>
-    </div>
-
-    <div class="forecast-card">
-      <div class="forecast-grid">
-        <div class="forecast-stats">
-          <div class="fstat-card">
-            <div class="fstat-label">Худалдан авах үнэ (өнөөдөр)</div>
-            <div class="fstat-value">412 сая ₮</div>
-          </div>
-          <div class="fstat-card">
-            <div class="fstat-label">Нийт төлөх (20 жил, 14.4%)</div>
-            <div class="fstat-value">1,004 сая ₮</div>
-          </div>
-          <div class="fstat-card green">
-            <div class="fstat-label">Байрны үнэ (20 жилийн дараа)</div>
-            <div class="fstat-value green">~1,655 сая ₮</div>
-          </div>
-          <div class="fstat-card green">
-            <div class="fstat-label">Цэвэр ашиг (зээлээс гадуур)</div>
-            <div class="fstat-value green">+651 сая ₮</div>
-          </div>
-          <div class="fstat-card warn">
-            <div class="fstat-label">Жилийн дундаж өгөөж</div>
-            <div class="fstat-value">7.2% / жил</div>
-          </div>
-        </div>
-
-        <div>
-          <div class="chart-wrap">
-            <div class="chart-title">Хөрөнгийн өсөлтийн график</div>
-            <div class="chart-sub">Байрны үнэ vs Нийт төлсөн дүн (20 жил)</div>
-
-            <!-- Y-тэнхлэг, шугамуудыг JS (renderForecastChart) динамикаар зөв масштаб/эрэмбээр
-                 зурна — өмнө нь бүх тоо hardcoded байсан тул tick-үүд эвдэрч байсан. -->
-            <svg id="forecastChart" class="chart-svg" viewBox="0 0 600 240" preserveAspectRatio="none" role="img" aria-label="Байрны үнэ vs нийт төлсөн дүн 20 жилийн график"></svg>
-
-            <div class="chart-legend">
-              <div class="legend-item"><span class="legend-dot" style="background:#272B68"></span>Байрны үнэ цэнэ</div>
-              <div class="legend-item"><span class="legend-dot" style="background:#00D4AA"></span>Нийт төлсөн дүн</div>
-              <div class="legend-item"><span class="legend-dot" style="background:#0A1628"></span>Цэвэр ашиг</div>
-            </div>
-          </div>
-
-          <div style="margin-top:20px; padding:18px; background:linear-gradient(135deg, var(--primary-soft), white); border-radius:14px; border:1px solid var(--primary-soft);">
-            <div style="display:flex; gap:12px; align-items:start;">
-              <div style="width:32px; height:32px; border-radius:8px; background:white; display:grid; place-items:center; flex-shrink:0; box-shadow:0 2px 6px rgba(39,43,104,0.15);">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3v1h6v-1c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
-              </div>
-              <div>
-                <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Хөрөнгө оруулалтын талаар анхаарах зүйл</div>
-                <div style="font-size:13px; color:var(--ink-3); line-height:1.5;">Дүүрэг, бүсийн үнийн өсөлт цаг хугацаа, байршил, чанараас шалтгаалан ихээхэн ялгаатай байдаг тул тодорхой бүсийн өсөлтийн хувийг урьдчилан баталгаажуулах боломжгүй. <strong style="color:var(--ink);">Худалдан авахын өмнө</strong> тухайн бүсийн одоогийн зах зээлийн үнийг өөрөө шалгаж, мэргэжлийн үнэлгээчинтэй зөвлөлдөхийг зөвлөж байна.</div>
-                <div style="font-size:12px; color:var(--ink-3); line-height:1.5; margin-top:10px; padding-top:10px; border-top:1px solid var(--primary-soft);">Хүн амын бүтцийн урт хугацааны хандлага (ганц бие өрх, түрээслэгчийн эзлэх хувь өсөх) орон сууцны эрэлтэд нөлөөлж болзошгүй тул доорх <a onclick="scrollToSection('demo')" style="color:var(--primary); cursor:pointer; text-decoration:underline;">"Гэр бүлийн бүтцийн өөрчлөлт" хэсгийг</a> мөн үзнэ үү.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ============ FEATURES ============ -->
 <section class="features-section" id="features">
   <div class="section-inner">
@@ -2540,7 +2470,6 @@
         <ul>
           <li><a onclick="scrollToSection('calc')">Зээл тооцоолуур</a></li>
           <li><a onclick="scrollToSection('afford')">Чадварын үнэлгээ</a></li>
-          <li><a onclick="scrollToSection('forecast')">Хөрөнгө оруулалт</a></li>
           <li><a onclick="scrollToSection('calc')">Банкны харьцуулалт</a></li>
         </ul>
       </div>
