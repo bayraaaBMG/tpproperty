@@ -45,10 +45,10 @@
       monthly: '1.7–2.0%', rate: 20.5, down: 30, term: 120, cap: null, phone: '11-328373',
       sourceUrl: 'https://www.capitronbank.mn' },
     { id: 'bogd', name: 'Богд банк', short: 'ББ', color: '#0A1628',
-      monthly: '1.5–1.8%', rate: 18, down: 30, term: 240, cap: null, phone: '',
+      monthly: '1.85–2.1%', rate: 22.2, down: 30, term: 240, cap: null, phone: '7577-1199',
       sourceUrl: 'https://www.bogdbank.com/product/53' },
     { id: 'arig', name: 'Ариг банк', short: 'АБ', color: '#FF6B35',
-      monthly: '1.5–1.8%', rate: 18, down: 30, term: 240, cap: null, phone: '',
+      monthly: '1.6–1.8%', rate: 19.2, down: 20, term: 240, cap: null, phone: '7013-3060',
       sourceUrl: 'https://www.arigbank.mn/mn/product/loan/26' },
     { id: 'cash', name: 'Бэлэн мөнгө', short: '₮', color: '#64748B',
       monthly: '—', rate: 0, down: 30, term: 240, cap: null, phone: '', note: 'Зээлгүй · шууд худалдан авалт' }
