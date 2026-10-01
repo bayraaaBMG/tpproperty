@@ -77,13 +77,20 @@
   // гэсэн 4 өөр тоо газар бүрт зөрүүтэй байсан.
   const SAFE_DTI = 40;
 
+  // Format a сая ₮ amount for display: keep up to 3 decimals (thousands precision) with
+  // thousands separators, trimming trailing zeros (120 -> "120", 139.825 -> "139.825").
+  function fmtMln(n) { return (+Number(n).toFixed(3)).toLocaleString('en-US'); }
+
   function calculate() {
-    const price = parseInt(document.getElementById('priceSlider').value);
-    const downPct = parseInt(document.getElementById('downSlider').value);
+    const price = parseFloat(document.getElementById('priceSlider').value);
+    const downPct = parseFloat(document.getElementById('downSlider').value);
     const income = parseInt(document.getElementById('incomeSlider').value);
     const term = parseInt(document.getElementById('termSlider').value);
 
-    const downAmt = Math.round(price * downPct / 100);
+    // Keep the down payment and loan at full precision (fractional сая ₮). Rounding the down
+    // payment to whole millions (old Math.round) distorted the principal, which threw off the
+    // monthly payment, total paid and total interest. Display is rounded; the maths is exact.
+    const downAmt = price * downPct / 100;
     const neededLoan = price - downAmt;
     // Some loan products (e.g. the 6% government-backed program) are capped by the program's own
     // limit, not by what the buyer needs — if the needed amount exceeds that cap, only the
@@ -106,7 +113,7 @@
 
     // Update slider value displays
     document.getElementById('priceVal').textContent = fmtPrice(price);
-    document.getElementById('downVal').textContent = downAmt + ' сая ₮ (' + downPct + '%)';
+    document.getElementById('downVal').textContent = fmtMln(downAmt) + ' сая ₮ (' + downPct + '%)';
     document.getElementById('incomeVal').textContent = fmt(income * 1000) + ' ₮';
     document.getElementById('termVal').textContent = term + ' жил';
 
@@ -174,12 +181,12 @@
     const dti = (monthly / (income * 1000)) * 100;
 
     document.getElementById('monthlyAmt').textContent = fmt(monthly);
-    document.getElementById('totalPay').textContent = (totalPay / 1000000).toFixed(1) + ' сая ₮';
-    document.getElementById('totalInterest').textContent = (totalInterest / 1000000).toFixed(1) + ' сая ₮';
+    document.getElementById('totalPay').textContent = (totalPay / 1000000).toFixed(2) + ' сая ₮';
+    document.getElementById('totalInterest').textContent = (totalInterest / 1000000).toFixed(2) + ' сая ₮';
     const dtiEl = document.getElementById('dti');
     dtiEl.textContent = dti.toFixed(1) + '%';
     dtiEl.className = 'small-result-amount ' + (dti < SAFE_DTI ? 'green' : dti < 50 ? 'warn' : 'danger');
-    document.getElementById('loanAmt').textContent = loanAmt + ' сая ₮';
+    document.getElementById('loanAmt').textContent = fmtMln(loanAmt) + ' сая ₮';
 
     // The results title now reflects the safety of THIS calculation (the loan type/terms the
     // user themselves picked), not a "best bank" — see the bank list below for why we stopped
