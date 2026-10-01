@@ -338,6 +338,22 @@
   }
 
   // ===== AFFORDABILITY =====
+  // Live, human-readable echo of the two big number inputs so the user can tell at a glance
+  // what they typed (e.g. 85000000 -> "85,000,000 ₮ · 85 сая") and which field is which.
+  function _affMln(v) {
+    const n = Math.max(0, parseInt(v, 10) || 0);
+    if (!n) return '';
+    const m = n / 1000000;
+    const mTxt = (m >= 10 ? Math.round(m) : +m.toFixed(1)).toLocaleString('en-US');
+    return fmt(n) + ' ₮ · ' + mTxt + ' сая';
+  }
+  function updateAffordHints() {
+    const ih = document.getElementById('affIncomeHint');
+    const dh = document.getElementById('affDownHint');
+    if (ih) ih.textContent = _affMln(document.getElementById('affIncome').value);
+    if (dh) dh.textContent = _affMln(document.getElementById('affDown').value);
+  }
+
   function calculateAfford() {
     const income = parseInt(document.getElementById('affIncome').value) || 0;
     const down = parseInt(document.getElementById('affDown').value) || 0;
@@ -402,6 +418,8 @@
   // Initial paint: select the default (6%) bank so the selector, detail card and comparison
   // all render and the calculator starts on the program's terms.
   selectBank(selectedBankId);
+  // Fill the affordability input hints for the default values.
+  updateAffordHints();
 
   // Two independent .filter-pill[data-cat] surfaces exist on the Listings page now (the
   // top category tabs and the sidebar's "Үл хөдлөхийн төрөл" list) — sync every element

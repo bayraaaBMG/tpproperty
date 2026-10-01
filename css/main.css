@@ -1305,11 +1305,26 @@
   .afford-title em { font-style: italic; color: var(--primary-glow); }
   .afford-sub { font-size: 16px; color: rgba(255, 255, 255, 0.75); margin-bottom: 28px; line-height: 1.6; }
 
-  .afford-form { display: grid; gap: 14px; margin-bottom: 24px; }
+  .afford-form { display: grid; gap: 16px; margin-bottom: 24px; }
+  /* Each field now has a visible label above it (users couldn't tell which box was income
+     vs. down payment when the inputs already held a value and the placeholder was hidden). */
+  .afford-field { display: flex; flex-direction: column; gap: 6px; }
+  .afford-label { font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.92); }
+  .afford-input-wrap { position: relative; }
+  .afford-suffix {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none;
+    font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.55);
+  }
+  .afford-input-wrap .afford-input { padding-right: 36px; }
+  .afford-field-hint {
+    min-height: 15px; font-size: 12px; font-weight: 600; color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .afford-field-hint:empty { display: none; }
   .afford-input {
     background: rgba(255, 255, 255, 0.06); border: 1.5px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px; height: 44px; padding: 0 16px; color: white; font-family: inherit;
-    font-size: 14px; transition: all 0.2s; width: 100%;
+    border-radius: 10px; height: 46px; padding: 0 16px; color: white; font-family: inherit;
+    font-size: 15px; transition: all 0.2s; width: 100%;
   }
   .afford-input::placeholder { color: rgba(255, 255, 255, 0.4); }
   .afford-input:focus { outline: none; background: rgba(255, 255, 255, 0.1); border-color: var(--primary-glow); box-shadow: 0 0 0 3px rgba(124, 131, 208, 0.25); }

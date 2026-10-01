@@ -2229,19 +2229,39 @@
           <p class="afford-sub">Орлого, зээлийн түүх, урьдчилгаа мөнгөн дүнгээ оруулахад л болоо. Бид танд зориулсан хамгийн их зээлийн дүнг тооцоолон, ямар үнэтэй байр сонгож болохыг харуулна.</p>
 
           <div class="afford-form">
-            <input class="afford-input" type="number" id="affIncome" aria-label="Сарын цэвэр орлого (₮)" placeholder="Сарын цэвэр орлого (₮)" value="3500000" />
-            <input class="afford-input" type="number" id="affDown" aria-label="Хадгаламж / Урьдчилгаа (₮)" placeholder="Хадгаламж / Урьдчилгаа (₮)" value="85000000" />
-            <select class="afford-input" id="affHistory" aria-label="Зээлийн түүх" style="cursor:pointer;">
-              <option value="A">Зээлийн түүх — Маш сайн (А)</option>
-              <option value="B">Зээлийн түүх — Сайн (Б)</option>
-              <option value="C">Зээлийн түүх — Дунд (В)</option>
-              <option value="N">Зээлийн түүх — Анх удаа</option>
-            </select>
-            <select class="afford-input" id="affOther" aria-label="Бусад сарын зээлийн төлбөр" style="cursor:pointer;">
-              <option value="0">Бусад зээлгүй</option>
-              <option value="500000">Машины зээлтэй</option>
-              <option value="1000000">Бусад зээлтэй</option>
-            </select>
+            <div class="afford-field">
+              <label class="afford-label" for="affIncome">Таны сарын цэвэр орлого</label>
+              <div class="afford-input-wrap">
+                <input class="afford-input" type="number" inputmode="numeric" min="0" id="affIncome" placeholder="Жишээ: 3,500,000" value="3500000" oninput="updateAffordHints()" />
+                <span class="afford-suffix">₮</span>
+              </div>
+              <span class="afford-field-hint" id="affIncomeHint"></span>
+            </div>
+            <div class="afford-field">
+              <label class="afford-label" for="affDown">Хадгаламж / Урьдчилгаа мөнгө</label>
+              <div class="afford-input-wrap">
+                <input class="afford-input" type="number" inputmode="numeric" min="0" id="affDown" placeholder="Жишээ: 85,000,000" value="85000000" oninput="updateAffordHints()" />
+                <span class="afford-suffix">₮</span>
+              </div>
+              <span class="afford-field-hint" id="affDownHint"></span>
+            </div>
+            <div class="afford-field">
+              <label class="afford-label" for="affHistory">Зээлийн түүх</label>
+              <select class="afford-input" id="affHistory" style="cursor:pointer;">
+                <option value="A">Маш сайн (А) — хугацаа хэтрүүлж байгаагүй</option>
+                <option value="B">Сайн (Б)</option>
+                <option value="C">Дунд (В)</option>
+                <option value="N">Анх удаа зээл авч байна</option>
+              </select>
+            </div>
+            <div class="afford-field">
+              <label class="afford-label" for="affOther">Бусад сарын зээлийн төлбөр</label>
+              <select class="afford-input" id="affOther" style="cursor:pointer;">
+                <option value="0">Бусад зээлгүй</option>
+                <option value="500000">Машины зээлтэй (~500,000₮/сар)</option>
+                <option value="1000000">Бусад зээлтэй (~1,000,000₮/сар)</option>
+              </select>
+            </div>
           </div>
 
           <button class="btn btn-blue btn-lg" style="width:100%; justify-content:center;" onclick="calculateAfford()">
