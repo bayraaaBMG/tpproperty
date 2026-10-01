@@ -1035,6 +1035,40 @@
   .loan-type-rate { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); font-weight: 500; }
   .loan-type.active .loan-type-rate { color: var(--primary-deep); }
 
+  /* ---- Bank selector (calculator): logo chips + selected-bank detail card ---- */
+  .bank-select-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .bank-chip {
+    padding: 0; border: 2px solid transparent; border-radius: 12px; background: none; cursor: pointer;
+    line-height: 0; transition: all 0.16s; -webkit-tap-highlight-color: transparent;
+  }
+  .bank-chip-logo {
+    width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center;
+    font-weight: 800; font-size: 13px; color: #fff; font-family: 'Fraunces', serif; letter-spacing: 0.2px;
+  }
+  .bank-chip:hover { transform: translateY(-1px); }
+  .bank-chip.active { border-color: var(--primary); }
+  .bank-chip.active .bank-chip-logo { box-shadow: 0 0 0 2px var(--surface) inset; }
+
+  .bank-detail-card { background: var(--paper-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .bank-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .bank-detail-name { font-size: 15px; font-weight: 800; color: var(--ink); display: flex; flex-direction: column; gap: 2px; }
+  .bank-detail-note { font-size: 11px; font-weight: 600; color: var(--ink-3); }
+  .bank-detail-terms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .bank-detail-terms > div {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .bd-label { font-size: 11px; color: var(--ink-3); font-weight: 600; }
+  .bd-val { font-size: 15px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace; }
+  .bank-detail-contact { margin-top: 12px; }
+  .bank-contact {
+    display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center;
+    background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; font-size: 13.5px;
+    padding: 11px 16px; border-radius: 10px; transition: filter 0.16s;
+  }
+  .bank-contact:hover { filter: brightness(1.08); }
+  @media (max-width: 420px) { .bank-detail-terms { grid-template-columns: 1fr 1fr; } }
+
   /* Slider marks */
   .slider-marks {
     display: flex; justify-content: space-between; margin-top: 6px;
@@ -1222,6 +1256,8 @@
   }
   .bank-row.verified { background: rgba(0, 212, 170, 0.08); border: 1px solid rgba(0, 212, 170, 0.2); }
   .bank-row.unverified { background: rgba(255, 255, 255, 0.03); border: 1px solid transparent; opacity: 0.75; }
+  .bank-row { background: rgba(255, 255, 255, 0.03); border: 1px solid transparent; }
+  .bank-row.active { background: rgba(0, 212, 170, 0.12); border-color: rgba(0, 212, 170, 0.4); }
   .bank-row:hover { background: rgba(255, 255, 255, 0.08); opacity: 1; }
   .bank-name { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
   .bank-logo {

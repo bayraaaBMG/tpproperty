@@ -13,64 +13,51 @@
   // (урьдчилгаа, хугацаа, шимтгэл) уншигдаагүй бол тухайн талбарууд "Тодорхойгүй" хэвээр —
   // ямар ч тоо ЗОХИОГООГҮЙ. Хуучирсан эсвэл өөрчлөгдсөн байж болзошгүй тул эцсийн шийдвэр
   // гаргахын өмнө sourceUrl-аар орж баталгаажуулна уу.
+  // Банкны нөхцөл (хэрэглэгчийн өгсөн, zary.mn-ийн 2026 оны ойролцоо утгуудаас). Банк сонгоход
+  // calculate() эдгээрийг ашиглана: rate = жилийн хүү (%), down = доод урьдчилгаа (%),
+  // term = дээд хугацаа (сар), cap = зээлийн дээд хязгаар (сая ₮, байхгүй бол null),
+  // monthly = картан дээр харуулах "Сарын хүү" текст, phone = холбоо барих дугаар (байхгүй
+  // бол sourceUrl-аар орлоно). Range байвал доод утгыг default хүү болгосон. ЭДГЭЭР нь
+  // ойролцоо тоо — банк байнга өөрчилдөг тул эцсийн нөхцөлийг тухайн банкнаас шалгана уу.
   const banks = [
-    {
-      name: 'Голомт Банк', short: 'ГБ', color: '#E31E24',
-      productName: 'Амины орон сууц худалдан авах зээл',
-      annualRateText: '16.8–21.6%', downPaymentText: '40%-иас багагүй', loanTermText: '240 сар хүртэл',
-      feeText: '10,000₮ хүсэлтийн хураамж + зээлийн дүнгийн 1%',
-      verified: true, sourceUrl: 'https://www.golomtbank.com/retail/loans/786', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Хас Банк', short: 'ХБ', color: '#00A651',
-      productName: 'Хөнгөлөлттэй хөтөлбөрийн орон сууцны зээл',
-      annualRateText: '6%', downPaymentText: 'Тодорхойгүй', loanTermText: '240 сар хүртэл',
-      feeText: 'Тодорхойгүй',
-      verified: true, sourceUrl: 'https://xacbank.mn/mortgage', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Төрийн Банк', short: 'ТБ', color: '#FFB81C', dark: true,
-      productName: 'Орон сууцны ипотекийн зээл',
-      annualRateText: '6%', downPaymentText: 'Тодорхойгүй', loanTermText: 'Тодорхойгүй',
-      feeText: 'Тодорхойгүй',
-      verified: true, sourceUrl: 'https://www.statebank.mn/personal/product/10054', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Худалдаа Хөгжлийн Банк', short: 'ХХБ', color: '#003F87',
-      productName: 'Орон сууц худалдан авах зээл',
-      annualRateText: '18.60–20.40% (бодит өртөг 19.07–20.87%)', downPaymentText: '20%-иас багагүй (нэмэлт барьцаагүй тохиолдолд 40%+)',
-      loanTermText: '240 сар хүртэл (20 жил)', feeText: 'Үйлчилгээний хураамж зээлийн дүнгийн 1% (дээд тал нь 1,500,000₮)',
-      verified: true, sourceUrl: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Богд Банк', short: 'ББ', color: '#0A1628',
-      productName: 'Орон сууцны ипотекийн 6% зээл',
-      annualRateText: '6%', downPaymentText: 'Тодорхойгүй', loanTermText: 'Тодорхойгүй', feeText: 'Тодорхойгүй',
-      verified: true, sourceUrl: 'https://www.bogdbank.com/product/53', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Ариг Банк', short: 'АБ', color: '#FF6B35',
-      productName: 'Ипотекийн зээл 6%',
-      annualRateText: '6%', downPaymentText: 'Тодорхойгүй', loanTermText: 'Тодорхойгүй', feeText: 'Тодорхойгүй',
-      verified: true, sourceUrl: 'https://www.arigbank.mn/mn/product/loan/26', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Хаан Банк', short: 'ХБ', color: '#0066B3',
-      productName: 'Орон сууц худалдан авах зээл (5 жил тутам хувьсах хүүтэй)', annualRateText: 'Тодорхойгүй',
-      downPaymentText: 'Тодорхойгүй', loanTermText: 'Тодорхойгүй', feeText: 'Тодорхойгүй',
-      verified: false, sourceUrl: 'https://www.khanbank.com/personal/product/detail/39/', lastUpdated: '2026-08-13'
-    },
-    {
-      name: 'Капитрон Банк', short: 'КБ', color: '#7B2CBF',
-      productName: 'Орон сууцны зээл', annualRateText: 'Тодорхойгүй',
-      downPaymentText: 'Тодорхойгүй', loanTermText: 'Тодорхойгүй', feeText: 'Тодорхойгүй',
-      verified: false, sourceUrl: 'https://www.capitronbank.mn/c/%D0%BE%D1%80%D0%BE%D0%BD-%D1%81%D1%83%D1%83%D1%86%D0%BD%D1%8B-%D0%B7%D1%8D%D1%8D%D0%BB', lastUpdated: '2026-08-13'
-    }
+    { id: 'mik', name: 'Хөнгөлөлттэй ипотек (6%)', short: '6%', color: '#00A651',
+      monthly: '0.5%', rate: 6, down: 30, term: 360, cap: 150, phone: '', note: 'Улсын хөтөлбөр · МИК',
+      sourceUrl: 'https://www.mik.mn' },
+    { id: 'golomt', name: 'Голомт банк', short: 'ГБ', color: '#E31E24',
+      monthly: '1.4–1.8%', rate: 16.8, down: 20, term: 240, cap: null, phone: '1800-1646',
+      sourceUrl: 'https://www.golomtbank.com/retail/loans/786' },
+    { id: 'khan', name: 'Хаан банк', short: 'ХАН', color: '#0066B3',
+      monthly: '1.7–1.8%', rate: 20.5, down: 20, term: 300, cap: null, phone: '1800-1917',
+      sourceUrl: 'https://www.khanbank.com/personal/product/detail/39/' },
+    { id: 'tdb', name: 'Худалдаа Хөгжлийн Банк', short: 'ХХБ', color: '#003F87',
+      monthly: '1.45–1.6%', rate: 17.4, down: 20, term: 240, cap: null, phone: '1800-1977',
+      sourceUrl: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
+    { id: 'state', name: 'Төрийн банк', short: 'ТБ', color: '#FFB81C', dark: true,
+      monthly: '1.7–1.8%', rate: 20.4, down: 30, term: 240, cap: null, phone: '1800-1888',
+      sourceUrl: 'https://www.statebank.mn/personal/product/10054' },
+    { id: 'xac', name: 'ХасБанк', short: 'ХАС', color: '#00A651',
+      monthly: '1.5%', rate: 18, down: 25, term: 240, cap: null, phone: '1800-1888',
+      sourceUrl: 'https://xacbank.mn/mortgage' },
+    { id: 'mbank', name: 'М банк', short: 'М', color: '#E4002B',
+      monthly: '1.4–1.55%', rate: 16.8, down: 20, term: 360, cap: 1000, phone: '1800-2929',
+      sourceUrl: 'https://www.mbank.mn' },
+    { id: 'capitron', name: 'Капитрон банк', short: 'КБ', color: '#7B2CBF',
+      monthly: '1.7–2.0%', rate: 20.5, down: 30, term: 120, cap: null, phone: '11-328373',
+      sourceUrl: 'https://www.capitronbank.mn' },
+    { id: 'bogd', name: 'Богд банк', short: 'ББ', color: '#0A1628',
+      monthly: '1.5–1.8%', rate: 18, down: 30, term: 240, cap: null, phone: '',
+      sourceUrl: 'https://www.bogdbank.com/product/53' },
+    { id: 'arig', name: 'Ариг банк', short: 'АБ', color: '#FF6B35',
+      monthly: '1.5–1.8%', rate: 18, down: 30, term: 240, cap: null, phone: '',
+      sourceUrl: 'https://www.arigbank.mn/mn/product/loan/26' },
+    { id: 'cash', name: 'Бэлэн мөнгө', short: '₮', color: '#64748B',
+      monthly: '—', rate: 0, down: 30, term: 240, cap: null, phone: '', note: 'Зээлгүй · шууд худалдан авалт' }
   ];
 
-  let currentRate = 17.5;
-  let currentLoanName = 'Энгийн ипотек ~17.5% (2026.04)';
-  let currentLoanCap = null; // сая ₮ — зарим зээлийн төрөл (жиш. хөнгөлөлттэй 6% хөтөлбөр) улсын хөтөлбөрийн хэмжээгээр хязгаарлагддаг
+  let selectedBankId = 'mik';
+  let currentRate = 6;
+  let currentLoanName = 'Хөнгөлөлттэй ипотек (6%)';
+  let currentLoanCap = 150; // сая ₮ — зээлийн дээд хязгаар (6% хөтөлбөр ~150 сая); банк сонгоход шинэчлэгдэнэ
 
   // Сайт даяар ганц стандарт орлогын дарамтын (DTI) аюулгүй дээд хязгаар — энэ тооцоолуур,
   // стресс тест, шаардлагатай орлогын тооцоо бүгд үүнийг л ашиглана. Өмнө нь 40%/45%/47.7%/50%
@@ -163,7 +150,7 @@
       document.getElementById('dti').textContent = '0%';
       document.getElementById('loanAmt').textContent = '0 ₮';
       document.getElementById('bestBankTitle').textContent = 'Бэлэн мөнгөөр';
-      document.getElementById('bankList').innerHTML = '<div style="text-align:center; color:rgba(255,255,255,0.5); padding:20px; font-size:13px;">Бэлэн мөнгөөр худалдан авахад зээл шаардахгүй</div>';
+      // Leave the bank comparison list in place (it is the persistent bank selector now).
       // Hide early payoff for cash
       document.querySelector('.early-payoff').style.opacity = '0.4';
       document.querySelector('.early-payoff').style.pointerEvents = 'none';
@@ -198,29 +185,85 @@
       document.getElementById('bestBankTitle').textContent = `✓ Санхүүгийн дарамт аюулгүй түвшинд байна`;
     }
 
-    // Bank list — informational only, not ranked or computed. Each bank's rate/terms are either
-    // verified straight from that bank's own official page (verified:true, with source + date)
-    // or explicitly marked "Тодорхойгүй" — never estimated or guessed. See the `banks` array
-    // above for the full verification note.
-    document.getElementById('bankList').innerHTML = banks.map(b => `
-      <div class="bank-row ${b.verified ? 'verified' : 'unverified'}" onclick="window.open('${b.sourceUrl}', '_blank', 'noopener')" style="cursor:pointer;" title="${esc(b.name)} — банкны албан ёсны хуудас руу очих">
-        <div class="bank-name">
-          <div class="bank-logo" style="background:${b.color};${b.dark ? 'color:#0A1628;' : ''}">${b.short}</div>
-          <div>
-            <div>${esc(b.name)}</div>
-            <div style="font-size:10.5px;color:rgba(255,255,255,0.45);font-weight:500;">${esc(b.productName)}</div>
-          </div>
-        </div>
-        <div class="bank-rate">${b.verified ? esc(b.annualRateText) : 'Тодорхойгүй'}</div>
-        <div class="bank-monthly" style="font-size:11px;color:rgba(255,255,255,0.55);">${b.verified ? 'Шалгасан: ' + b.lastUpdated : 'Банкны сайтаас шалгана уу'}</div>
-        <div>${b.verified
-          ? '<span class="best-tag" style="background:rgba(0,212,170,0.22);color:#00D4AA;">✓ Шалгасан</span>'
-          : '<span class="best-tag" style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);">Шалгаагүй</span>'}</div>
-      </div>
-    `).join('') + '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.5);margin-top:12px;line-height:1.6;">Дээрх хүү, нөхцөл нь тухайн банкны албан ёсны вэбсайтаас шалгасан үзүүлэлт (эсвэл "Тодорхойгүй" гэж тэмдэглэсэн). Зээлийн хүү, шимтгэл болон бусад нөхцөл банкны шийдвэр, бүтээгдэхүүнээс хамаарч өөрчлөгдөж болно. Эцсийн нөхцөлийг тухайн банкнаас баталгаажуулна уу.</div>';
+    // The bank comparison list (results panel) is highlighted for the selected bank and is
+    // rendered by renderBankComparison() on select — not here, so slider drags don't rebuild it.
 
     // Update early payoff calculation
     calculateEarlyPayoff(loanAmt * 1000000, monthlyRate, monthly, months);
+  }
+
+  // ===== BANK SELECTOR =====
+  function bankById(id) { return banks.find(b => b.id === id) || banks[0]; }
+  // Clean a phone for a tel: link ("1800-1917" -> "18001917", "+976 7000" -> "+9767000").
+  function bankTel(phone) { return String(phone || '').replace(/[^0-9+]/g, ''); }
+
+  // Apply a bank's terms to the calculator: rate, down payment and term switch to that bank's
+  // official нөхцөл, the selected-bank card + comparison highlight update, and we recalculate.
+  function selectBank(id) {
+    const b = bankById(id);
+    selectedBankId = b.id;
+    currentRate = b.rate;
+    currentLoanName = b.name;
+    currentLoanCap = b.cap || null;
+    // Move the sliders to the bank's terms (values only — the slider ranges/marks stay, so the
+    // user can still explore around the bank's baseline).
+    const down = document.getElementById('downSlider');
+    const term = document.getElementById('termSlider');
+    if (down) down.value = Math.min(Math.max(b.down, +down.min), +down.max);
+    if (term) term.value = Math.min(Math.max(Math.round(b.term / 12), +term.min), +term.max);
+    renderBankSelector();
+    renderBankDetail(b);
+    renderBankComparison();
+    calculate();
+  }
+
+  function renderBankSelector() {
+    const row = document.getElementById('bankSelectRow'); if (!row) return;
+    row.innerHTML = banks.map(b => `
+      <button type="button" class="bank-chip ${b.id === selectedBankId ? 'active' : ''}" data-bank="${esc(b.id)}" title="${esc(b.name)}" aria-label="${esc(b.name)}" aria-pressed="${b.id === selectedBankId}">
+        <span class="bank-chip-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</span>
+      </button>`).join('');
+  }
+
+  // The selected-bank card (zary.mn style): name + Сарын хүү / Урьдчилгаа / Хугацаа + contact.
+  function renderBankDetail(b) {
+    const card = document.getElementById('bankDetailCard'); if (!card) return;
+    const years = Math.round(b.term / 12);
+    const tel = bankTel(b.phone);
+    const contact = tel
+      ? `<a class="bank-contact" href="tel:${esc(tel)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${esc(b.phone)} · Холбогдох</span></a>`
+      : (b.sourceUrl ? `<a class="bank-contact" href="${esc(b.sourceUrl)}" target="_blank" rel="noopener nofollow"><span>Албан ёсны сайт →</span></a>` : '');
+    card.innerHTML = `
+      <div class="bank-detail-head">
+        <span class="bank-chip-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</span>
+        <div class="bank-detail-name">${esc(b.name)}${b.note ? `<span class="bank-detail-note">${esc(b.note)}</span>` : ''}</div>
+      </div>
+      <div class="bank-detail-terms">
+        <div><span class="bd-label">Сарын хүү</span><span class="bd-val">${esc(b.monthly)}</span></div>
+        <div><span class="bd-label">Урьдчилгаа</span><span class="bd-val">${esc(String(b.down))}%</span></div>
+        <div><span class="bd-label">Хугацаа</span><span class="bd-val">${b.rate === 0 ? '—' : esc(String(years)) + ' жил'}</span></div>
+      </div>
+      ${contact ? `<div class="bank-detail-contact">${contact}</div>` : ''}`;
+    card.hidden = false;
+  }
+
+  function renderBankComparison() {
+    const list = document.getElementById('bankList'); if (!list) return;
+    list.innerHTML = banks.filter(b => b.id !== 'cash').map(b => `
+      <div class="bank-row ${b.id === selectedBankId ? 'active' : ''}" data-bank="${esc(b.id)}" style="cursor:pointer;" title="${esc(b.name)} — сонгох">
+        <div class="bank-name">
+          <div class="bank-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</div>
+          <div>
+            <div>${esc(b.name)}</div>
+            <div style="font-size:10.5px;color:rgba(255,255,255,0.45);font-weight:500;">Урьдчилгаа ${esc(String(b.down))}% · ${esc(String(Math.round(b.term / 12)))} жил</div>
+          </div>
+        </div>
+        <div class="bank-rate">${esc(b.monthly)}</div>
+        <div class="bank-monthly">жилийн ${esc(String(b.rate))}%</div>
+        <div>${b.id === selectedBankId
+          ? '<span class="best-tag" style="background:rgba(0,212,170,0.22);color:#00D4AA;">✓ Сонгосон</span>'
+          : '<span class="best-tag" style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);">Сонгох</span>'}</div>
+      </div>`).join('') + '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.5);margin-top:12px;line-height:1.6;">Дээрх хүү, урьдчилгаа, хугацаа нь 2026 оны ойролцоо үзүүлэлт. Банкууд нөхцөлөө байнга өөрчилдөг тул эцсийн нөхцөлийг тухайн банкнаас заавал шалгаж баталгаажуулна уу.</div>';
   }
 
   // ===== EARLY PAYOFF SIMULATOR =====
@@ -346,16 +389,19 @@
     document.getElementById(id).addEventListener('input', calculate);
   });
 
-  document.querySelectorAll('.loan-type').forEach(t => {
-    t.addEventListener('click', () => {
-      document.querySelectorAll('.loan-type').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      currentRate = parseFloat(t.dataset.rate);
-      currentLoanName = t.dataset.name;
-      currentLoanCap = t.dataset.cap ? parseFloat(t.dataset.cap) : null;
-      calculate();
-    });
-  });
+  // Bank selection (logo row + comparison list) — both delegate to selectBank(), which
+  // switches the rate/down/term and recalculates. One handler via event delegation.
+  function _bankClickHandler(e) {
+    const el = e.target.closest('[data-bank]'); if (!el) return;
+    selectBank(el.dataset.bank);
+  }
+  const bankRow = document.getElementById('bankSelectRow');
+  const bankListEl = document.getElementById('bankList');
+  if (bankRow) bankRow.addEventListener('click', _bankClickHandler);
+  if (bankListEl) bankListEl.addEventListener('click', _bankClickHandler);
+  // Initial paint: select the default (6%) bank so the selector, detail card and comparison
+  // all render and the calculator starts on the program's terms.
+  selectBank(selectedBankId);
 
   // Two independent .filter-pill[data-cat] surfaces exist on the Listings page now (the
   // top category tabs and the sidebar's "Үл хөдлөхийн төрөл" list) — sync every element
