@@ -337,6 +337,72 @@
     `;
   }
 
+  // ===== 20-YEAR INVESTMENT FORECAST CHART =====
+  // Draws the example projection as a correctly-scaled SVG. Previously the chart was a static
+  // SVG with hardcoded Y-axis labels (1.7тэр/1.2тэр/800сая/400сая) and hardcoded paths that did
+  // not line up with any scale — the ticks looked out of order and ran into the x-axis. Now the
+  // axis is computed from the data: nice, evenly-spaced, ordered ticks (0 / 500сая / 1тэр / …).
+  function _niceAxis(maxVal, ticks) {
+    ticks = ticks || 4;
+    const raw = maxVal / ticks;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+    return { max: Math.ceil(maxVal / step) * step, step: step };
+  }
+  // Format a сая ₮ value for the Y axis: 0 -> "0", <1000 -> "Nсая", >=1000 -> "N[.N]тэр".
+  function _fmtAxis(v) {
+    if (v === 0) return '0';
+    if (v < 1000) return v + 'сая';
+    const t = v / 1000;
+    return (t % 1 === 0 ? t : +t.toFixed(1)) + 'тэр';
+  }
+  function renderForecastChart() {
+    const svg = document.getElementById('forecastChart'); if (!svg) return;
+    // Example apartment (matches the stat cards): 412 сая ₮, ~7.2%/yr appreciation, 20 years,
+    // ~1,004 сая ₮ total paid over the loan.
+    const cfg = { price0: 412, growth: 0.072, years: 20, totalPaid: 1004, startYear: 2026 };
+    const L = 46, R = 592, T = 22, B = 198; // plot box inside the 600x240 viewBox
+    const n = cfg.years;
+    const prop = [], paid = [];
+    for (let t = 0; t <= n; t++) { prop.push(cfg.price0 * Math.pow(1 + cfg.growth, t)); paid.push(cfg.totalPaid * (t / n)); }
+    const axis = _niceAxis(Math.max(prop[n], paid[n]), 4);
+    const yMax = axis.max;
+    const X = t => L + (t / n) * (R - L);
+    const Y = v => B - (v / yMax) * (B - T);
+    const f1 = x => x.toFixed(1);
+    let s = '<defs>'
+      + '<linearGradient id="propGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#272B68" stop-opacity="0.22"/><stop offset="100%" stop-color="#272B68" stop-opacity="0"/></linearGradient>'
+      + '<linearGradient id="payGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00D4AA" stop-opacity="0.18"/><stop offset="100%" stop-color="#00D4AA" stop-opacity="0"/></linearGradient>'
+      + '</defs>';
+    // Gridlines + Y labels (ordered 0..yMax)
+    for (let v = 0; v <= yMax + 0.0001; v += axis.step) {
+      const yy = Y(v);
+      s += `<line x1="${L}" y1="${f1(yy)}" x2="${R}" y2="${f1(yy)}" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+      s += `<text x="${L - 7}" y="${f1(yy + 3)}" font-size="9" fill="var(--ink-3)" text-anchor="end" font-family="JetBrains Mono, monospace">${_fmtAxis(Math.round(v))}</text>`;
+    }
+    // Baseline + year labels every 5 years
+    s += `<line x1="${L}" y1="${B}" x2="${R}" y2="${B}" stroke="var(--ink)" stroke-width="0.5"/>`;
+    for (let t = 0; t <= n; t += 5) {
+      const anchor = t === 0 ? 'start' : (t === n ? 'end' : 'middle');
+      s += `<text x="${f1(X(t))}" y="${B + 16}" font-size="9" fill="var(--ink-3)" text-anchor="${anchor}" font-family="JetBrains Mono, monospace">${cfg.startYear + t}</text>`;
+    }
+    const line = arr => arr.map((v, t) => `${t === 0 ? 'M' : 'L'} ${f1(X(t))} ${f1(Y(v))}`).join(' ');
+    const area = arr => `${line(arr)} L ${f1(X(n))} ${B} L ${f1(X(0))} ${B} Z`;
+    s += `<path d="${area(prop)}" fill="url(#propGrad)"/>`;
+    s += `<path d="${area(paid)}" fill="url(#payGrad)"/>`;
+    s += `<path d="${line(prop)}" stroke="#272B68" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    s += `<path d="${line(paid)}" stroke="#00D4AA" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"/>`;
+    s += `<circle cx="${f1(X(n))}" cy="${f1(Y(prop[n]))}" r="5.5" fill="#272B68" stroke="white" stroke-width="2"/>`;
+    s += `<circle cx="${f1(X(n))}" cy="${f1(Y(paid[n]))}" r="5.5" fill="#00D4AA" stroke="white" stroke-width="2"/>`;
+    // Profit badge near the property end
+    const profit = Math.round(prop[n] - paid[n]);
+    const bx = X(n) - 92, by = Math.max(T + 2, Y(prop[n]) - 26);
+    s += `<rect x="${f1(bx)}" y="${f1(by)}" width="84" height="20" rx="6" fill="#0A1628"/>`;
+    s += `<text x="${f1(bx + 42)}" y="${f1(by + 14)}" font-size="10" fill="white" text-anchor="middle" font-weight="700" font-family="Manrope">+${profit.toLocaleString('en-US')} сая ₮</text>`;
+    svg.innerHTML = s;
+  }
+
   // ===== AFFORDABILITY =====
   // Live, human-readable echo of the two big number inputs so the user can tell at a glance
   // what they typed (e.g. 85000000 -> "85,000,000 ₮ · 85 сая") and which field is which.
@@ -420,6 +486,8 @@
   selectBank(selectedBankId);
   // Fill the affordability input hints for the default values.
   updateAffordHints();
+  // Draw the 20-year forecast chart with a correctly-scaled, ordered Y axis.
+  renderForecastChart();
 
   // Two independent .filter-pill[data-cat] surfaces exist on the Listings page now (the
   // top category tabs and the sidebar's "Үл хөдлөхийн төрөл" list) — sync every element
