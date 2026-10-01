@@ -4933,7 +4933,7 @@
     font-weight: 800; font-size: 56px; letter-spacing: 1px;
   }
   .agent-row-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .agent-row-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+  .agent-row-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 2px 0; }
   .agent-row-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .agent-row-name {
     font-family: inherit; font-size: 24px; font-weight: 800; color: var(--primary);
@@ -4950,15 +4950,33 @@
     display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink-2);
     text-decoration: none; line-height: 1.45;
   }
-  .agent-row-metaitem.agent-row-phone { color: var(--primary); font-weight: 700; }
-  .agent-row-metaitem.agent-row-phone:hover { text-decoration: underline; }
+  .agent-row-metaitem.agent-row-phone { color: var(--ink-2); font-weight: 600; }
   .agent-row-metaicon { flex: 0 0 auto; width: 18px; height: 18px; color: var(--ink-3); display: inline-flex; }
   .agent-row-metaicon svg { width: 18px; height: 18px; }
-  .agent-row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
-  /* Scale the action controls up to match the bigger card (local to the agents list only). */
-  .agent-row-actions .btn { height: 44px; padding: 0 22px; font-size: 14px; }
+  /* Actions sit right under the name (remax-style) — no margin-top:auto gap. */
+  .agent-row-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* "Надтай холбогдоно уу" — a white, outlined CTA like remax. */
+  .agent-contact-btn {
+    background: var(--surface); color: var(--primary); border: 1.5px solid var(--line-2);
+    height: 44px; padding: 0 24px; font-size: 14px; font-weight: 700;
+  }
+  .agent-contact-btn:hover { border-color: var(--primary); background: var(--primary-soft); }
   .agent-row-actions .agent-rc-soc { width: 42px; height: 42px; }
   .agent-row-actions .agent-rc-soc svg { width: 20px; height: 20px; }
+  .agent-rc-soc-phone { background: var(--primary); }
+  /* Phone lines with a "Харуулах" reveal */
+  .agent-row-phones { display: flex; flex-direction: column; gap: 8px; }
+  .agent-row-reveal {
+    background: none; border: 0; padding: 0 0 0 4px; color: var(--primary); font-family: inherit;
+    font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .agent-row-reveal:hover { text-decoration: underline; }
+  .agent-row-phone-full { color: var(--primary); font-weight: 700; text-decoration: none; font-family: 'JetBrains Mono', monospace; }
+  .agent-row-phone-full:hover { text-decoration: underline; }
+  /* Organization + address */
+  .agent-row-office { font-size: 15px; font-weight: 800; color: var(--ink); margin-top: 2px; }
+  .agent-row-address { font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+  .agent-row-count { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
   .agents-page-empty { text-align: center; color: var(--ink-3); font-size: 14px; padding: 48px 16px; }
 
   /* Pagination (remax-style) */
@@ -4979,7 +4997,9 @@
     .agent-row-info { gap: 10px; }
     .agent-row-name { font-size: 18px; }
     .agent-row-metaitem { font-size: 13px; }
-    .agent-row-actions .btn { height: 40px; padding: 0 16px; font-size: 13px; }
+    .agent-row-office { font-size: 14px; }
+    .agent-row-address { font-size: 12.5px; }
+    .agent-contact-btn { height: 40px; padding: 0 16px; font-size: 13px; }
     .agent-row-actions .agent-rc-soc { width: 38px; height: 38px; }
     .agent-row-actions .agent-rc-soc svg { width: 18px; height: 18px; }
   }

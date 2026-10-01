@@ -1127,6 +1127,27 @@
     const tx = document.createElement('span'); tx.textContent = String(text);
     el.appendChild(ic); el.appendChild(tx); return el;
   }
+  // A phone line that shows a masked number + a "Харуулах" button; clicking reveals the
+  // full number as a tel: link (remax.mn behaviour). Returns null when there is no number.
+  function _agentRevealPhoneLine(iconKey, rawPhone, prefix) {
+    const digits = String(rawPhone || '').replace(/[^0-9+]/g, '');
+    if (!digits) return null;
+    const line = document.createElement('div'); line.className = 'agent-row-metaitem agent-row-phone';
+    const ic = document.createElement('span'); ic.className = 'agent-row-metaicon'; ic.innerHTML = _AGENT_ROW_ICON[iconKey] || '';
+    line.appendChild(ic);
+    const bare = digits.replace(/^\+/, '').replace(/^976/, '');
+    const masked = document.createElement('span'); masked.textContent = (prefix || '') + bare.slice(0, 2) + '…';
+    line.appendChild(masked);
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'agent-row-reveal'; btn.textContent = 'Харуулах';
+    btn.addEventListener('click', function () {
+      if (btn._done) return; btn._done = true;
+      const full = (/^\+/.test(digits) ? '' : (prefix || '')) + String(rawPhone);
+      const link = document.createElement('a'); link.className = 'agent-row-phone-full'; link.href = 'tel:' + digits; link.textContent = full;
+      line.replaceChild(link, masked); btn.remove();
+    });
+    line.appendChild(btn);
+    return line;
+  }
   // remax.mn-style horizontal list row: large photo on the left; name, phone, address,
   // office and contact buttons on the right. Used only on the Агентуудын хуудас.
   function cmsBuildAgentRow(rawA) {
@@ -1154,28 +1175,40 @@
     }
     if (a.title) { const t = document.createElement('span'); t.className = 'agent-row-title'; t.textContent = String(a.title); head.appendChild(t); }
     info.appendChild(head);
-    // Meta rows — phone / address / office / active-listing count
-    const meta = document.createElement('div'); meta.className = 'agent-row-meta';
-    const digits = String(a.phone || '').replace(/[^0-9+]/g, '');
-    if (digits) meta.appendChild(_agentMetaItem('phone', (/^\+/.test(digits) ? '' : '+976 ') + String(a.phone), 'tel:' + digits));
-    if (a.officeAddress) meta.appendChild(_agentMetaItem('pin', a.officeAddress));
-    if (a.office) meta.appendChild(_agentMetaItem('office', a.office));
-    meta.appendChild(_agentMetaItem('tag', cmsAgentActiveCount(a.uid) + ' зартай'));
-    info.appendChild(meta);
-    // Actions — Зарууд үзэх + messaging channels
+    // ---- Actions (right under the name, remax-style): "Надтай холбогдоно уу" + contact channels ----
     const actions = document.createElement('div'); actions.className = 'agent-row-actions';
-    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-blue btn-sm'; btn.textContent = 'Зарууд үзэх';
-    btn.addEventListener('click', function () { if (typeof viewAgentListings === 'function') viewAgentListings(a.uid); });
-    actions.appendChild(btn);
-    const socials = ['whatsapp', 'messenger', 'telegram', 'viber']
-      .map(k => ({ k, href: typeof agentSocialHref === 'function' ? agentSocialHref(k, a[k]) : null })).filter(s => s.href);
-    socials.forEach(s => {
-      const link = document.createElement('a'); link.className = 'agent-rc-soc agent-rc-soc-' + s.k;
-      link.href = s.href; link.target = '_blank'; link.rel = 'noopener nofollow'; link.title = s.k; link.setAttribute('aria-label', s.k);
-      if (typeof _AGENT_SOC_ICON !== 'undefined' && _AGENT_SOC_ICON[s.k]) link.innerHTML = _AGENT_SOC_ICON[s.k];
+    const contactBtn = document.createElement('button'); contactBtn.type = 'button'; contactBtn.className = 'btn agent-contact-btn';
+    contactBtn.textContent = 'Надтай холбогдоно уу';
+    // Reveal all masked phone numbers in this row (the "contact me" affordance).
+    contactBtn.addEventListener('click', function () { info.querySelectorAll('.agent-row-reveal').forEach(function (r) { r.click(); }); });
+    actions.appendChild(contactBtn);
+    const callDigits = String(a.phone || '').replace(/[^0-9+]/g, '');
+    if (callDigits) {
+      const call = document.createElement('a'); call.className = 'agent-rc-soc agent-rc-soc-phone';
+      call.href = 'tel:' + callDigits; call.title = 'Залгах'; call.setAttribute('aria-label', 'Залгах');
+      call.innerHTML = _AGENT_ROW_ICON.phone; actions.appendChild(call);
+    }
+    ['whatsapp', 'messenger', 'viber', 'telegram'].forEach(function (k) {
+      const href = typeof agentSocialHref === 'function' ? agentSocialHref(k, a[k]) : null; if (!href) return;
+      const link = document.createElement('a'); link.className = 'agent-rc-soc agent-rc-soc-' + k;
+      link.href = href; link.target = '_blank'; link.rel = 'noopener nofollow'; link.title = k; link.setAttribute('aria-label', k);
+      if (typeof _AGENT_SOC_ICON !== 'undefined' && _AGENT_SOC_ICON[k]) link.innerHTML = _AGENT_SOC_ICON[k];
       actions.appendChild(link);
     });
     info.appendChild(actions);
+    // ---- Phone numbers with "Харуулах" reveal ----
+    const phones = document.createElement('div'); phones.className = 'agent-row-phones';
+    const l1 = _agentRevealPhoneLine('phone', a.phone, '+976 ');
+    const l2 = _agentRevealPhoneLine('office', a.secondaryPhone, '');
+    if (l1) phones.appendChild(l1);
+    if (l2) phones.appendChild(l2);
+    if (phones.children.length) info.appendChild(phones);
+    // ---- Organization name + address ----
+    if (a.office) { const o = document.createElement('div'); o.className = 'agent-row-office'; o.textContent = String(a.office); info.appendChild(o); }
+    if (a.officeAddress) { const ad = document.createElement('div'); ad.className = 'agent-row-address'; ad.textContent = String(a.officeAddress); info.appendChild(ad); }
+    // ---- Active-listing count (subtle; name also opens the agent's listings) ----
+    const cnt = _agentMetaItem('tag', cmsAgentActiveCount(a.uid) + ' зартай'); cnt.className = 'agent-row-metaitem agent-row-count';
+    info.appendChild(cnt);
     row.appendChild(info);
     return row;
   }
