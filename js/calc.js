@@ -28,7 +28,7 @@
       logo: '/assets/bank-logos/golomt.png', sourceUrl: 'https://www.golomtbank.com/retail/loans/786' },
     { id: 'khan', name: 'Хаан банк', short: 'ХАН', color: '#0066B3',
       monthly: '1.7–1.8%', rate: 20.5, down: 20, term: 300, cap: null, phone: '1800-1917',
-      sourceUrl: 'https://www.khanbank.com/personal/product/detail/39/' },
+      logo: '/assets/bank-logos/khan.png', sourceUrl: 'https://www.khanbank.com/personal/product/detail/39/' },
     { id: 'tdb', name: 'Худалдаа Хөгжлийн Банк', short: 'ХХБ', color: '#003F87',
       monthly: '1.45–1.6%', rate: 17.4, down: 20, term: 240, cap: null, phone: '1800-1977',
       logo: '/assets/bank-logos/tdb.webp', sourceUrl: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
