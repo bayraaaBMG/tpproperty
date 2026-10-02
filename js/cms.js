@@ -130,14 +130,14 @@
 
   function cmsDefaultBanks() {
     return [
-      { name: 'Хаан Банк', short: 'ХБ', color: '#0066B3', url: 'https://www.khanbank.com/personal/product/detail/39/' },
-      { name: 'Голомт Банк', short: 'ГБ', color: '#E31E24', url: 'https://www.golomtbank.com/retail/loans/786' },
-      { name: 'Худалдаа Хөгжлийн', short: 'ХХБ', color: '#003F87', url: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
-      { name: 'Төрийн Банк', short: 'ТБ', color: '#FFB81C', url: 'https://www.statebank.mn/personal/product/10054' },
-      { name: 'Хас Банк', short: 'ХА', color: '#00A651', url: 'https://xacbank.mn/mortgage' },
-      { name: 'Капитрон', short: 'КБ', color: '#7B2CBF', url: 'https://www.capitronbank.mn/c/' },
-      { name: 'Ариг Банк', short: 'АБ', color: '#FF6B35', url: 'https://www.arigbank.mn/mn/product/loan/26' },
-      { name: 'Богд Банк', short: 'ББ', color: '#0A1628', url: 'https://www.bogdbank.com/product/53' }
+      { name: 'Хаан Банк', short: 'ХБ', color: '#0066B3', logo: '/assets/bank-logos/khan.png', url: 'https://www.khanbank.com/personal/product/detail/39/' },
+      { name: 'Голомт Банк', short: 'ГБ', color: '#E31E24', logo: '/assets/bank-logos/golomt.png', url: 'https://www.golomtbank.com/retail/loans/786' },
+      { name: 'Худалдаа Хөгжлийн', short: 'ХХБ', color: '#003F87', logo: '/assets/bank-logos/tdb.webp', url: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
+      { name: 'Төрийн Банк', short: 'ТБ', color: '#FFB81C', logo: '/assets/bank-logos/state.png', url: 'https://www.statebank.mn/personal/product/10054' },
+      { name: 'Хас Банк', short: 'ХА', color: '#00A651', logo: '/assets/bank-logos/xac.webp', url: 'https://xacbank.mn/mortgage' },
+      { name: 'Капитрон', short: 'КБ', color: '#7B2CBF', logo: '/assets/bank-logos/capitron.webp', url: 'https://www.capitronbank.mn/c/' },
+      { name: 'Ариг Банк', short: 'АБ', color: '#FF6B35', logo: '/assets/bank-logos/arig.webp', url: 'https://www.arigbank.mn/mn/product/loan/26' },
+      { name: 'Богд Банк', short: 'ББ', color: '#0A1628', logo: '/assets/bank-logos/bogd.webp', url: 'https://www.bogdbank.com/product/53' }
     ];
   }
   // The 6 home "Бүх боломжууд" cards — the previously hardcoded content, now the CMS default
@@ -264,6 +264,9 @@
   function cmsSafeImgUrl(url) {
     const v = String(url || '').trim();
     if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(v)) return v;
+    // Same-origin root-relative image path, e.g. /assets/bank-logos/khan.png. Blocks protocol-
+    // relative (//host) and parent traversal (..). Safe in <img src> — a path can't run script.
+    if (/^\/(?!\/)[A-Za-z0-9._\/-]+\.(png|jpe?g|webp|gif|avif|svg)$/i.test(v) && !v.includes('..')) return v;
     return cmsSafeUrl(v);
   }
   // Strict #RGB / #RRGGBB — blocks any CSS-injection payload (</style>, url(), expression(), etc.).
@@ -689,8 +692,17 @@
       const href = cmsSafeUrl(it.url); if (href) { a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       a.title = String(it.name || '');
       const logo = document.createElement('div'); logo.className = 'bp-logo';
-      const color = cmsSafeHex(it.color); if (color) logo.style.background = color;
-      logo.textContent = String(it.short || '').slice(0, 4);
+      const logoUrl = cmsSafeImgUrl(it.logo);
+      if (logoUrl) {
+        // A real logo image (e.g. /assets/bank-logos/khan.png) — shown on white, contained.
+        logo.classList.add('bp-logo-img');
+        const img = document.createElement('img'); img.src = logoUrl; img.alt = String(it.name || ''); img.loading = 'lazy';
+        img.onerror = function () { const p = this.parentNode; if (p) { p.classList.remove('bp-logo-img'); this.remove(); const c = cmsSafeHex(it.color); if (c) p.style.background = c; p.textContent = String(it.short || '').slice(0, 4); } };
+        logo.appendChild(img);
+      } else {
+        const color = cmsSafeHex(it.color); if (color) logo.style.background = color;
+        logo.textContent = String(it.short || '').slice(0, 4);
+      }
       const name = document.createElement('div'); name.className = 'bp-name'; name.textContent = String(it.name || '');
       a.appendChild(logo); a.appendChild(name); row.appendChild(a);
     });
