@@ -1048,6 +1048,10 @@
   .bank-chip:hover { transform: translateY(-1px); }
   .bank-chip.active { border-color: var(--primary); }
   .bank-chip.active .bank-chip-logo { box-shadow: 0 0 0 2px var(--surface) inset; }
+  /* Real logo image variant (assets/bank-logos): show on white, contained, no text overflow. */
+  .bank-chip-logo-img, .bank-logo-img { background: #fff; padding: 4px; overflow: hidden; }
+  .bank-chip-logo-img img, .bank-logo-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .bank-logo-img { padding: 2px; }
 
   .bank-detail-card { background: var(--paper-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
   .bank-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }

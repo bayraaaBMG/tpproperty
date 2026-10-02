@@ -22,25 +22,25 @@
   const banks = [
     { id: 'mik', name: 'Хөнгөлөлттэй ипотек (6%)', short: '6%', color: '#00A651',
       monthly: '0.5%', rate: 6, down: 30, term: 360, cap: 150, phone: '', note: 'Улсын хөтөлбөр · МИК',
-      sourceUrl: 'https://www.mik.mn' },
+      logo: '/assets/bank-logos/mik.png', sourceUrl: 'https://www.mik.mn' },
     { id: 'golomt', name: 'Голомт банк', short: 'ГБ', color: '#E31E24',
       monthly: '1.4–1.8%', rate: 16.8, down: 20, term: 240, cap: null, phone: '1800-1646',
-      sourceUrl: 'https://www.golomtbank.com/retail/loans/786' },
+      logo: '/assets/bank-logos/golomt.png', sourceUrl: 'https://www.golomtbank.com/retail/loans/786' },
     { id: 'khan', name: 'Хаан банк', short: 'ХАН', color: '#0066B3',
       monthly: '1.7–1.8%', rate: 20.5, down: 20, term: 300, cap: null, phone: '1800-1917',
       sourceUrl: 'https://www.khanbank.com/personal/product/detail/39/' },
     { id: 'tdb', name: 'Худалдаа Хөгжлийн Банк', short: 'ХХБ', color: '#003F87',
       monthly: '1.45–1.6%', rate: 17.4, down: 20, term: 240, cap: null, phone: '1800-1977',
-      sourceUrl: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
+      logo: '/assets/bank-logos/tdb.png', sourceUrl: 'https://www.tdbm.mn/mn/retail/loans/oron-suutsnii-zeel/oron-suuc-khudaldan-avakh-zeel' },
     { id: 'state', name: 'Төрийн банк', short: 'ТБ', color: '#FFB81C', dark: true,
       monthly: '1.7–1.8%', rate: 20.4, down: 30, term: 240, cap: null, phone: '1800-1888',
-      sourceUrl: 'https://www.statebank.mn/personal/product/10054' },
+      logo: '/assets/bank-logos/state.png', sourceUrl: 'https://www.statebank.mn/personal/product/10054' },
     { id: 'xac', name: 'ХасБанк', short: 'ХАС', color: '#00A651',
       monthly: '1.5%', rate: 18, down: 25, term: 240, cap: null, phone: '1800-1888',
       sourceUrl: 'https://xacbank.mn/mortgage' },
     { id: 'mbank', name: 'М банк', short: 'М', color: '#E4002B',
       monthly: '1.4–1.55%', rate: 16.8, down: 20, term: 360, cap: 1000, phone: '1800-2929',
-      sourceUrl: 'https://www.mbank.mn' },
+      logo: '/assets/bank-logos/mbank.png', sourceUrl: 'https://www.mbank.mn' },
     { id: 'capitron', name: 'Капитрон банк', short: 'КБ', color: '#7B2CBF',
       monthly: '1.7–2.0%', rate: 20.5, down: 30, term: 120, cap: null, phone: '11-328373',
       sourceUrl: 'https://www.capitronbank.mn' },
@@ -49,7 +49,7 @@
       sourceUrl: 'https://www.bogdbank.com/product/53' },
     { id: 'arig', name: 'Ариг банк', short: 'АБ', color: '#FF6B35',
       monthly: '1.6–1.8%', rate: 19.2, down: 20, term: 240, cap: null, phone: '7013-3060',
-      sourceUrl: 'https://www.arigbank.mn/mn/product/loan/26' },
+      logo: '/assets/bank-logos/arig.png', sourceUrl: 'https://www.arigbank.mn/mn/product/loan/26' },
     { id: 'cash', name: 'Бэлэн мөнгө', short: '₮', color: '#64748B',
       monthly: '—', rate: 0, down: 30, term: 240, cap: null, phone: '', note: 'Зээлгүй · шууд худалдан авалт' }
   ];
@@ -217,11 +217,18 @@
     calculate();
   }
 
+  // Logo badge markup for a bank: a real logo image (assets/bank-logos/*) when available,
+  // otherwise the coloured short-text square as a fallback (banks whose logo we don't have yet).
+  function _bankLogo(b, cls) {
+    if (b.logo) return `<span class="${cls} ${cls}-img"><img src="${esc(b.logo)}" alt="${esc(b.name)}" loading="lazy"></span>`;
+    return `<span class="${cls}" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</span>`;
+  }
+
   function renderBankSelector() {
     const row = document.getElementById('bankSelectRow'); if (!row) return;
     row.innerHTML = banks.map(b => `
       <button type="button" class="bank-chip ${b.id === selectedBankId ? 'active' : ''}" data-bank="${esc(b.id)}" title="${esc(b.name)}" aria-label="${esc(b.name)}" aria-pressed="${b.id === selectedBankId}">
-        <span class="bank-chip-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</span>
+        ${_bankLogo(b, 'bank-chip-logo')}
       </button>`).join('');
   }
 
@@ -235,7 +242,7 @@
       : (b.sourceUrl ? `<a class="bank-contact" href="${esc(b.sourceUrl)}" target="_blank" rel="noopener nofollow"><span>Албан ёсны сайт →</span></a>` : '');
     card.innerHTML = `
       <div class="bank-detail-head">
-        <span class="bank-chip-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</span>
+        ${_bankLogo(b, 'bank-chip-logo')}
         <div class="bank-detail-name">${esc(b.name)}${b.note ? `<span class="bank-detail-note">${esc(b.note)}</span>` : ''}</div>
       </div>
       <div class="bank-detail-terms">
@@ -252,7 +259,7 @@
     list.innerHTML = banks.filter(b => b.id !== 'cash').map(b => `
       <div class="bank-row ${b.id === selectedBankId ? 'active' : ''}" data-bank="${esc(b.id)}" style="cursor:pointer;" title="${esc(b.name)} — сонгох">
         <div class="bank-name">
-          <div class="bank-logo" style="background:${esc(b.color)};${b.dark ? 'color:#0A1628;' : ''}">${esc(b.short)}</div>
+          ${_bankLogo(b, 'bank-logo')}
           <div>
             <div>${esc(b.name)}</div>
             <div style="font-size:10.5px;color:rgba(255,255,255,0.45);font-weight:500;">Урьдчилгаа ${esc(String(b.down))}% · ${esc(String(Math.round(b.term / 12)))} жил</div>
