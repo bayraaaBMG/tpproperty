@@ -168,7 +168,7 @@
     });
   }
   // Same, for the sponsored-ad carousels (separate markup/classes).
-  // ---- Sponsored ("Ивээн тэтгэсэн") carousel: 5-up row + auto YOYO (ping-pong) scroll. ----
+  // ---- Sponsored ("Зар сурталчилгаа") carousel: 5-up row + auto YOYO (ping-pong) scroll. ----
   // One shared timer ticks every overflowing ad track one card in its current direction and
   // flips at each end (1->5, then 5->1, forever). Pauses on hover/touch; the ‹ › arrows step one
   // card manually and also flip at the ends so they never dead-end. No clones (unlike the other
@@ -330,7 +330,7 @@
     const inner = `
         ${ad.image ? `<img src="${esc(ad.image)}" alt="${esc(ad.title || '')}" loading="lazy" />` : ''}
         <div class="site-ad-body">
-          <span class="site-ad-label">Ивээн тэтгэсэн</span>
+          <span class="site-ad-label">Зар сурталчилгаа</span>
           <div class="site-ad-title">${esc(ad.title || '')}</div>
           <div class="site-ad-sponsor">${esc(ad.sponsorName || '')}</div>
         </div>`;
