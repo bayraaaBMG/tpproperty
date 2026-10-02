@@ -678,6 +678,27 @@
     const em = document.createElement('em'); em.textContent = BRAND; el.appendChild(em);
     el.appendChild(document.createTextNode(text.slice(idx + BRAND.length)));
   }
+  // Known bank logos keyed by official domain (with a Mongolian-name fallback). This lets a
+  // banks block that was PUBLISHED before logos existed (sitePagesPublic/home, whose items only
+  // have name/short/color/url) still show the real logo — without the admin re-saving.
+  const CMS_BANK_LOGOS = [
+    ['khanbank', /хаан/i, '/assets/bank-logos/khan.png'],
+    ['golomtbank', /голомт/i, '/assets/bank-logos/golomt.png'],
+    ['tdbm', /худалдаа|хөгжл/i, '/assets/bank-logos/tdb.webp'],
+    ['statebank', /төрийн/i, '/assets/bank-logos/state.png'],
+    ['xacbank', /хас/i, '/assets/bank-logos/xac.webp'],
+    ['capitronbank', /капитрон/i, '/assets/bank-logos/capitron.webp'],
+    ['arigbank', /ариг/i, '/assets/bank-logos/arig.webp'],
+    ['bogdbank', /богд/i, '/assets/bank-logos/bogd.webp'],
+    ['mbank', /^м\s*банк|мбанк/i, '/assets/bank-logos/mbank.png']
+  ];
+  function cmsBankLogo(it) {
+    if (it && it.logo) return it.logo;
+    const url = String((it && it.url) || '').toLowerCase();
+    const name = String((it && it.name) || '');
+    const hit = CMS_BANK_LOGOS.find(e => url.includes(e[0])) || CMS_BANK_LOGOS.find(e => e[1].test(name));
+    return hit ? hit[2] : '';
+  }
   function cmsApplyBanks(block) {
     const section = document.getElementById('banks');
     const row = section && section.querySelector('.banks-row');
@@ -692,7 +713,7 @@
       const href = cmsSafeUrl(it.url); if (href) { a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       a.title = String(it.name || '');
       const logo = document.createElement('div'); logo.className = 'bp-logo';
-      const logoUrl = cmsSafeImgUrl(it.logo);
+      const logoUrl = cmsSafeImgUrl(cmsBankLogo(it));
       if (logoUrl) {
         // A real logo image (e.g. /assets/bank-logos/khan.png) — shown on white, contained.
         logo.classList.add('bp-logo-img');
